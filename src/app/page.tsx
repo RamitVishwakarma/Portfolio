@@ -1,11 +1,25 @@
 import React from "react";
-import SectionOne from "../components/SectionOne";
+import SectionOne from "../components/SectionOne/SectionOne";
+import SectionTwo from "@/components/SectionTwo/SectionTwo";
+import SectionThree from "@/components/SectionThree/SectionThree";
+import Wrapper from "@/components/Wrapper";
 
 const page = () => {
   return (
     <>
       <div>
-        <SectionOne />
+        <Wrapper>
+          <SectionOne />
+          <SectionTwo />
+          <SectionThree />
+          {/* Tech stack */}
+          {/* Contact Me */}
+          {/* more about me writting competetive programming things */}
+          {/* add achievements awqards in about me */}
+          {/* Hackathon experience */}
+          {/* links to my socials */}
+          {/* my offerings */}
+        </Wrapper>
       </div>
     </>
   );

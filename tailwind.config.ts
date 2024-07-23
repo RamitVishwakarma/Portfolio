@@ -17,6 +17,7 @@ const config: Config = {
       purple: "#9e8bfd",
       pink: "#ff9dfb",
       white: "#FFFFFF",
+      black: "#000000",
       "google-red": "#DB4437",
       "google-green": "#0F9D58",
       "google-blue": "#4285F4",

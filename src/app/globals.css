@@ -27,8 +27,11 @@
 * {
   margin: 0;
   padding: 0;
-  background-color: black;
   scroll-behavior: smooth;
+}
+
+body {
+  background-color: black;
 }
 
 .sethoverfordot :hover span {
@@ -73,7 +76,7 @@
 .infinite-carousel {
   display: flex;
   width: 200%;
-  animation: slide 10s linear infinite;
+  animation: slide 15s linear infinite;
 }
 
 .gradient-right {
@@ -82,4 +85,34 @@
 
 .gradient-left {
   background: linear-gradient(to left, rgba(255, 255, 255, 0), black);
+}
+
+/* gradients for projects */
+.radial-gradient-purple {
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    #763cac 0%,
+    rgba(50, 15, 133, 0) 100%
+  );
+}
+.radial-gradient-green {
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    #a8fe96 0%,
+    rgba(15, 133, 39, 0) 100%
+  );
+}
+.radial-gradient-light-blue {
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    #77effd 0%,
+    rgba(15, 133, 39, 0) 100%
+  );
+}
+.radial-gradient-yellow {
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    #fafe8e 0%,
+    rgba(15, 133, 39, 0) 100%
+  );
 }
