@@ -12,9 +12,9 @@ const InfiniteCarousel = ({ logos }: { logos: string[] }) => {
             <Image
               src={logo}
               alt={`Logo ${index}`}
-              width={190}
-              height={64}
-              className="w-full h-auto object-contain"
+              width={480}
+              height={110}
+              className="w-full h-auto"
             />
           </div>
         ))}
