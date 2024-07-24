@@ -4,12 +4,12 @@ const TestimonialContainer = () => {
   return (
     <div className="infinite-carousel">
       <div className="border-2 border-red relative p-2 rounded-2xl">
-        <div className="absolute top-0 left-4 text-white text-9xl">"</div>
+        <div className="absolute top-0 left-4 text-white text-9xl">&quot;</div>
         <div className="bg-orange min-w-[22rem] py-20 text-white p-4 text-balance rounded-xl">
-          Ramit is an exceptional full-stack developer whom I've had the
+          Ramit is an exceptional full-stack developer whom I&apos;ve had the
           pleasure of collaborating with on numerous projects and hackathons.
           His technical prowess, creativity, and dedication consistently shine
-          through in every task he undertakes. Ramit's ability to navigate
+          through in every task he undertakes. Ramit&apos;s ability to navigate
           complex challenges with ease and deliver innovative solutions makes
           him a valuable asset to any team.
         </div>

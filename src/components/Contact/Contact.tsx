@@ -8,7 +8,7 @@ const Contact = () => {
         {/* <div className="absolute radial-gradient-purple top-0 left-40 w-[40rem] h-[20rem]"></div> */}
         <div className="text-white text-3xl text-balance ">
           If you have a project Idea or you want to talk about development in
-          general, Don't be shy to hit me up
+          general, Don&apos;t be shy to hit me up
         </div>
         <ContactForm />
         <div>Or you can dm me on ony of my socials</div>
