@@ -3,7 +3,7 @@ import Ramit from "../../..//public/images/Ramit.jpg";
 import InfiniteCarousel from "./InfiniteCarousel/InfiniteCarousel";
 import { logos } from "./InfiniteCarousel/data";
 
-const SectionOne = () => {
+const Introduction = () => {
   return (
     <>
       <div className="text-white py-40 flex items-center justify-between">
@@ -46,4 +46,4 @@ const SectionOne = () => {
   );
 };
 
-export default SectionOne;
+export default Introduction;

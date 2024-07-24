@@ -1,7 +1,7 @@
 import React from "react";
 import ProjectContainer from "./ProjectContainer/ProjectContainer";
 
-const SectionTwo = () => {
+const Projects = () => {
   return (
     <>
       <div>Selected Work</div>
@@ -10,4 +10,4 @@ const SectionTwo = () => {
   );
 };
 
-export default SectionTwo;
+export default Projects;

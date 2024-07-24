@@ -1,7 +1,7 @@
 import React from "react";
 import TestimonialContainer from "./TestimonialContainer";
 
-const SectionThree = () => {
+const Testimonials = () => {
   return (
     <>
       <div className="text-white text-6xl text-left py-10">
@@ -21,4 +21,4 @@ const SectionThree = () => {
   );
 };
 
-export default SectionThree;
+export default Testimonials;
