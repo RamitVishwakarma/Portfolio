@@ -1,7 +1,8 @@
 export const logos = [
-  "https://cdn2.hubspot.net/hubfs/53/image8-2.jpg",
-  "https://cdn2.hubspot.net/hubfs/53/image8-2.jpg",
-  "https://cdn2.hubspot.net/hubfs/53/image8-2.jpg",
-  "https://cdn2.hubspot.net/hubfs/53/image8-2.jpg",
-  "https://cdn2.hubspot.net/hubfs/53/image8-2.jpg",
+  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721824856/Portfolio/Logos/Group_112_2x_apbplt.png",
+  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721824856/Portfolio/Logos/Group_112_2x_apbplt.png",
+  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721824856/Portfolio/Logos/Group_112_2x_apbplt.png",
+  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721824856/Portfolio/Logos/Group_112_2x_apbplt.png",
+  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721824856/Portfolio/Logos/Group_112_2x_apbplt.png",
+  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721824856/Portfolio/Logos/Group_112_2x_apbplt.png",
 ];

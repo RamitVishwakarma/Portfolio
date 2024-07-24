@@ -13,7 +13,9 @@ const page = () => {
     <>
       <div>
         <Wrapper>
-          <Introduction />
+          <main>
+            <Introduction />
+          </main>
           <Projects />
           <Testimonial />
           <TechStack />

@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 const InfiniteCarousel = ({ logos }: { logos: string[] }) => {
   return (
@@ -8,7 +9,13 @@ const InfiniteCarousel = ({ logos }: { logos: string[] }) => {
       <div className="infinite-carousel">
         {logos.concat(logos).map((logo, index) => (
           <div key={index} className="flex-none w-1/5 p-4">
-            <img src={logo} alt={`Logo ${index}`} className="w-full h-auto" />
+            <Image
+              src={logo}
+              alt={`Logo ${index}`}
+              width={190}
+              height={64}
+              className="w-full h-auto object-contain"
+            />
           </div>
         ))}
       </div>

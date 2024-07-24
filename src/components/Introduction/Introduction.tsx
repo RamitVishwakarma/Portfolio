@@ -16,15 +16,22 @@ const Introduction = () => {
           <div className="tracking-wide font-Anton text-5xl py-3w ">
             Ramit Vishwakarma
           </div>
-          <div className="text-sm text-white/75">SDE 1 @ Google</div>
-          <p className="text-white/75  py-2 text-balance">
-            Hello its <span className="text-white font-medium">Ramit</span>{" "}
-            based in Noida with 1 year of work ex. I aim to Lorem ipsum dolor,
-            sit amet consectetur adipisicing elit. Ea tenetur temporibus omnis
-            sapiente numquam beatae, minima, earum fuga cupiditate cumque,
-            magnam ducimus voluptatibus! Culpa soluta dolores earum consectetur
-            natus rem.
-            <br />I love creating...
+          <div className="text-sm text-white/75 ">SDE 1 @ Google</div>
+          <p className="text-white/75  py-2 text-balance ">
+            Hello, I&apos;m Ramit, a Full Stack Web Developer based in
+            <span className="text-white font-bold"> Noida, India</span> having a
+            year of experience. I like to{" "}
+            <span className="text-white font-bold">build scalable</span> and
+            interactive web apps focusing on writing clean, efficient and
+            <span className="text-white font-bold"> maintainable</span> code. I
+            take pride in transforming ideas into reality, always striving for
+            excellence and creativity in everything I do. I am passionate about
+            learning <span className="text-white font-bold">new</span>{" "}
+            technologies and frameworks.
+            <div className="py-1 text-white/85">
+              <span className="text-white font-bold">Tldr</span> I love to code
+              and turn ideas into reality.
+            </div>
           </p>
           <div className="text-light-blue/70">I have worked with...</div>
           <div className="w-96">
@@ -35,7 +42,7 @@ const Introduction = () => {
           <div className="relative flex justify-center items-center overflow-visible p-6">
             <div className="rainbow-shadow w-full h-full left-1/2 top-1/2 rounded-full blur-3xl absolute opacity-30"></div>
             <Image
-              className="z-10 shadow-2xl border-4 border-blue/20 rounded-full w-10/12 "
+              className="z-10 shadow-2xl border-4 border-blue/20 rounded-full w-10/12"
               src={Ramit}
               alt="ProfilePic"
             />
