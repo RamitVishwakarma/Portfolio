@@ -6,8 +6,10 @@ const TechStack = () => {
   return (
     <>
       <div className="py-10">
-        <div className="text-5xl text-white py-10">Tech Stack I use Daily</div>
-        <div className=" grid grid-cols-3  gap-8 justify-center p-2 ">
+        <div className="text-6xl text-white py-10 font-Anton text-center">
+          Tech Stack I Use Daily
+        </div>
+        <div className="grid grid-cols-3 gap-8 justify-center p-2 ">
           <Container data={data} />
         </div>
       </div>

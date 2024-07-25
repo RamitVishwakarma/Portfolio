@@ -3,8 +3,11 @@ import React from "react";
 const MoreAboutMe = () => {
   return (
     <>
+      <div className="text-6xl font-Anton text-white text-center">
+        More About Me
+      </div>
       <div className="bg-green">
-        <div className="text-6xl text-purple">Tech Me</div>
+        <div className="text-6xl text-purple">Techie Me</div>
         <div className="text-2xl text-balance text-purple">
           I like to code solutions to problem I feel worthy of solving I spend
           most of my time looking through open source codebases, contributing to

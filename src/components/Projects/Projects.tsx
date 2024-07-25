@@ -4,7 +4,9 @@ import ProjectContainer from "./ProjectContainer/ProjectContainer";
 const Projects = () => {
   return (
     <>
-      <div>Selected Work</div>
+      <div className="text-white text-6xl text-center py-10 font-Anton">
+        Featured Projects
+      </div>
       <ProjectContainer />
     </>
   );

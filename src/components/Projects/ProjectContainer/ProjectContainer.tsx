@@ -4,12 +4,9 @@ const ProjectContainer = () => {
   return (
     <>
       <div>
-        <div className="text-white text-5xl text-center py-10">
-          Featured Projects
-        </div>
         <div className="flex flex-col gap-10 items-center px-20">
           {/* P1 */}
-          <div className="bg-purple/40 backdrop-blur-3xl relative flex">
+          <div className="bg-purple/40 backdrop-blur-3xl relative flex overflow-visible">
             <div className="radial-gradient-purple absolute -top-20 -right-16 w-[80rem] h-[34rem]"></div>
             <div className="z-10 p-10 w-8/12 flex">
               <video
