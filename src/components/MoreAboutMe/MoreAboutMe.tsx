@@ -7,15 +7,15 @@ const MoreAboutMe = () => {
         <div className="text-6xl font-Anton text-white text-center pb-10">
           More About Me
         </div>
-        <div className="bg-green">
-          <div className="text-6xl text-purple">Techie Me</div>
-          <div className="text-2xl text-balance text-purple">
-            I like to code solutions to problem I feel worthy of solving I spend
-            most of my time looking through open source codebases, contributing
-            to these codebases and sometimes building my own projects
-            <br />I also like to do competetive programming I have 2 stars on
-            codechef to show for it and I am looking to make it to 5 stars by
-            the end of my college.
+        <div className="">
+          <div className="text-4xl text-red">Techie Me</div>
+          <div className="text-base text-balance text-white/75">
+            I like to code solutions to problems I feel worthy of solving I
+            spend most of my time looking through open source codebases,
+            contributing to these codebases and sometimes building my projects
+            <br />I like to participate in competitive programming I have 2
+            stars on CodeChef to show for it and I am looking to make it to 5
+            stars by the end of my final year.
             <br />
             <br /> I certainly developed interest in web 3.0 and blockchain and
             I am starting to learn the intrecasies of this technology too.
@@ -36,8 +36,8 @@ const MoreAboutMe = () => {
             shows that a change has been made by that project and being a part
             of that change is the best feeling in the world.
           </div>
-          <div className="text-6xl text-purple">Casual Me</div>
-          <div className="text-2xl text-balance text-purple">
+          <div className="text-4xl text-red">Casual Me</div>
+          <div className="text-base text-balance text-white/75">
             Well I only have two parts of me and both of them wants to be
             competetive,
             <br />

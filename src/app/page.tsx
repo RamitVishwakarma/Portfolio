@@ -1,5 +1,3 @@
-import React from "react";
-
 import Testimonial from "@/components/Testimonial/Testimonial";
 import Wrapper from "@/components/Wrapper";
 import Contact from "@/components/Contact/Contact";
@@ -22,15 +20,6 @@ const page = () => {
           <MoreAboutMe />
           <Contact />
         </Wrapper>
-        {/* About me ✔️*/}
-        {/* Projects ✔️*/}
-        {/* Tech stack ✔️*/}
-        {/* Contact Me ✔️*/}
-        {/* my offerings */}
-        {/* more about me writting competetive programming things ✔️ */}
-        {/* add achievements awqards in about me✔️ */}
-        {/* Hackathon experience✔️ */}
-        {/* links to my socials ✔️ */}
       </div>
     </>
   );

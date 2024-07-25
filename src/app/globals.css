@@ -34,11 +34,7 @@ body {
   background-color: black;
 }
 
-.sethoverfordot :hover span {
-  background-color: white;
-}
-
-/*? the rotating thing behind prof image */
+/*? the rotating thing behind profile image */
 @keyframes rotate {
   from {
     transform: translate(-50%, -50%) rotate(0deg);
@@ -63,7 +59,7 @@ body {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
-/*? carousel */
+/*? carousel section */
 @keyframes slide {
   0% {
     transform: translateX(0);
@@ -72,22 +68,19 @@ body {
     transform: translateX(-100%);
   }
 }
-
 .infinite-carousel {
   display: flex;
   width: 200%;
   animation: slide 15s linear infinite;
 }
-
 .gradient-right {
   background: linear-gradient(to right, rgba(255, 255, 255, 0), black);
 }
-
 .gradient-left {
   background: linear-gradient(to left, rgba(255, 255, 255, 0), black);
 }
 
-/* gradients for projects */
+/*? Gradients for project section */
 .radial-gradient-purple {
   background: radial-gradient(
     50% 50% at 50% 50%,
