@@ -17,7 +17,7 @@ const Introduction = () => {
             Ramit Vishwakarma
           </div>
           <div className="text-sm text-pink/75 ">Web Developer @GDSC</div>
-          <p className="text-white/75  py-2 text-balance ">
+          <div className="text-white/75  py-2 text-balance ">
             Hello, I&apos;m Ramit, a Full Stack Web Developer based in
             <span className="text-white font-bold"> Noida, India</span> having a
             year of experience. I like to{" "}
@@ -29,12 +29,12 @@ const Introduction = () => {
             learning <span className="text-white font-bold">new</span>{" "}
             technologies and frameworks.
             <div className="pt-4 text-white/75">
-              <span className="text-white font-bold">Tldr</span> I love to code
+              <span className="text-white font-bold">TLDR</span> I love to code
               and turn ideas into reality.
             </div>
-          </p>
-          <div className="text-blue/70">I have worked with...</div>
-          <div className="w-96">
+          </div>
+          <div className="text-blue/70 ">I have worked with...</div>
+          <div className="w-96 -mt-4">
             <InfiniteCarousel logos={logos as string[]} />
           </div>
         </div>

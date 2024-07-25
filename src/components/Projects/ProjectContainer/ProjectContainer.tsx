@@ -7,18 +7,49 @@ const ProjectContainer = () => {
         <div className="text-white text-5xl text-center py-10">
           Featured Projects
         </div>
-        <div className="flex flex-col gap-10 items-center">
-          <div className="w-[70rem] h-[30rem] bg-purple/40 backdrop-blur-3xl relative">
-            <div className="radial-gradient-purple absolute -top-20 -right-16  w-[95rem] h-[44rem]"></div>
+        <div className="flex flex-col gap-10 items-center px-20">
+          {/* P1 */}
+          <div className="bg-purple/40 backdrop-blur-3xl relative flex">
+            <div className="radial-gradient-purple absolute -top-20 -right-16 w-[80rem] h-[34rem]"></div>
+            <div className="z-10 p-10 w-8/12 flex">
+              <video
+                controls
+                className=""
+                src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1721816617/Portfolio/Recruitment-Platform_compressed_uoerwn.mp4"></video>
+            </div>
+            <div className="text-white py-10 pr-10 text-3xl font-bold">
+              Recruitment-Platform
+            </div>
           </div>
-          <div className="w-[70rem] h-[30rem] bg-green/40 backdrop-blur-3xl relative">
-            <div className="radial-gradient-green absolute top-0 w-[65rem] h-[44rem]"></div>
+          {/* P2 */}
+          <div className=" bg-green/40 backdrop-blur-3xl relative flex">
+            <div className="radial-gradient-green absolute -top-20 -right-16 w-[80rem] h-[34rem]"></div>
+            <div className="z-10 p-10 w-8/12">
+              <video
+                controls
+                className=""
+                src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1721816617/Portfolio/Recruitment-Platform_compressed_uoerwn.mp4"></video>
+            </div>
           </div>
-          <div className="w-[70rem] h-[30rem] bg-blue/40 backdrop-blur-3xl relative ">
-            <div className="radial-gradient-light-blue absolute top-0 w-[65rem] h-[44rem]"></div>
+          {/* P3 */}
+          <div className=" bg-blue/40 backdrop-blur-3xl relative flex">
+            <div className="radial-gradient-light-blue absolute -top-20 -right-16 w-[80rem] h-[34rem]"></div>
+            <div className="z-10 p-10 w-8/12">
+              <video
+                controls
+                className=""
+                src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1721816617/Portfolio/Recruitment-Platform_compressed_uoerwn.mp4"></video>
+            </div>
           </div>
-          <div className="w-[70rem] h-[30rem] bg-orange/40 backdrop-blur-3xl relative ">
-            <div className="radial-gradient-yellow absolute top-0 w-[65rem] h-[44rem]"></div>
+          {/* P4 */}
+          <div className=" bg-orange/40 backdrop-blur-3xl relative flex ">
+            <div className="radial-gradient-yellow absolute -top-20 -right-16 w-[80rem] h-[34rem]"></div>
+            <div className="z-10 p-10 w-8/12">
+              <video
+                controls
+                className=""
+                src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1721816617/Portfolio/Recruitment-Platform_compressed_uoerwn.mp4"></video>
+            </div>
           </div>
         </div>
       </div>

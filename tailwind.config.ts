@@ -24,6 +24,14 @@ const config: Config = {
       "google-yellow": "#F4B400",
     },
     extend: {
+      animation: {
+        shine: "shine 1s",
+      },
+      keyframes: {
+        shine: {
+          "100%": { left: "125%" },
+        },
+      },
       fontFamily: {
         Anton: ["Anton SC", "sans-serif"],
         ProductSans: ["ProductSans", "sans"],

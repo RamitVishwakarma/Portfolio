@@ -92,7 +92,7 @@ body {
   background: radial-gradient(
     50% 50% at 50% 50%,
     #763cac 0%,
-    rgba(50, 15, 133, 0) 100%
+    rgba(15, 133, 39, 0) 100%
   );
 }
 .radial-gradient-green {
