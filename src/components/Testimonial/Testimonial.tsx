@@ -1,5 +1,6 @@
 import React from "react";
 import TestimonialContainer from "./TestimonialContainer";
+import { testimonialData } from "./data";
 
 const Testimonials = () => {
   return (
@@ -9,14 +10,10 @@ const Testimonials = () => {
           Kind Words From Kind Souls
         </div>
         {/* whole wrapper */}
-        <div className="flex gap-8 overflow-hidden relative">
-          <div className="absolute right-0 top-0 w-2/12 h-[32rem] z-[2] gradient-right"></div>
-          <div className="absolute left-0 top-0 w-2/12 h-[32rem] z-[2] gradient-left"></div>
-          <TestimonialContainer />
-          <TestimonialContainer />
-          <TestimonialContainer />
-          <TestimonialContainer />
-          <TestimonialContainer />
+        <div className="flex gap-12 overflow-hidden relative py-10">
+          <div className="absolute right-0 top-0 w-[12%] h-[32rem] z-[2] gradient-right"></div>
+          <div className="absolute left-0 top-0 w-[12%] h-[32rem ] z-[2] gradient-left"></div>
+          <TestimonialContainer data={testimonialData} />
         </div>
       </div>
     </>

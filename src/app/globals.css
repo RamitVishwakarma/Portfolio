@@ -109,3 +109,8 @@ body {
     rgba(15, 133, 39, 0) 100%
   );
 }
+.infinite-carousel-testimonial {
+  display: flex;
+  width: 200%;
+  animation: slide 8s linear infinite;
+}

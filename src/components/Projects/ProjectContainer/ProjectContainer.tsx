@@ -4,7 +4,7 @@ const ProjectContainer = () => {
   return (
     <>
       <div>
-        <div className="flex flex-col gap-10 items-center px-20">
+        <div className="flex flex-col gap-10 items-center w-full">
           {/* P1 */}
           <div className="bg-purple/40 backdrop-blur-3xl relative flex overflow-visible">
             <div className="radial-gradient-purple absolute -top-20 -right-16 w-[80rem] h-[34rem]"></div>

@@ -18,10 +18,25 @@ const config: Config = {
       pink: "#ff9dfb",
       white: "#FFFFFF",
       black: "#000000",
-      "google-red": "#DB4437",
-      "google-green": "#0F9D58",
-      "google-blue": "#4285F4",
-      "google-yellow": "#F4B400",
+      //  ? Testimonial colors
+      "ceris-red-800": "#a70d3b",
+      "ceris-red-700": "#ca0c47",
+      "ceris-red-600": "#e91f64",
+      "ceris-red-500": "#f83c86",
+      "ceris-red-300": "#ffa2cb",
+      "ceris-red-100": "#fee5f0",
+      "ceris-red-50": "#fef1f7",
+      De: {
+        York: {
+          800: "#205b33",
+          700: "#23723c",
+          600: "#299048",
+          500: "#38af5c",
+          300: "#94e1ab",
+          100: "#e0f8e6",
+          50: "#f2fbf4",
+        },
+      },
     },
     extend: {
       animation: {
