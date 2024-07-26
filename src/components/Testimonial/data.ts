@@ -24,7 +24,7 @@ export const testimonialData: testimonialDataInterface[] = [
     content:
       "Ramit is an exceptional full-stack developer whom I've had the pleasure of collaborating with on numerous projects and hackathons. His technical prowess, creativity, and dedication consistently shine through in every task he undertakes. Ramit's ability to navigate complex challenges with ease and deliver innovative solutions makes him a valuable asset to any team.",
     image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722027593/Portfolio/Testimonial%20Images/kanak_-_Kanak_Goel_pc4ldc.png",
+      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722030446/Portfolio/Testimonial%20Images/kanak_-_Kanak_Goel_llbjul.png",
     name: "Kanak Goel",
     designation: "Android Developer @ Innector Edutech and Robotech Pvt. Ltd.",
     color: "#e91f64",
@@ -60,5 +60,26 @@ export const testimonialData: testimonialDataInterface[] = [
     textcolor100: "text-De-York-100/80",
     textcolorname: "text-De-York-50/80",
     textcolordesig: "text-De-York-50/50",
+  },
+  {
+    title: "Design-Focused",
+    content:
+      "I have worked alongside Ramit on a couple of projects . I must say that he pays close attention to the responsiveness of the design during development its the best thing he possesses.With other devs, this part usually gets a hassle but with Ramit, it goes smoothly.",
+    image:
+      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722030504/Portfolio/Testimonial%20Images/IMG-20240610-WA0003_tne1fs.jpg",
+    name: "Sparsh Rathore",
+    color: "#d230a1",
+    designation: "Product Designer @ Pavepilot",
+    bordercolor: "border-Melanzane-600/30",
+    hoverbordercolor: "hover:border-Melanzane-600/50",
+    circlecolor1: "bg-Melanzane-600",
+    circlecolor2: "bg-Melanzane-700",
+    textcolor: "text-Melanzane-50",
+    gradientcolor1: "from-Melanzane-800",
+    gradientcolor2: "via-Melanzane-500",
+    gradientcolor3: "to-Melanzane-300",
+    textcolor100: "text-Melanzane-100/80",
+    textcolorname: "text-Melanzane-50/80",
+    textcolordesig: "text-Melanzane-50/50",
   },
 ];

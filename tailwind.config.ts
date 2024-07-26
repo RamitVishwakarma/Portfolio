@@ -37,6 +37,15 @@ const config: Config = {
           50: "#f2fbf4",
         },
       },
+      Melanzane: {
+        800: "#961e6c",
+        700: "#b62084",
+        600: "#d230a1",
+        500: "#e450be",
+        300: "#f5ace6",
+        100: "#fbe8f8",
+        50: "#fcf3fa",
+      },
     },
     extend: {
       animation: {
