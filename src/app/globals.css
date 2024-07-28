@@ -23,6 +23,11 @@
     src: url(./assets/fonts/ProductSans-Bold.woff2) format("woff2");
   }
 }
+@layer utilities {
+  .animation-pause {
+    animation-play-state: paused;
+  }
+}
 
 * {
   margin: 0;
@@ -73,13 +78,6 @@ body {
   width: 200%;
   animation: slide 15s linear infinite;
 }
-.gradient-right {
-  background: linear-gradient(to right, rgba(255, 255, 255, 0), black);
-}
-.gradient-left {
-  background: linear-gradient(to left, rgba(255, 255, 255, 0), black);
-}
-
 /*? Gradients for project section */
 .radial-gradient-purple {
   background: radial-gradient(
@@ -111,6 +109,6 @@ body {
 }
 .infinite-carousel-testimonial {
   display: flex;
-  width: 200%;
-  animation: slide 8s linear infinite;
+  width: 500%;
+  animation: slide 4s linear infinite;
 }

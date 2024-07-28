@@ -19,13 +19,17 @@ const config: Config = {
       white: "#FFFFFF",
       black: "#000000",
       //  ? Testimonial colors
-      "ceris-red-800": "#a70d3b",
-      "ceris-red-700": "#ca0c47",
-      "ceris-red-600": "#e91f64",
-      "ceris-red-500": "#f83c86",
-      "ceris-red-300": "#ffa2cb",
-      "ceris-red-100": "#fee5f0",
-      "ceris-red-50": "#fef1f7",
+      ceris: {
+        red: {
+          800: "#a70d3b",
+          700: "#ca0c47",
+          600: "#e91f64",
+          500: "#f83c86",
+          300: "#ffa2cb",
+          100: "#fee5f0",
+          50: "#fef1f7",
+        },
+      },
       De: {
         York: {
           800: "#205b33",
@@ -46,14 +50,39 @@ const config: Config = {
         100: "#fbe8f8",
         50: "#fcf3fa",
       },
+      Saffron: {
+        Mango: {
+          800: "#942f0c",
+          700: "#b73e06",
+          600: "#dd5d02",
+          500: "#f98207",
+          300: "#ffbc42",
+          100: "#ffedc6",
+          50: "#fff9eb",
+        },
+      },
+      Portage: {
+        800: "#2c3aa1",
+        700: "#3045c5",
+        600: "#3957d7",
+        500: "#4e74e3",
+        300: "#9ebcf2",
+        100: "#dee7fb",
+        50: "#f1f5fd",
+      },
     },
     extend: {
       animation: {
         shine: "shine 1s",
+        "infinite-scroll": "infinite-scroll 10s linear infinite",
       },
       keyframes: {
         shine: {
           "100%": { left: "125%" },
+        },
+        "infinite-scroll": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-100%)" },
         },
       },
       fontFamily: {
