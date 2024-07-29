@@ -6,7 +6,7 @@ import { logos } from "./InfiniteCarousel/data";
 const Introduction = () => {
   return (
     <>
-      <div className="text-white h-screen m-auto flex items-center justify-between">
+      <div className="text-white py-40 m-auto flex items-center justify-between">
         <div className="w-[60%] flex flex-col gap-2">
           <div className="text-sm flex gap-4 items-center">
             <span className="text-green/70 font-medium tracking-wide">
