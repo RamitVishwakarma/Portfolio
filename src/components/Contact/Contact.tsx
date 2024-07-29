@@ -1,7 +1,6 @@
 import React from "react";
 import ContactForm from "./ContactForm";
 import Socials from "./Socials";
-import SendButton from "./SendButton";
 
 const Contact = () => {
   return (
