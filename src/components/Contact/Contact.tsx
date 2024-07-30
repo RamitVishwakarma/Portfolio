@@ -17,7 +17,7 @@ const Contact = () => {
           <ContactForm />
           <div className="text-white text-4xl font-medium text-center py-8">
             OR
-            <br /> You can ping me on <br /> any of my socials
+            <br /> You can ping me on <br /> my socials
           </div>
           <Socials />
         </div>

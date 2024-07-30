@@ -18,6 +18,11 @@ const config: Config = {
       pink: "#ff9dfb",
       white: "#FFFFFF",
       black: "#000000",
+      grey: {
+        900: "#3d3d3d",
+        300: "#b0b0b0",
+        200: "#d1d1d1",
+      },
       //  ? Testimonial colors
       ceris: {
         red: {
