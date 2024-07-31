@@ -15,7 +15,7 @@ const Contact = () => {
             Just drop a hi
           </div>
           <ContactForm />
-          <div className="text-white text-4xl font-medium text-center py-8">
+          <div className="text-white text-3xl font-medium text-center py-8">
             OR
             <br /> You can ping me on <br /> my socials
           </div>

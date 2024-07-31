@@ -8,8 +8,8 @@ import { useEffect, useState } from "react";
 import useMeasure from "react-use-measure";
 
 const Testimonials = () => {
-  const FAST_DURATION = 20;
-  const SLOW_DURATION = 30;
+  const FAST_DURATION = 30;
+  const SLOW_DURATION = 100;
 
   const [duration, setDuration] = useState(FAST_DURATION);
   let [ref, { width }] = useMeasure();

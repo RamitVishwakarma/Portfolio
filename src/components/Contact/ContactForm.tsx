@@ -3,19 +3,17 @@ import React from "react";
 const ContactForm = () => {
   return (
     <>
-      <form className="flex flex-col gap-3 w-[60%] mx-auto">
-        <div className="flex gap-3">
-          <input
-            className="w-full h-12 rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
-            type="text"
-            placeholder="Name"
-          />
-          <input
-            className="w-full h-12 rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
-            type="email"
-            placeholder="Email"
-          />
-        </div>
+      <form className="flex flex-col gap-3 w-[40%] mx-auto">
+        <input
+          className="w-full h-12 rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
+          type="text"
+          placeholder="Name"
+        />
+        <input
+          className="w-full h-12 rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
+          type="email"
+          placeholder="Email"
+        />
         <div>
           <textarea
             className="w-full h-24 rounded-lg p-2 focus:outline-none bg-grey-900 text-lg text-grey-200"

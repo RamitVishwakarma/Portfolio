@@ -12,7 +12,7 @@ const TestimonialContainer = ({ data }: { data: testimonialDataInterface }) => {
           <div
             className={`absolute -top-[50%] w-full h-full ${data.circlecolor1} rounded-full z-0 blur-3xl`}></div>
           <div
-            className={`absolute -bottom-[60%] -left-12 w-full h-full ${data.circlecolor2} rounded-full z-0 blur-3xl`}></div>
+            className={`absolute -bottom-[60%] -left-12 w-full h-full ${data.circlecolor2}  rounded-full z-0 blur-3xl`}></div>
           {/* Text content */}
           <div className="relative z-10 flex flex-col gap-4">
             <div className={`text-2xl font-bold ${data.textcolor}`}>
