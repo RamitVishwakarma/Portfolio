@@ -66,11 +66,18 @@ const ProjectContainer = () => {
             <div className="w-[34rem] h-[34rem] bg-blue rounded-full absolute -top-[24rem] -right-10 z-1  blur-3xl "></div>
             <div className="w-[26rem] h-[26rem] bg-purple rounded-full absolute -bottom-60 left-[15rem] z-1  blur-3xl "></div>
 
-            <div className="w-[60%] p-10 bg-white/30  z-10">
-              <video src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1722428111/Portfolio/Projects/Recruitment-Platform-Compressed_qmtqw4.mp4"></video>
+            <div className="w-[60%] p-10 bg-black/30  z-10">
+              <Image
+                src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722428146/Portfolio/Projects/Course21_showcase_ihawc3.png"
+                width={640}
+                height={360}
+                alt="course-21"
+                className="rounded-lg"
+              />
+              {/* <video src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1722428111/Portfolio/Projects/Recruitment-Platform-Compressed_qmtqw4.mp4"></video> */}
             </div>
 
-            <div className="w-[40%] py-10 pr-10 z-10 relative bg-white/30 flex flex-col justify-between ">
+            <div className="w-[40%] py-10 pr-10 z-10 relative bg-black/30 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
                 <div className="text-white text-4xl font-bold">Course-21</div>
                 <div className="text-sm flex gap-2">
