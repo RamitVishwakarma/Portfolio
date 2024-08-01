@@ -27,16 +27,16 @@ const MoreAboutMe = () => {
                 I thrive on solving impactful problems, diving into open-source
                 projects, and contributing to codebases. Competitive programming
                 excites me; with 2 stars on CodeChef, I aim for 5 by my senior
-                year. Recently, I've been exploring Web 3.0 and blockchain,
+                year. Recently, I&apos;ve been exploring Web 3.0 and blockchain,
                 drawn by their complexities. Hackathons fuel my passion for
                 quick, impactful solutions.
                 <p className="py-2"></p> As a full-stack developer focused on
                 the front end, I love creating scalable, web-deployed products.
                 Seeing my code in action and generating real-world value is
-                incredibly fulfilling. I'm always seeking opportunities to work
-                on projects that matter. <p className="py-2"></p> If you're
-                looking for someone passionate and dedicated, let's build
-                something amazing together.
+                incredibly fulfilling. I&apos;m always seeking opportunities to
+                work on projects that matter. <p className="py-2"></p> If
+                you&apos;re looking for someone passionate and dedicated,
+                let&apos;s build something amazing together.
               </p>
             </div>
             <ImageCarousel images={images} />
