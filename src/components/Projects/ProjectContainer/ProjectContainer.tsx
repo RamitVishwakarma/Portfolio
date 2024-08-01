@@ -1,7 +1,23 @@
+"use client";
 import Image from "next/image";
 import React from "react";
+import Buttons from "./Buttons";
+import { useRef, useState } from "react";
+import { Play, Pause } from "../../../app/assets/icons";
 
 const ProjectContainer = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState<boolean>(false);
+  const handleVideoPlayback = () => {
+    if (videoRef.current) {
+      if (playing) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setPlaying(!playing);
+    }
+  };
   return (
     <>
       <div>
@@ -16,28 +32,51 @@ const ProjectContainer = () => {
               alt="bg"
             />
             <div className="w-[60%] p-10 bg-[#ea546c]/20  z-10">
-              <video src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1722428111/Portfolio/Projects/Recruitment-Platform-Compressed_qmtqw4.mp4"></video>
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  onClick={handleVideoPlayback}
+                  src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1722428111/Portfolio/Projects/Recruitment-Platform-Compressed_qmtqw4.mp4">
+                  Your browser does not support video tags
+                </video>
+                <div className="absolute inset-0 flex items-center justify-center cursor-pointer">
+                  <button
+                    className={`w-24 h-24 shadow-lg bg-[#753f41] opacity-50 hover:opacity-100 transition duration-200 rounded-full p-8 ${
+                      playing ? "hidden" : "flex"
+                    } items-center justify-center`}
+                    onClick={handleVideoPlayback}>
+                    <Play />
+                  </button>
+                  <button
+                    className={`absolute bottom-3 right-3 bg-[#753f41] opacity-50 hover:opacity-100 text-white text-2xl rounded-full p-6 shadow-lg transition duration-200 ${
+                      playing ? "flex" : "hidden"
+                    } items-center justify-center`}
+                    onClick={handleVideoPlayback}>
+                    <Pause />
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-[#ea546c]/20 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-white text-4xl font-bold">
+                <div className="text-[#753f41] text-4xl font-bold">
                   Recruitment-Platform
                 </div>
-                <div className="text-sm flex gap-2">
-                  <div className="border-white/70 border text-white/80  py-0.5 px-3 rounded-full ">
+                <div className="text-sm flex gap-2 font-medium">
+                  <div className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
                     React
                   </div>
-                  <div className="border-white/70 border text-white/80 -blue py-0.5 px-3 rounded-full ">
+                  <div className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a] -blue py-0.5 px-3 rounded-full ">
                     Tailwind
                   </div>
-                  <div className="border-white/70 border text-white/80  py-0.5 px-3 rounded-full ">
+                  <div className="border-[#753f41] border-2 text-[#f6eaea]  bg-[#63393a] py-0.5 px-3 rounded-full ">
                     Node
                   </div>
-                  <div className="border-white/70 border text-white/80  py-0.5 px-3 rounded-full ">
+                  <div className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
                     Express
                   </div>
                 </div>
-                <div className="text-base leading-8 tracking-wide text-balance text-white/70 py-2">
+                <div className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit.
                   Facere eum voluptas consequuntur incidunt dignissimos, omnis
                   repellendus iure exercitationem illum sequi tenetur quidem
@@ -45,12 +84,10 @@ const ProjectContainer = () => {
                 </div>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
-                <button className="bg-blue/30 px-6 py-1.5 rounded-md">
-                  Github
-                </button>
-                <button className="bg-blue/40 px-6 py-1.5 rounded-md">
-                  Live Link
-                </button>
+                <Buttons
+                  color="#e3bebf"
+                  classname="bg-[#753f40] hover:bg-[#8c494b] text-[#e3bebf]"
+                />
               </div>
             </div>
           </div>
@@ -75,7 +112,9 @@ const ProjectContainer = () => {
 
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-black/30 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-white text-4xl font-bold">Course-21</div>
+                <div className="text-[#daf3f3] text-4xl font-bold">
+                  Course-21
+                </div>
                 <div className="text-sm flex gap-2 font-medium">
                   <div className="border-[#ceefff] bg-[#e9f8ff] border-2 text-[#000e25] py-1 px-3 rounded-full ">
                     React
@@ -98,12 +137,10 @@ const ProjectContainer = () => {
                 </div>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
-                <button className="bg-blue/30 px-6 py-1.5 rounded-md">
-                  Github
-                </button>
-                <button className="bg-blue/40 px-6 py-1.5 rounded-md">
-                  Live Link
-                </button>
+                <Buttons
+                  color="#acebff"
+                  classname="bg-[#004fab] hover:bg-[#0057db] text-[#acebff]"
+                />
               </div>
             </div>
           </div>
@@ -131,11 +168,11 @@ const ProjectContainer = () => {
                 <div className="text-[#5b5751] text-4xl font-bold">
                   IndustrialAI Landing
                 </div>
-                <div className="text-sm flex gap-2">
-                  <div className="border-[#8f8b80] font-medium bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full">
+                <div className="text-sm flex gap-2 font-medium">
+                  <div className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full">
                     NextJS
                   </div>
-                  <div className="border-[#8f8b80] font-medium bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full ">
+                  <div className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full ">
                     Tailwind
                   </div>
                 </div>
@@ -147,12 +184,10 @@ const ProjectContainer = () => {
                 </div>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
-                <button className="bg-blue/30 px-6 py-1.5 rounded-md">
-                  Github
-                </button>
-                <button className="bg-blue/40 px-6 py-1.5 rounded-md">
-                  Live Link
-                </button>
+                <Buttons
+                  color="#f7f7f5"
+                  classname="bg-[#837e73] hover:bg-[#8f8b80] text-[#f7f7f5]"
+                />
               </div>
             </div>
           </div>
@@ -176,25 +211,27 @@ const ProjectContainer = () => {
             </div>
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-[#438e96]/10 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-white text-4xl font-bold">Echo-Talk</div>
-                <div className="text-sm flex gap-2">
-                  <div className="border-white/70 bg-[#ebebe9] text-[] border-2  py-1 px-3 rounded-full ">
+                <div className="text-[#b9e7e8] text-4xl font-bold">
+                  Echo-Talk
+                </div>
+                <div className="text-sm flex gap-2 font-medium">
+                  <div className="border-[#b9e7e8]  bg-[#daf3f3] text-[#284a51] border-2  py-1 px-3 rounded-full ">
                     React
                   </div>
-                  <div className="border-white/70 bg-[#ebebe9] text-[] border-2  py-1 px-3 rounded-full ">
+                  <div className="border-[#b9e7e8] bg-[#daf3f3] text-[#284a51] border-2  py-1 px-3 rounded-full ">
                     Tailwind
                   </div>
-                  <div className="border-white/70 bg-[#ebebe9] text-[] border-2  py-1 px-3 rounded-full ">
+                  <div className="border-[#b9e7e8] bg-[#daf3f3] text-[#284a51] border-2  py-1 px-3 rounded-full ">
                     Node
                   </div>
-                  <div className="border-white/70 bg-[#ebebe9] text-[] border-2  py-1 px-3 rounded-full ">
+                  <div className="border-[#b9e7e8] bg-[#daf3f3] text-[#284a51] border-2  py-1 px-3 rounded-full ">
                     Express
                   </div>
-                  <div className="border-white/70 bg-[#ebebe9] text-[] border  py-1 px-3 rounded-full ">
+                  <div className="border-[#b9e7e8] bg-[#daf3f3] text-[#284a51] border-2 py-1 px-3 rounded-full ">
                     AWS Polly
                   </div>
                 </div>
-                <div className="text-base leading-8 tracking-wide text-balance text-white/70 py-2">
+                <div className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#b9e7e8] py-2">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit.
                   Facere eum voluptas consequuntur incidunt dignissimos, omnis
                   repellendus iure exercitationem illum sequi tenetur quidem
@@ -202,12 +239,10 @@ const ProjectContainer = () => {
                 </div>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
-                <button className="bg-blue/30 px-6 py-1.5 rounded-md">
-                  Github
-                </button>
-                <button className="bg-blue/40 px-6 py-1.5 rounded-md">
-                  Live Link
-                </button>
+                <Buttons
+                  color="#284a51"
+                  classname="bg-[#b9e7e8] hover:bg-[#daf3f3] text-[#284a51]"
+                />
               </div>
             </div>
           </div>

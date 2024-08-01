@@ -23,19 +23,20 @@ const MoreAboutMe = () => {
               <h2 className="text-5xl font-light tracking-wide text-white py-4">
                 The Techie Inside Me
               </h2>
-              <p className="text-lg font-light text-balance text-white/80 leading-9 tracking-wider pr-4">
+              <p className="text-lg font-light text- text-white/80 leading-9 tracking-wider">
                 I thrive on solving impactful problems, diving into open-source
                 projects, and contributing to codebases. Competitive programming
-                excites me; with 2 stars on CodeChef, I aim for 5 by my final
+                excites me; with 2 stars on CodeChef, I aim for 5 by my senior
                 year. Recently, I've been exploring Web 3.0 and blockchain,
                 drawn by their complexities. Hackathons fuel my passion for
-                quick, impactful solutions. As a full-stack developer focused on
+                quick, impactful solutions.
+                <p className="py-2"></p> As a full-stack developer focused on
                 the front end, I love creating scalable, web-deployed products.
                 Seeing my code in action and generating real-world value is
                 incredibly fulfilling. I'm always seeking opportunities to work
-                on projects that matter. If you're looking for someone
-                passionate and dedicated, let's build something amazing
-                together.
+                on projects that matter. <p className="py-2"></p> If you're
+                looking for someone passionate and dedicated, let's build
+                something amazing together.
               </p>
             </div>
             <ImageCarousel images={images} />

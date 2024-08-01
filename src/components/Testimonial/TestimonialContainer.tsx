@@ -10,7 +10,7 @@ const TestimonialContainer = ({ data }: { data: testimonialDataInterface }) => {
         <div className="relative bg-black min-w-[22rem] h-80 text-white p-4 text-balance rounded-xl overflow-hidden ">
           {/* Background circles */}
           <div
-            className={`absolute -top-[50%] w-full h-full ${data.circlecolor1} rounded-full z-0 blur-3xl`}></div>
+            className={`absolute -top-[50%] w-full h-full ${data.circlecolor1}  rounded-full z-0 blur-3xl`}></div>
           <div
             className={`absolute -bottom-[60%] -left-12 w-full h-full ${data.circlecolor2}  rounded-full z-0 blur-3xl`}></div>
           {/* Text content */}
@@ -45,7 +45,6 @@ const TestimonialContainer = ({ data }: { data: testimonialDataInterface }) => {
             height={64}
             className={`object-cover w-16 h-16 rounded-full`}
           />
-
           <div className="flex flex-col">
             <div className={`text-xl ${data.textcolorname} font-bold`}>
               {data.name}
