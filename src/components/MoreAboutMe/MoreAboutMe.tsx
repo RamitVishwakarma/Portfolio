@@ -1,59 +1,64 @@
+"use client";
+
 import React from "react";
+import ImageCarousel from "./ImageCarousel";
 
 const MoreAboutMe = () => {
+  const images = [
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/BG_creme_sdkzym.png",
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/BG_creme_sdkzym.png",
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/BG_creme_sdkzym.png",
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/BG_creme_sdkzym.png",
+  ];
+
   return (
     <>
       <div className="py-20">
         <div className="text-6xl font-Anton text-white text-center pb-10">
           More About Me
         </div>
-        <div className="flex flex-col gap-10">
-          <div className="flex gap-10">
-            <div className="flex flex-col w-[60%]">
-              <h2 className="text-4xl text-red py-4">Techie Me</h2>
-              <p className="text-base text-balance text-white/75">
-                I like to code solutions to problems I feel worthy of solving I
-                spend most of my time looking through open source codebases,
-                contributing to these codebases and sometimes building my
-                projects I like to participate in competitive programming I have
-                2 stars on CodeChef to show for it and I am looking to make it
-                to 5 stars by the end of my final year. I certainly developed
-                interest in web 3.0 and blockchain and I am starting to learn
-                the intrecasies of this technology too. I love to participate in
-                hackathons building solutions to problem in a limited times
-                gives a thrilling experience. I love building scalable products
-                and deploying it on the web. I love seeing my code come to life
-                and I love the feeling of being a part of something bigger than
-                myself I am a Fullstack developer with a strong focus on the
-                frontend and I am always looking to learn new things. To me the
-                best part of being a developer is the ability to create
-                something out of nothing I am always looking for new
-                opportunities to work on projects that will make a difference in
-                the world. Seeing a project make money is the best and essential
-                part of all It shows that a change has been made by that project
-                and being a part of that change is the best feeling in the
-                world.
+        <div className="flex flex-col gap-20 pt-20">
+          <div className="flex gap-10 items-center">
+            <div className="flex flex-col gap-4 min-w-[50%]">
+              <h2 className="text-5xl font-light tracking-wide text-white py-4">
+                The Techie Inside Me
+              </h2>
+              <p className="text-lg font-light text-balance text-white/80 leading-9 tracking-wider pr-4">
+                I thrive on solving impactful problems, diving into open-source
+                projects, and contributing to codebases. Competitive programming
+                excites me; with 2 stars on CodeChef, I aim for 5 by my final
+                year. Recently, I've been exploring Web 3.0 and blockchain,
+                drawn by their complexities. Hackathons fuel my passion for
+                quick, impactful solutions. As a full-stack developer focused on
+                the front end, I love creating scalable, web-deployed products.
+                Seeing my code in action and generating real-world value is
+                incredibly fulfilling. I'm always seeking opportunities to work
+                on projects that matter. If you're looking for someone
+                passionate and dedicated, let's build something amazing
+                together.
               </p>
             </div>
-            <div className="relative w-[50%] flex gap-2 items-center">
-              <div className="bg-purple w-[25rem] h-[25rem] z-[4] absolute right-0"></div>
-              <div className="bg-green w-[25rem] h-[25rem] z-[5] absolute right-14"></div>
-              <div className="bg-red w-[25rem] h-[25rem] z-[4] absolute left-0"></div>
-            </div>
+            <ImageCarousel images={images} />
           </div>
-          <div>
-            <h2 className="text-4xl text-red py-4">Casual Me</h2>
-            <p className="text-lg font-medium text-balance text-white/75 w-[56%] leading-9 tracking-wider">
-              Well I only have two parts of me and both of them want to be
-              competitive In my free time, I love to play FPS games to challenge
-              my reaction time and the strategic part of my brain Growing up I
-              loved playing football and I still do, I love the the feeling of
-              scoring a goal and the feeling of winning a match When I feel
-              lethargic I watch web series, and movies and listen to audiobooks.
-              I have a deep interest in finances and like to read about how the
-              world of finance works. At last, I try to touch some grass too
-              once a week to keep myself from being a complete nerd
-            </p>
+          <div className="flex gap-10 items-center">
+            <div className="flex flex-col gap-4 min-w-[50%]">
+              <h2 className="text-5xl font-light tracking-wide text-white py-4">
+                Casual Me
+              </h2>
+              <p className="text-lg font-thin text-balance text-white/75 leading-9 tracking-wider pr-4 ">
+                Well I only have two parts of me and both of them want to be
+                competitive In my free time, I love to play FPS games to
+                challenge my reaction time and the strategic part of my brain
+                Growing up I loved playing football and I still do, I love the
+                the feeling of scoring a goal and the feeling of winning a match
+                When I feel lethargic I watch web series, and movies and listen
+                to audiobooks. I have a deep interest in finances and like to
+                read about how the world of finance works. At last, I try to
+                touch some grass too once a week to keep myself from being a
+                complete nerd
+              </p>
+            </div>
+            <ImageCarousel images={images} />
           </div>
         </div>
       </div>
