@@ -19,15 +19,15 @@ const MoreAboutMe = () => {
   return (
     <>
       <div className="py-20 ABOUTSECTION">
-        <div className="text-6xl font-Anton text-white text-center pb-4 ">
+        <h2 className="text-6xl font-Anton text-white text-center pb-4 ">
           More About Me
-        </div>
+        </h2>
         <div className="flex flex-col gap-20 pt-20">
           <div className="flex gap-10 items-center">
             <div className="flex flex-col gap-4 min-w-[50%]">
-              <h2 className="text-5xl font-light tracking-wide text-white py-4 font-Anton">
+              <h3 className="text-5xl font-light tracking-wide text-white py-4 font-Anton">
                 The Techie Inside Me
-              </h2>
+              </h3>
               <p className="text-lg font-light  text-white/80 leading-9 tracking-wider">
                 I thrive on solving impactful problems, diving into open-source
                 projects, and contributing to codebases. Competitive programming
@@ -49,9 +49,9 @@ const MoreAboutMe = () => {
           </div>
           <div className="flex gap-10 items-center">
             <div className="flex flex-col gap-4 min-w-[50%]">
-              <h2 className="text-5xl font-light tracking-wide font-Anton text-white py-4">
+              <h3 className="text-5xl font-light tracking-wide font-Anton text-white py-4">
                 Casual Me
-              </h2>
+              </h3>
               <p className="text-lg font-thin text-balance text-white/75 leading-9 tracking-wider pr-4 ">
                 In my free time, I love playing competetive FPS games to
                 challenge my reaction time and strategic thinking. Growing up, I

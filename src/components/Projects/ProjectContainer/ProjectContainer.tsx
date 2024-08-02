@@ -59,9 +59,9 @@ const ProjectContainer = () => {
             </div>
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-[#ea546c]/20 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-[#753f41] text-4xl font-bold">
+                <h3 className="text-[#753f41] text-4xl font-bold">
                   Recruitment-Platform
-                </div>
+                </h3>
                 <div className="text-sm flex gap-2 font-medium">
                   <div className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
                     React
@@ -76,12 +76,12 @@ const ProjectContainer = () => {
                     Express
                   </div>
                 </div>
-                <div className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
+                <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit.
                   Facere eum voluptas consequuntur incidunt dignissimos, omnis
                   repellendus iure exercitationem illum sequi tenetur quidem
                   quibusdam magnam deleniti eos. Eaque inventore dicta debitis!
-                </div>
+                </p>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
@@ -112,9 +112,7 @@ const ProjectContainer = () => {
 
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-black/30 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-[#daf3f3] text-4xl font-bold">
-                  Course-21
-                </div>
+                <h3 className="text-[#daf3f3] text-4xl font-bold">Course-21</h3>
                 <div className="text-sm flex gap-2 font-medium">
                   <div className="border-[#ceefff] bg-[#e9f8ff] border-2 text-[#000e25] py-1 px-3 rounded-full ">
                     React
@@ -129,12 +127,12 @@ const ProjectContainer = () => {
                     Dnd-kit
                   </div>
                 </div>
-                <div className="text-lg tracking-[-4%] font-semibold leading-8  text-balance text-white/70 py-2">
+                <p className="text-lg tracking-[-4%] font-semibold leading-8  text-balance text-white/70 py-2">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit.
                   Facere eum voluptas consequuntur incidunt dignissimos, omnis
                   repellendus iure exercitationem illum sequi tenetur quidem
                   quibusdam magnam deleniti eos. Eaque inventore dicta debitis!
-                </div>
+                </p>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
@@ -165,9 +163,9 @@ const ProjectContainer = () => {
 
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-black/10 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-[#5b5751] text-4xl font-bold">
+                <h3 className="text-[#5b5751] text-4xl font-bold">
                   IndustrialAI Landing
-                </div>
+                </h3>
                 <div className="text-sm flex gap-2 font-medium">
                   <div className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full">
                     NextJS
@@ -176,12 +174,12 @@ const ProjectContainer = () => {
                     Tailwind
                   </div>
                 </div>
-                <div className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#5b5751] py-2">
+                <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#5b5751] py-2">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit.
                   Facere eum voluptas consequuntur incidunt dignissimos, omnis
                   repellendus iure exercitationem illum sequi tenetur quidem
                   quibusdam magnam deleniti eos. Eaque inventore dicta debitis!
-                </div>
+                </p>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
@@ -211,9 +209,7 @@ const ProjectContainer = () => {
             </div>
             <div className="w-[40%] py-10 pr-10 z-10 relative bg-[#438e96]/10 flex flex-col justify-between ">
               <div className="flex gap-4 flex-col">
-                <div className="text-[#b9e7e8] text-4xl font-bold">
-                  Echo-Talk
-                </div>
+                <h4 className="text-[#b9e7e8] text-4xl font-bold">Echo-Talk</h4>
                 <div className="text-sm flex gap-2 font-medium">
                   <div className="border-[#b9e7e8]  bg-[#daf3f3] text-[#284a51] border-2  py-1 px-3 rounded-full ">
                     React
@@ -231,12 +227,12 @@ const ProjectContainer = () => {
                     AWS Polly
                   </div>
                 </div>
-                <div className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#b9e7e8] py-2">
+                <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#b9e7e8] py-2">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit.
                   Facere eum voluptas consequuntur incidunt dignissimos, omnis
                   repellendus iure exercitationem illum sequi tenetur quidem
                   quibusdam magnam deleniti eos. Eaque inventore dicta debitis!
-                </div>
+                </p>
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
