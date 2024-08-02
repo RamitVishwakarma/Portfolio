@@ -6,7 +6,9 @@ const Contact = () => {
   return (
     <>
       <div className="py-20">
-        <div className="text-6xl text-white font-Anton pb-10">Contact Me</div>
+        <div className="text-6xl text-white font-Anton pb-10 text-center">
+          Contact Me
+        </div>
         <div className=" ">
           <div className="">
             {/* <div className="absolute radial-gradient-purple top-0 left-40 w-[40rem] h-[20rem]"></div> */}

@@ -6,19 +6,19 @@ const ContactForm = () => {
       <form className="flex flex-col gap-3 w-[60%] mx-auto">
         <div className="flex gap-4">
           <input
-            className="w-full h-12 rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
+            className="w-full h-12 font-semibold rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
             type="text"
             placeholder="Name"
           />
           <input
-            className="w-full h-12 rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
+            className="w-full h-12 font-semibold rounded-lg px-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
             type="email"
             placeholder="Email"
           />
         </div>
         <div>
           <textarea
-            className="w-full h-24 rounded-lg p-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
+            className="w-full h-24 font-medium rounded-lg p-2 focus:outline-none bg-grey-900 text-lg text-grey-200"
             placeholder="Message"></textarea>
         </div>
         <button

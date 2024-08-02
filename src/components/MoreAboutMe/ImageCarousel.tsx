@@ -33,7 +33,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
   const slidersVariants = {
     hover: {
       scale: 1.2,
-      backgroundColor: "#ff00008e",
+      backgroundColor: "#4c84358e",
     },
   };
   const dotsVariants = {
@@ -87,16 +87,15 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
               alt={`Slide ${currentIndex}`}
               width={576}
               height={432}
-              objectFit="contain"
-              className="rounded-lg border-2 object-contain border-[#ff00008e]"
+              className="rounded-lg border-2 object-contain border-[#4c8435]/75"
             />
           </motion.div>
         </AnimatePresence>
-        <div className="absolute top-[35%] bottom-0 left-0 right-0 flex justify-between px-4">
+        <div className="absolute top-[37%] bottom-0 left-0 right-0 flex justify-between px-4">
           <motion.div
             variants={slidersVariants}
             whileHover="hover"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fb666675] text-white cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#4c8435]/40 text-white cursor-pointer"
             onClick={handlePrevious}>
             <svg
               className="w-4 h-4"
@@ -108,7 +107,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
           <motion.div
             variants={slidersVariants}
             whileHover="hover"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fb666675] text-white cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#4c8435]/40 text-white cursor-pointer"
             onClick={handleNext}>
             <svg
               className="w-4 h-4"
@@ -119,12 +118,12 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
           </motion.div>
         </div>
       </div>
-      <div className="flex gap-4 -mt-20">
+      <div className="flex gap-4 ">
         {images.map((_, index) => (
           <motion.div
             key={index}
-            className={`h-4 w-4 rounded-full bg-white cursor-pointer ${
-              currentIndex === index ? "bg-red" : ""
+            className={`h-4 w-4 rounded-full bg-white cursor-pointer -mt-4 ${
+              currentIndex === index ? "bg-[#4c8435]/75" : "bg-[#4c8435]/50"
             }`}
             onClick={() => handleDotClick(index)}
             initial="initial"
