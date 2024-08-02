@@ -46,9 +46,9 @@ const Testimonials = () => {
   return (
     <>
       <div className="py-20">
-        <div className="text-white pb-10 text-6xl font-Anton text-center">
-          Kind Words From Kind Souls
-        </div>
+        <h2 className="text-white pb-10 text-6xl font-Anton text-center">
+          Kind Words
+        </h2>
         <div className="relative gap-12 flex w-full min-h-[36rem] py-14 overflow-hidden">
           <div
             className="absolute right-0 top-0 w-[12%] h-full z-[2]"

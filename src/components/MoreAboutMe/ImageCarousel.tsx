@@ -122,7 +122,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
         {images.map((_, index) => (
           <motion.div
             key={index}
-            className={`h-4 w-4 rounded-full bg-white cursor-pointer -mt-4 ${
+            className={`h-4 w-4 rounded-full cursor-pointer -mt-4 ${
               currentIndex === index ? "bg-[#4c8435]/75" : "bg-[#4c8435]/50"
             }`}
             onClick={() => handleDotClick(index)}

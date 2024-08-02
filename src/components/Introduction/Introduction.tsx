@@ -6,7 +6,7 @@ import { logos } from "./InfiniteCarousel/data";
 const Introduction = () => {
   return (
     <>
-      <div className="text-white py-40 m-auto flex items-center justify-between">
+      <div className="text-white pt-24 pb-40 m-auto flex items-center justify-between">
         <div className="w-[60%] flex flex-col gap-2">
           <div className="text-sm flex gap-4 items-center">
             <span className="text-green/70 font-medium tracking-wide">
@@ -14,13 +14,16 @@ const Introduction = () => {
               OPEN TO WORK{" "}
             </span>
             <span>|</span>
-            <span className="text-purple/70">Full Stack Web Developer</span>
+            <span className="text-grey-300/80">Full Stack Web Developer</span>
           </div>
           <div className="tracking-wide font-Anton text-5xl py-3w ">
             Ramit Vishwakarma
           </div>
-          <div className="text-sm text-pink/75 ">Web Developer @GDSC</div>
-          <div className="text-white/75  py-2 text-balance ">
+          <div className="text-sm text-white/80 ">
+            Web Developer at{" "}
+            <span className="text-pink">Google Developers Student Club</span>
+          </div>
+          <div className="text-white/75  py-2 text-balance leading-8 tracking-wide">
             Hello, I&apos;m Ramit, a Full Stack Web Developer based in
             <span className="text-white font-bold"> Noida, India</span> having a
             year of experience. I like to{" "}
@@ -36,7 +39,7 @@ const Introduction = () => {
               and turn ideas into reality.
             </div>
           </div>
-          <div className="text-blue/70 ">I have worked with...</div>
+          <div className="text-grey-300/70 ">I have worked with...</div>
           <div className="w-96 -mt-4">
             <InfiniteCarousel logos={logos as string[]} />
           </div>

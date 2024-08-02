@@ -6,11 +6,14 @@ import ImageCarousel from "./ImageCarousel";
 const MoreAboutMe = () => {
   const images = [
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601251/About%20me%20Images/GithubEdited_fg8csd.png",
-
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601252/About%20me%20Images/Codechef_Edited_ol2o2p.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722622174/Portfolio/About%20ME%20Images/HaccachinoEdited_mw0gfc.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621945/Portfolio/About%20ME%20Images/CodingEdit_aqj6fi.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621816/Portfolio/About%20ME%20Images/Hackathon_ooaogs.png",
+  ];
+
+  const casualImages = [
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722623447/Portfolio/About%20ME%20Images/Dia2_mij998.png",
   ];
 
   return (
@@ -54,15 +57,15 @@ const MoreAboutMe = () => {
                 challenge my reaction time and strategic thinking. Growing up, I
                 enjoyed playing football and relished scoring goals and winning
                 matches.<span className="flex py-2"></span> Feeling lethargic, I
-                unwind by watching web series and movies or listening to
-                audiobooks. I have a deep interest in finance and enjoy reading
-                about how the financial world works.
+                unwind by watching web series ,cooking and movies or listening
+                to audiobooks. I have a deep interest in finance and enjoy
+                reading about how the financial world works.
                 <span className="flex py-2"></span> To keep a balance, I make
                 sure to get outside and "touch some grass" once a week,
                 preventing myself from becoming a complete nerd.
               </p>
             </div>
-            <ImageCarousel images={images} />
+            <ImageCarousel images={casualImages} />
           </div>
         </div>
       </div>
