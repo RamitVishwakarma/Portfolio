@@ -5,7 +5,7 @@ import ImageCarousel from "./ImageCarousel";
 
 const MoreAboutMe = () => {
   const images = [
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601251/About%20me%20Images/GithubEdited_fg8csd.png",
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601251/Portfolio/About%20ME%20Images/GithubEdited_fg8csd.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601252/About%20me%20Images/Codechef_Edited_ol2o2p.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722622174/Portfolio/About%20ME%20Images/HaccachinoEdited_mw0gfc.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621945/Portfolio/About%20ME%20Images/CodingEdit_aqj6fi.png",
@@ -18,8 +18,8 @@ const MoreAboutMe = () => {
 
   return (
     <>
-      <div className="py-20">
-        <div className="text-6xl font-Anton text-white text-center pb-4">
+      <div className="py-20 ABOUTSECTION">
+        <div className="text-6xl font-Anton text-white text-center pb-4 ">
           More About Me
         </div>
         <div className="flex flex-col gap-20 pt-20">

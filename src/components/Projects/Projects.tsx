@@ -5,7 +5,7 @@ const Projects = () => {
   return (
     <>
       <div className="py-20">
-        <div className="text-white text-6xl text-center pb-10 font-Anton">
+        <div className="text-white text-6xl text-center pb-10 font-Anton PROJECTSECTION">
           Featured Projects
         </div>
         <ProjectContainer />

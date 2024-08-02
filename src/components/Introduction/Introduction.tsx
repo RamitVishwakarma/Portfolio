@@ -9,21 +9,21 @@ const Introduction = () => {
       <div className="text-white pt-24 pb-40 m-auto flex items-center justify-between">
         <div className="w-[60%] flex flex-col gap-2">
           <div className="text-sm flex gap-4 items-center">
-            <span className="text-green/70 font-medium tracking-wide">
+            <span className="text-green/70 font-medium tracking-wide py-4">
               {" "}
               OPEN TO WORK{" "}
             </span>
             <span>|</span>
             <span className="text-grey-300/80">Full Stack Web Developer</span>
           </div>
-          <div className="tracking-wide font-Anton text-5xl py-3w ">
+          <h1 className="tracking-wide font-Anton text-5xl py-3w ">
             Ramit Vishwakarma
+          </h1>
+          <div className="text-sm text-white/80 pt-3 pb-1">
+            Full Stack Web Developer @{" "}
+            <span className="text-blue">Google Developers Student Club</span>
           </div>
-          <div className="text-sm text-white/80 ">
-            Web Developer at{" "}
-            <span className="text-pink">Google Developers Student Club</span>
-          </div>
-          <div className="text-white/75  py-2 text-balance leading-8 tracking-wide">
+          <p className="text-white/75  py-2 text-balance leading-8 tracking-wide">
             Hello, I&apos;m Ramit, a Full Stack Web Developer based in
             <span className="text-white font-bold"> Noida, India</span> having a
             year of experience. I like to{" "}
@@ -34,11 +34,11 @@ const Introduction = () => {
             excellence and creativity in everything I do. I am passionate about
             learning <span className="text-white font-bold">new</span>{" "}
             technologies and frameworks.
-            <div className="pt-4 text-white/75">
+            <span className="pt-4 text-white/75 block">
               <span className="text-white font-bold">TLDR</span> I love to code
               and turn ideas into reality.
-            </div>
-          </div>
+            </span>
+          </p>
           <div className="text-grey-300/70 ">I have worked with...</div>
           <div className="w-96 -mt-4">
             <InfiniteCarousel logos={logos as string[]} />
