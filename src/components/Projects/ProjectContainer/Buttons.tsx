@@ -16,14 +16,14 @@ const Buttons = ({
   return (
     <>
       <a
-        href="#"
+        href={github}
         target="_blank"
         className={`${classname} px-6 py-1.5 rounded-md flex items-center gap-2 font-medium`}>
         <Github colors={`${color}`} />
         Github
       </a>
       <a
-        href="#"
+        href={live}
         target="_blank"
         className={`${classname} px-6 py-1.5 rounded-md flex items-center gap-2 font-medium`}>
         <Globe colors={`${color}`} />

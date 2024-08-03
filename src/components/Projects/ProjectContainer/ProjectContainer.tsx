@@ -86,7 +86,7 @@ const ProjectContainer = () => {
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
                   github="https://github.com/RamitVishwakarma/Recruitment-Platform"
-                  live=""
+                  live="https://recplatform.ramitvishwakarma.in/"
                   color="#e3bebf"
                   classname="bg-[#753f40] hover:bg-[#8c494b] text-[#e3bebf]"
                 />
@@ -138,6 +138,8 @@ const ProjectContainer = () => {
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
+                  github="https://github.com/RamitVishwakarma/Course21-Admin-Panel"
+                  live="https://course21.ramitvishwakarma.in/"
                   color="#acebff"
                   classname="bg-[#004fab] hover:bg-[#0057db] text-[#acebff]"
                 />
@@ -185,6 +187,8 @@ const ProjectContainer = () => {
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
+                  github="https://github.com/RamitVishwakarma/IndustrialAI-Landing"
+                  live="https://industrialai.ramitvishwakarma.in/"
                   color="#f7f7f5"
                   classname="bg-[#837e73] hover:bg-[#8f8b80] text-[#f7f7f5]"
                 />
@@ -238,6 +242,8 @@ const ProjectContainer = () => {
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
+                  github="https://github.com/RamitVishwakarma/EchoTalk"
+                  live="https://echotalk.ramitvishwakarma.in/"
                   color="#284a51"
                   classname="bg-[#b9e7e8] hover:bg-[#daf3f3] text-[#284a51]"
                 />
