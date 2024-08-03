@@ -68,8 +68,8 @@ export const testimonialData: testimonialDataInterface[] = [
     title: "Design-Focused",
     content:
       "Ramit developed the entire frontend of our Learning Management System (LMS) using React. His role was crucial in creating a cohesive and user-friendly interface for the platform. Ramit's dedication and efficiency make him a standout developer. I highly recommend him for frontend projects.",
-    image: "",
-    // "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722030504/Portfolio/Testimonial%20Images/IMG-20240610-WA0003_tne1fs.jpg",
+    image:
+      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722677664/Portfolio/Testimonial%20Images/Prof_image_vknxde.webp",
     name: "Arpan Agrawal",
     color: "#dd5d02",
     designation: "SDE - 2 @HackerKernel",

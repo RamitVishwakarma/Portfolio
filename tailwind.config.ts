@@ -76,6 +76,11 @@ const config: Config = {
         50: "#f1f5fd",
       },
     },
+    screens: {
+      lg: "1200px",
+      md: "800px",
+      sm: "400px",
+    },
     extend: {
       animation: {
         shine: "shine 1s",

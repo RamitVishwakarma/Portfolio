@@ -5,7 +5,7 @@ import Socials from "./Socials";
 const Contact = () => {
   return (
     <>
-      <div className="py-20">
+      <div className="pt-20">
         <h2 className="text-6xl text-white font-Anton pb-10 text-center CONTACTSECTION">
           Contact Me
         </h2>
@@ -25,6 +25,12 @@ const Contact = () => {
             <br /> You can ping me on my socials
           </div>
           <Socials />
+        </div>
+        <div className="text-white text-center text-sm flex items-center gap-4 justify-center pt-10 flex-col-reverse">
+          <div className="text-md">&copy; 2024 - All Rights reserved</div>
+          <div className="text-xl">
+            Made with <span className="text-red ">♥</span>
+          </div>
         </div>
       </div>
     </>
