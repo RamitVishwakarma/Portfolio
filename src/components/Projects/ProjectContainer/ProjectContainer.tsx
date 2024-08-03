@@ -78,11 +78,10 @@ const ProjectContainer = () => {
                     </div>
                   </div>
                   <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Facere eum voluptas consequuntur incidunt dignissimos, omnis
-                    repellendus iure exercitationem illum sequi tenetur quidem
-                    quibusdam magnam deleniti eos. Eaque inventore dicta
-                    debitis!
+                    Recruitment-Platform facilitated the onboarding of over 500
+                    applicants and streamlined task completion, project
+                    submission, and aptitude rounds significantly speeding up
+                    the recruitment process for the GDSC team.
                   </p>
                 </div>
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
@@ -136,11 +135,11 @@ const ProjectContainer = () => {
                     </div>
                   </div>
                   <p className="text-lg tracking-[-4%] font-semibold leading-8  text-balance text-white/70 py-2">
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Facere eum voluptas consequuntur incidunt dignissimos, omnis
-                    repellendus iure exercitationem illum sequi tenetur quidem
-                    quibusdam magnam deleniti eos. Eaque inventore dicta
-                    debitis!
+                    Course21 is a platform designed to make the workflow of
+                    course creators smoother. It allows for easy course
+                    addition, module, and lecture organization through
+                    drag-and-drop functionality, with user and role management.
+                    Moreover, it handles video processing and transcoding.
                   </p>
                 </div>
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
@@ -188,11 +187,10 @@ const ProjectContainer = () => {
                     </div>
                   </div>
                   <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#5b5751] py-2">
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Facere eum voluptas consequuntur incidunt dignissimos, omnis
-                    repellendus iure exercitationem illum sequi tenetur quidem
-                    quibusdam magnam deleniti eos. Eaque inventore dicta
-                    debitis!
+                    I built the IndustrialAI landing page for a client. I
+                    ensured it was completely responsive and pixel-perfect,
+                    delivering a professional and visually appealing online
+                    presence that met all the client's specifications.
                   </p>
                 </div>
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
@@ -248,11 +246,10 @@ const ProjectContainer = () => {
                     </div>
                   </div>
                   <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#b9e7e8] py-2">
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Facere eum voluptas consequuntur incidunt dignissimos, omnis
-                    repellendus iure exercitationem illum sequi tenetur quidem
-                    quibusdam magnam deleniti eos. Eaque inventore dicta
-                    debitis!
+                    Echo-talk is a dictation platform that leverages Amazon
+                    Polly. This tool assists users in writing assignments on
+                    paper, making the task more manageable and efficient by
+                    converting speech to text seamlessly.
                   </p>
                 </div>
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
