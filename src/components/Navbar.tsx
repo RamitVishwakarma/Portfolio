@@ -29,7 +29,12 @@ const Navbar = () => {
             className="hover:text-green cursor-pointer">
             About
           </li>
-          <li className="hover:text-green cursor-pointer">Resume</li>
+          <a
+            target="_blank"
+            href="https://drive.google.com/file/d/1WNGKTLHlDFmynvXOdPFly7Mo0dbQwrci/view?usp=sharinghttps://drive.google.com/file/d/1WNGKTLHlDFmynvXOdPFly7Mo0dbQwrci/view?usp=sharing"
+            className="hover:text-green cursor-pointer">
+            Resume
+          </a>
         </ul>
       </div>
     </div>

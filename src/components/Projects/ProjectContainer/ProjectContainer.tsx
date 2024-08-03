@@ -145,7 +145,7 @@ const ProjectContainer = () => {
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/Course21-Admin-Panel"
-                    live="https://course21.ramitvishwakarma.in/"
+                    live="/course21"
                     color="#acebff"
                     classname="bg-[#004fab] hover:bg-[#0057db] text-[#acebff]"
                   />
@@ -190,7 +190,7 @@ const ProjectContainer = () => {
                     I built the IndustrialAI landing page for a client. I
                     ensured it was completely responsive and pixel-perfect,
                     delivering a professional and visually appealing online
-                    presence that met all the client's specifications.
+                    presence that met all the client&apos;s specifications.
                   </p>
                 </div>
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
