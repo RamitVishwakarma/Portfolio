@@ -85,6 +85,8 @@ const ProjectContainer = () => {
               </div>
               <div className="flex gap-4 text-2xl mt-2 ">
                 <Buttons
+                  github="https://github.com/RamitVishwakarma/Recruitment-Platform"
+                  live=""
                   color="#e3bebf"
                   classname="bg-[#753f40] hover:bg-[#8c494b] text-[#e3bebf]"
                 />

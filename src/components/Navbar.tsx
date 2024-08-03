@@ -3,8 +3,8 @@
 import React from "react";
 
 const Navbar = () => {
-  const scrollToProjects = () => {
-    const projectsSection = document.querySelector(".PROJECTSECTION");
+  const scrollToContact = () => {
+    const projectsSection = document.querySelector(".CONTACTSECTION");
     projectsSection?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -20,9 +20,9 @@ const Navbar = () => {
         </div>
         <ul className="flex gap-6 font-medium">
           <li
-            onClick={scrollToProjects}
+            onClick={scrollToContact}
             className="hover:text-green cursor-pointer">
-            Projects
+            Contact
           </li>
           <li
             onClick={scrollToAbout}

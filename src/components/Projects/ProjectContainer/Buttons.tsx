@@ -5,22 +5,30 @@ import Globe from "./Globe";
 const Buttons = ({
   classname,
   color,
+  github,
+  live,
 }: {
   classname: string;
   color: string;
+  github: string;
+  live: string;
 }) => {
   return (
     <>
-      <button
+      <a
+        href="#"
+        target="_blank"
         className={`${classname} px-6 py-1.5 rounded-md flex items-center gap-2 font-medium`}>
         <Github colors={`${color}`} />
         Github
-      </button>
-      <button
+      </a>
+      <a
+        href="#"
+        target="_blank"
         className={`${classname} px-6 py-1.5 rounded-md flex items-center gap-2 font-medium`}>
         <Globe colors={`${color}`} />
         Live Link
-      </button>
+      </a>
     </>
   );
 };
