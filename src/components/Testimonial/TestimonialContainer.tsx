@@ -6,8 +6,8 @@ const TestimonialContainer = ({ data }: { data: testimonialDataInterface }) => {
   return (
     <>
       <div
-        className={` relative border-4 ${data.bordercolor} p-2 rounded-2xl z-10 ${data.hoverbordercolor} hover:scale-110 hover:rotate-3 hover:cursor-pointer transition-transform duration-200 ease-in-out ${data.shadowcolor} shadow-lg`}>
-        <div className="relative bg-black min-w-[22rem] h-80 text-white p-4 text-balance rounded-xl overflow-hidden ">
+        className={`relative border-4 ${data.bordercolor} p-2 rounded-2xl z-10 ${data.hoverbordercolor} hover:scale-110 hover:rotate-3 hover:cursor-pointer transition-transform duration-200 ease-in-out ${data.shadowcolor} shadow-lg`}>
+        <div className="relative bg-black min-w-[22rem] min-h-80 max-md:min-w-[18rem] max-md:min-h-[30rem] text-white p-4 text-balance rounded-xl overflow-hidden ">
           {/* Background circles */}
           <div
             className={`absolute -top-[50%] w-full h-full ${data.circlecolor1}  rounded-full z-0 blur-3xl`}></div>
@@ -37,15 +37,15 @@ const TestimonialContainer = ({ data }: { data: testimonialDataInterface }) => {
             </div>
           </div>
         </div>
-        <div className="flex p-4 gap-4 items-center">
+        <div className="flex p-4 gap-4 items-center max-md:flex-col ">
           <Image
             src={data.image}
             alt="testimonial"
             width={64}
             height={64}
-            className={`object-cover w-16 h-16 rounded-full`}
+            className={`object-cover w-16 h-16 max-md:w-24 max-md:h-24 rounded-full`}
           />
-          <div className="flex flex-col">
+          <div className="flex flex-col max-md:items-center">
             <div className={`text-xl ${data.textcolorname} font-bold`}>
               {data.name}
             </div>

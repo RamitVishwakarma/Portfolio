@@ -49,15 +49,15 @@ const Testimonials = () => {
         <h2 className="text-white pb-10 text-6xl font-Anton text-center">
           Kind Words
         </h2>
-        <div className="relative gap-12 flex w-full min-h-[36rem] py-14 overflow-hidden">
+        <div className=" relative gap-12 flex w-full min-h-[36rem] max-md:min-h-[48rem] py-12 overflow-hidden">
           <div
-            className="absolute right-0 top-0 w-[12%] h-full z-[2]"
+            className="max-sm:invisible absolute right-0 top-0 w-[12%] h-full z-[2]"
             style={{
               background:
                 "linear-gradient(to right, rgba(255, 255, 255, 0), black)",
             }}></div>
           <div
-            className="absolute left-0 top-0 w-[12%] h-full z-[2]"
+            className="max-sm:invisible absolute left-0 top-0 w-[12%] h-full z-[2]"
             style={{
               background:
                 "linear-gradient(to left, rgba(255, 255, 255, 0), black)",
