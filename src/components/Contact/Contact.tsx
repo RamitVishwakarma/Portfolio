@@ -10,16 +10,11 @@ const Contact = () => {
           Contact Me
         </h2>
         <div className=" ">
-          <div className="">
-            {/* <div className="absolute radial-gradient-purple top-0 left-40 w-[40rem] h-[20rem]"></div> */}
-            {/* <div className="text-white text-4xl font-medium text-center py-10">
-              No need to be Shy Just drop a HI
-            </div> */}
-            <h3 className="text-white text-4xl font-light text-center py-10">
-              Got some queries? Feel free to reach out
-            </h3>
-            <ContactForm />
-          </div>
+          <h3 className="text-white text-4xl max-md:text-3xl font-light text-center py-10">
+            Got some queries? Feel free to reach out
+          </h3>
+          <ContactForm />
+
           <div className="text-white text-3xl font-light text-center pt-8 pb-6">
             <span className="py-3 font-normal">OR</span>
             <br /> You can ping me on my socials

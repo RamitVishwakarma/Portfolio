@@ -79,6 +79,7 @@ const config: Config = {
     screens: {
       lg: "1200px",
       md: "800px",
+      five: "580px",
       sm: "400px",
     },
     extend: {

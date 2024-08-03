@@ -23,12 +23,12 @@ const MoreAboutMe = () => {
           More About Me
         </h2>
         <div className="flex flex-col gap-20 pt-20">
-          <div className="flex gap-10 items-center">
+          <div className=" gap-10 items-center lg:flex max-md:flex-col">
             <div className="flex flex-col gap-4 min-w-[50%]">
-              <h3 className="text-5xl font-light tracking-wide text-white py-4 font-Anton">
+              <h3 className="text-5xl max-md:text-4xl font-light tracking-wide text-white py-4 font-Anton">
                 The Techie Inside Me
               </h3>
-              <p className="text-lg font-light  text-white/80 leading-9 tracking-wider">
+              <p className="text-lg font-light text-white/80 leading-9 tracking-wider">
                 I thrive on solving impactful problems, diving into open-source
                 projects, and contributing to codebases. Competitive programming
                 excites me; with 2 stars on CodeChef, I aim for 5 by my senior
@@ -47,7 +47,7 @@ const MoreAboutMe = () => {
             </div>
             <ImageCarousel images={images} />
           </div>
-          <div className="flex gap-10 items-center">
+          <div className="gap-10 items-center  lg:flex max-md:flex-col">
             <div className="flex flex-col gap-4 min-w-[50%]">
               <h3 className="text-5xl font-light tracking-wide font-Anton text-white py-4">
                 Casual Me

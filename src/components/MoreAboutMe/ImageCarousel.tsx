@@ -73,7 +73,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
 
   return (
     <div className="flex flex-col items-center mt-20">
-      <div className="relative w-[36rem] h-[27rem] overflow-hidden rounded-lg">
+      <div className="relative w-[36rem] h-[27rem] max-five:w-[25rem] max-five:h-[20rem] max-sm:w-[20rem] max-sm:h-[18rem] overflow-hidden rounded-lg">
         <AnimatePresence>
           <motion.div
             key={currentIndex}

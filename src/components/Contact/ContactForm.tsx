@@ -28,7 +28,7 @@ const ContactForm = () => {
     <>
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-3 w-[60%] mx-auto">
+        className="flex flex-col gap-3 md:w-[60%] mx-auto">
         <div className="flex gap-4">
           <input
             onChange={handleNameChange}
