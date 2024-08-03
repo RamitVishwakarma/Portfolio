@@ -6,7 +6,7 @@ import ImageCarousel from "./ImageCarousel";
 const MoreAboutMe = () => {
   const images = [
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601251/Portfolio/About%20ME%20Images/GithubEdited_fg8csd.png",
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601252/About%20me%20Images/Codechef_Edited_ol2o2p.png",
+    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601252/Portfolio/About%20ME%20Images/Codechef_Edited_ol2o2p.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722622174/Portfolio/About%20ME%20Images/HaccachinoEdited_mw0gfc.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621945/Portfolio/About%20ME%20Images/CodingEdit_aqj6fi.png",
     "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621816/Portfolio/About%20ME%20Images/Hackathon_ooaogs.png",
@@ -49,7 +49,7 @@ const MoreAboutMe = () => {
           </div>
           <div className="gap-10 items-center  lg:flex max-md:flex-col">
             <div className="flex flex-col gap-4 min-w-[50%]">
-              <h3 className="text-5xl font-light tracking-wide font-Anton text-white py-4">
+              <h3 className="text-5xl max-md:text-4xl font-light tracking-wide font-Anton text-white py-4">
                 Casual Me
               </h3>
               <p className="text-lg font-thin text-balance text-white/75 leading-9 tracking-wider pr-4 ">

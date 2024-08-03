@@ -44,11 +44,11 @@ const Introduction = () => {
             <InfiniteCarousel logos={logos as string[]} />
           </div>
         </div>
-        <div className="w-[50%]">
+        <div className="md:w-[50%] sm:w-[80%] w-full">
           <div className="relative flex justify-center items-center overflow-visible p-6">
             <div className="rainbow-shadow w-full h-full left-1/2 top-1/2 rounded-full blur-3xl absolute opacity-30"></div>
             <Image
-              className="z-10 shadow-2xl border-4 border-blue/20 rounded-full w-10/12"
+              className="z-10 shadow-2xl border-4 border-blue/20 rounded-full md:w-10/12"
               src={Ramit}
               alt="ProfilePic"
             />
