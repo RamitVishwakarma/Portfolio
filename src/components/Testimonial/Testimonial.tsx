@@ -42,7 +42,7 @@ const Testimonials = () => {
     }
 
     return controls?.stop;
-  }, [rerender, xTranslation, duration, width]);
+  }, [rerender, xTranslation, duration, width, mustFinish]);
   return (
     <>
       <div className="py-20">

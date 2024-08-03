@@ -61,8 +61,8 @@ const MoreAboutMe = () => {
                 to audiobooks. I have a deep interest in finance and enjoy
                 reading about how the financial world works.
                 <span className="flex py-2"></span> To keep a balance, I make
-                sure to get outside and "touch some grass" once a week,
-                preventing myself from becoming a complete nerd.
+                sure to get outside and &quot;touch some grass&quot; once a
+                week, preventing myself from becoming a complete nerd.
               </p>
             </div>
             <ImageCarousel images={casualImages} />
