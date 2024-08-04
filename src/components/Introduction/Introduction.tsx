@@ -16,7 +16,7 @@ const Introduction = () => {
             <span>|</span>
             <span className="text-grey-300/80">Full Stack Web Developer</span>
           </div>
-          <h1 className="tracking-wide font-Anton text-5xl py-3w ">
+          <h1 className="tracking-wide font-Anton text-5xl py-3">
             Ramit Vishwakarma
           </h1>
           <div className="text-sm text-white/80 pt-3 pb-1">
@@ -40,7 +40,7 @@ const Introduction = () => {
             </span>
           </p>
           <div className="text-grey-300/70 ">I have worked with...</div>
-          <div className="w-96 -mt-4">
+          <div className="max-w-96 -mt-4">
             <InfiniteCarousel logos={logos as string[]} />
           </div>
         </div>
