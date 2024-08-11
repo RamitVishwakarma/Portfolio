@@ -19,7 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <Script
         async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3523625611430011"
+        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT}`}
         crossOrigin="anonymous"></Script>
       <body>
         <Navbar />
