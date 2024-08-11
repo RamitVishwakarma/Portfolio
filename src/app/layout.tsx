@@ -3,10 +3,11 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Head from "next/head";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Portfolio website | Ramit Vishwakarma",
-  description: "Rami Vishwakarma's portfolio website",
+  description: "Ramit Vishwakarma's portfolio website",
 };
 
 export default function RootLayout({
@@ -16,11 +17,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <Head>
-        <meta
-          name="google-adsense-account"
-          content="ca-pub-3523625611430011"></meta>
-      </Head>
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3523625611430011"
+        crossOrigin="anonymous"></Script>
       <body>
         <Navbar />
         {children}
