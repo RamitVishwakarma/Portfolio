@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import { Head } from "next/document";
+import Head from "next/head";
 
 export const metadata: Metadata = {
   title: "Portfolio website | Ramit Vishwakarma",
