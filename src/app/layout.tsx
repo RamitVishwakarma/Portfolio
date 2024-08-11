@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import { Head } from "next/document";
 
 export const metadata: Metadata = {
-  title: "Ramit Vishwakarma",
+  title: "Portfolio website | Ramit Vishwakarma",
   description: "Rami Vishwakarma's portfolio website",
 };
 
@@ -14,6 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <Head>
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-3523625611430011"></meta>
+      </Head>
       <body>
         <Navbar />
         {children}
