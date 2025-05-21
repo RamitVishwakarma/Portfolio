@@ -88,16 +88,19 @@ const generateEmailContent = (name: string, email: string, message: string) => {
 
 export async function sendEmail({ name, email, message }: ContactMessage) {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.zeptomail.in",
+    port: 465,
+    secure: true,
     auth: {
-      user: process.env.SMTP_USER as string,
-      pass: process.env.SMTP_PASS as string,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
     },
   });
 
   const mailOptions = {
-    from: process.env.SMTP_USER,
-    to: process.env.SMTP_USER,
+    from: `"Portfolio Contact Form" <${process.env.SMTP_USER}>`,
+    to: "vishwakarmaramit@gmail.com",
+    subject: "Portfolio Contact Form Submission",
   };
 
   try {
