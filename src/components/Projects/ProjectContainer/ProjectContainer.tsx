@@ -25,7 +25,7 @@ const ProjectContainer = () => {
           {/* P1 */}
           <div className="rounded-xl w-full relative flex overflow-hidden z-10 border border-grey-900">
             <Image
-              src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/BG_creme_sdkzym.png"
+              src="/images/backgrounds/bgCreme.png"
               width={1920}
               height={1080}
               className="absolute top-0 left-0 w-full h-full object-cover z-10"
@@ -37,7 +37,8 @@ const ProjectContainer = () => {
                   <video
                     ref={videoRef}
                     onClick={handleVideoPlayback}
-                    src="https://res.cloudinary.com/dhkxbgwmt/video/upload/v1722428111/Portfolio/Projects/Recruitment-Platform-Compressed_qmtqw4.mp4">
+                    className="rounded-lg"
+                    src="/videos/recruitmentPlatform2024.mp4">
                     Your browser does not support video tags
                   </video>
                   <div className="absolute inset-0 flex items-center justify-center cursor-pointer">
@@ -98,7 +99,7 @@ const ProjectContainer = () => {
           {/* P2 */}
           <div className="bg-purple/30 backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
-              src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/Bg-blue_rznahj.png"
+              src="/images/backgrounds/bgBlue.png"
               width={1920}
               height={1080}
               className="absolute top-0 left-0 w-full h-full object-cover z-10"
@@ -107,7 +108,7 @@ const ProjectContainer = () => {
             <div className="z-10 lg:flex max-lg:flex-col ">
               <div className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/30  z-10">
                 <Image
-                  src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722428146/Portfolio/Projects/Course21_showcase_ihawc3.png"
+                  src="/images/showcases/course21.png"
                   width={640}
                   height={360}
                   alt="course-21"
@@ -156,7 +157,7 @@ const ProjectContainer = () => {
           {/* P3 */}
           <div className=" backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
-              src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455126/Portfolio/Projects/Backgrounds/BG_creme_sdkzym.png"
+              src="/images/backgrounds/bgCreme.png"
               width={1920}
               height={1080}
               className="absolute top-0 left-0 w-full h-full object-cover z-10"
@@ -165,7 +166,7 @@ const ProjectContainer = () => {
             <div className="z-10 lg:flex max-lg:flex-col ">
               <div className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/10  z-10">
                 <Image
-                  src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722428137/Portfolio/Projects/IndustrialAI_showcase_g0d4fw.png"
+                  src="/images/showcases/industrialAi.png"
                   width={640}
                   height={360}
                   alt="echo-talk"
@@ -207,7 +208,7 @@ const ProjectContainer = () => {
           {/* P4 */}
           <div className="rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
-              src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722455125/Portfolio/Projects/Backgrounds/bg-green_ouc293.png"
+              src="/images/backgrounds/bgGreen.png"
               width={1920}
               height={1080}
               className="absolute top-0 left-0 w-full h-full object-cover z-10"
@@ -216,7 +217,7 @@ const ProjectContainer = () => {
             <div className="z-10 lg:flex max-lg:flex-col ">
               <div className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-[#438e96]/10 z-10">
                 <Image
-                  src="https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722428142/Portfolio/Projects/Echo-Talk-Showcase_qo0o1t.png"
+                  src="/images/showcases/echoTalk.png"
                   width={640}
                   height={360}
                   alt="echo-talk"

@@ -7,7 +7,7 @@ const InfiniteCarousel = ({ logos }: { logos: string[] }) => {
       <div className="absolute right-0 top-4 w-2/12 h-20 z-[2] gradient-right"></div>
       <div className="absolute left-0 top-4 w-2/12 h-20 z-[2] gradient-left"></div>
       <div className="infinite-carousel">
-        {logos.concat(logos).map((logo, index) => (
+        {[...logos, ...logos].map((logo, index) => (
           <div key={index} className="flex-none w-1/5 p-4">
             <Image
               src={logo}

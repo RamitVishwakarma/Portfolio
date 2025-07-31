@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Ramit from "../../..//public/images/Ramit.jpg";
+import Ramit from "../../../public/images/Ramit.jpg";
 import InfiniteCarousel from "./InfiniteCarousel/InfiniteCarousel";
 import { logos } from "./InfiniteCarousel/data";
 
@@ -21,7 +21,7 @@ const Introduction = () => {
           </h1>
           <div className="text-sm text-white/80 pt-3 pb-1">
             Full Stack Web Developer @{" "}
-            <span className="text-blue">Google Developers Student Club</span>
+            <span className="text-blue">KonnectYari</span>
           </div>
           <p className="text-white/75  py-2 text-balance leading-8 tracking-wide">
             Hello, I&apos;m Ramit, a Full Stack Web Developer based in

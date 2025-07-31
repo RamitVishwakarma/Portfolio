@@ -9,106 +9,91 @@ export const data: dataInterface[] = [
   {
     title: "Figma",
     description: "Dev Mode On",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920894/Portfolio/TechStack%20logos/Figma_szz0iz.png",
+    image: "/images/techStack/figma.png",
     classname: " p-2",
   },
   {
-    title: "Next Js",
+    title: "Next.js",
     description: "Full Stack Development",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920895/Portfolio/TechStack%20logos/NextJs_hk7bpg.png",
-    classname: "bg-black p-0.5",
+    image: "/images/techStack/nextjs.png",
+    classname: "bg-white p-0.5",
   },
   {
-    title: "React Js",
+    title: "React.js",
     description: "Frontend Development",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920896/Portfolio/TechStack%20logos/react_oignup.png",
+    image: "/images/techStack/reactjs.png",
     classname: " p-1",
   },
   {
     title: "Typescript",
     description: "Type Safe Javascript",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920896/Portfolio/TechStack%20logos/Typescript_gnvzbn.png",
+    image: "/images/techStack/typescript.png",
     classname: "bg-black p-0.5",
   },
   {
-    title: "Tailwind CSS",
+    title: "Tailwindcss",
     description: "Utility First CSS",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920896/Portfolio/TechStack%20logos/Tailwind_hrmdvj.png",
+    image: "/images/techStack/tailwind.png",
     classname: " p-2",
   },
   {
     title: "Javascript",
     description: "The Language of the Web",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920895/Portfolio/TechStack%20logos/JavaScript_w2k3e1.png",
+    image: "/images/techStack/javascript.png",
     classname: " p-0.5",
   },
   {
     title: "Node Js",
     description: "Backend Development",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920895/Portfolio/TechStack%20logos/NodeJs_uiw6hg.png",
+    image: "/images/techStack/nodejs.png",
     classname: " p-2",
   },
   {
-    title: "Express Js",
-    description: "Node Js Framework",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920894/Portfolio/TechStack%20logos/ExpressJs_tkate8.png",
+    title: "Express.js",
+    description: "Node.js Framework",
+    image: "/images/techStack/expressjs.png",
     classname: "bg-black p-0.5",
   },
   {
     title: "PostgreSQL",
     description: "SQL Database",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920895/Portfolio/TechStack%20logos/PostgreSQL_hfxdnl.png",
+    image: "/images/techStack/postgres.png",
     classname: "bg-black p-0.5",
   },
   {
     title: "MongoDB",
     description: "NoSQL Database",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920896/Portfolio/TechStack%20logos/Mongodb_qxaaul.png",
+    image: "/images/techStack/mongodb.png",
     classname: "bg-black p-0.5",
   },
   {
     title: "Prisma",
     description: "ORM",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920896/Portfolio/TechStack%20logos/Prisma_iqijsb.png",
+    image: "/images/techStack/prisma.png",
     classname: "bg-black p-2",
   },
   {
     title: "Git",
     description: "Version Control System",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920895/Portfolio/TechStack%20logos/Git_tgr2tv.png",
+    image: "/images/techStack/git.png",
     classname: "bg-black p-0.5",
   },
   {
     title: "Java",
     description: "Competetive Programming",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920895/Portfolio/TechStack%20logos/java_a0xqzu.png",
+    image: "/images/techStack/java.png",
     classname: "bg-black p-0.5",
   },
   {
     title: "HTML ",
     description: "Markup Language",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920894/Portfolio/TechStack%20logos/HTML_kucasg.png",
+    image: "/images/techStack/html.png",
     classname: "bg-black pb-2",
   },
   {
     title: "CSS",
     description: "Styling Language",
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721920894/Portfolio/TechStack%20logos/Css_qy4yxp.png",
+    image: "/images/techStack/css.png",
     classname: "bg-black p-2",
   },
 ];

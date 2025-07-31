@@ -1,7 +1,9 @@
 export const logos = [
-  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721847219/Portfolio/Logos/HacktoberFest-modified_eerlfa.png",
-  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721847219/Portfolio/Logos/GSSOC-modified_sargiq.png",
-  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721847218/Portfolio/Logos/GDSC-modified_ups20d.png",
-  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721847218/Portfolio/Logos/Chegg-modified_ljwpyt.png",
-  "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1721924160/Portfolio/Logos/100xDevs_ojzitp.png",
+  "/images/logos/gdsc.png",
+  "/images/logos/100xdevs.png",
+  "/images/logos/chegg.png",
+  "/images/logos/gssoc.png",
+  "/images/logos/hacktoberfest.png",
+  "/images/logos/konnectyari.png",
+  "/images/logos/outlier.png",
 ];
