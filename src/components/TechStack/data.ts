@@ -15,7 +15,7 @@ export const data: dataInterface[] = [
   {
     title: "Next.js",
     description: "Full Stack Development",
-    image: "/images/techStack/nextjs.png",
+    image: "/images/techStack/nextjs.jpeg",
     classname: "bg-black text-white p-0.5",
   },
   {
