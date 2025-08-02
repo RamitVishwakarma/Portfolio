@@ -14,6 +14,52 @@ interface ContactMessage {
   message: string;
 }
 
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+const validateContactMessage = (data: ContactMessage): ValidationResult => {
+  const errors: string[] = [];
+
+  // Validate name
+  if (!data.name?.trim()) {
+    errors.push("Name is required");
+  } else if (data.name.trim().length < 2) {
+    errors.push("Name must be at least 2 characters long");
+  } else if (data.name.trim().length > 50) {
+    errors.push("Name must be less than 50 characters");
+  } else if (!/^[a-zA-Z\s]+$/.test(data.name.trim())) {
+    errors.push("Name can only contain letters and spaces");
+  }
+
+  // Validate email
+  if (!data.email?.trim()) {
+    errors.push("Email is required");
+  } else {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email.trim())) {
+      errors.push("Please enter a valid email address");
+    } else if (data.email.length > 100) {
+      errors.push("Email must be less than 100 characters");
+    }
+  }
+
+  // Validate message
+  if (!data.message?.trim()) {
+    errors.push("Message is required");
+  } else if (data.message.trim().length < 10) {
+    errors.push("Message must be at least 10 characters long");
+  } else if (data.message.trim().length > 1000) {
+    errors.push("Message must be less than 1000 characters");
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
 const generateEmailContent = (name: string, email: string, message: string) => {
   const data: ContactMessage = { name, email, message };
 
@@ -87,29 +133,65 @@ const generateEmailContent = (name: string, email: string, message: string) => {
 };
 
 export async function sendEmail({ name, email, message }: ContactMessage) {
+  // Server-side validation
+  const validation = validateContactMessage({ name, email, message });
+
+  if (!validation.isValid) {
+    return {
+      success: false,
+      message: `Validation failed: ${validation.errors.join(", ")}`,
+    };
+  }
+
+  // Sanitize inputs
+  const sanitizedData = {
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    message: message.trim(),
+  };
+
   const transporter = nodemailer.createTransport({
     host: "smtp.zeptomail.in",
     port: 465,
     secure: true,
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
+      pass: process.env.SMTP_PASS,
     },
   });
 
   const mailOptions = {
-    from: `"Portfolio Contact Form" <${process.env.SMTP_USER}>`,
+    from: `"Portfolio Contact Form" <${
+      process.env.FROM_EMAIL || "noreply@yourdomain.com"
+    }>`,
     to: "vishwakarmaramit@gmail.com",
     subject: "Portfolio Contact Form Submission",
   };
 
   try {
+    // Debug logging (remove in production)
+    console.log("Attempting to send email with config:", {
+      host: "smtp.zeptomail.in",
+      port: 587,
+      user: process.env.SMTP_USER ? "***configured***" : "missing",
+      pass: process.env.SMTP_PASS ? "***configured***" : "missing",
+      from: process.env.FROM_EMAIL || "noreply@yourdomain.com",
+    });
+
     await transporter.sendMail({
       ...mailOptions,
-      ...generateEmailContent(name, email, message),
+      ...generateEmailContent(
+        sanitizedData.name,
+        sanitizedData.email,
+        sanitizedData.message
+      ),
     });
     return { success: true, message: "Email sent successfully" };
   } catch (e: any) {
-    return { success: false, message: e.message };
+    console.error("Email sending error:", e);
+    return {
+      success: false,
+      message: "Failed to send email. Please try again later.",
+    };
   }
 }

@@ -11,29 +11,24 @@ interface items {
 
 const images: items[] = [
   {
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722261669/Portfolio/Socials/LinkedIn_u3wbfd.png",
-    link: "https://www.linkedin.com/in/ramitvishwakarma/",
+    image: "/images/socials/linkedin.png",
+    link: "https://www.linkedin.com/in/vishwakarmaramit/",
   },
   {
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722261670/Portfolio/Socials/X_yb1mq4.png",
+    image: "/images/socials/x.png",
     link: "https://x.com/RamitWasTaken",
   },
   {
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722261671/Portfolio/Socials/Instagram_d4xlye.png",
-    link: "https://www.instagram.com/rishu_9305/",
+    image: "/images/socials/instagram.png",
+    link: "https://www.instagram.com/ramit_vishw/",
   },
   {
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722261670/Portfolio/Socials/Github_j397te.png",
+    image: "/images/socials/github.png",
     link: "https://github.com/RamitVishwakarma",
   },
   {
-    image:
-      "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722261669/Portfolio/Socials/Gmail_lfw6is.png",
-    link: "https://mail.google.com/mail/u/0/#inbox?compose=CllgCJZXhMRKmDJTJmJxVSnMjSbwLRfcspRRJDpDdVkVDlhDKvXbkhNXBSmvTpPxPRQvzRkqxxq",
+    image: "/images/socials/gmail.png",
+    link: "mailto:example@example.com",
   },
 ];
 

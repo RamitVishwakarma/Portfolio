@@ -197,7 +197,7 @@ const ProjectContainer = () => {
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/IndustrialAI-Landing"
-                    live="https://industrialai.ramitvishwakarma.in/"
+                    live="https://industrial-ai.ramitvishwakarma.in/"
                     color="#f7f7f5"
                     classname="bg-[#837e73] hover:bg-[#8f8b80] text-[#f7f7f5]"
                   />

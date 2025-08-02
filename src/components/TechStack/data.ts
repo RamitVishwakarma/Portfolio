@@ -16,7 +16,7 @@ export const data: dataInterface[] = [
     title: "Next.js",
     description: "Full Stack Development",
     image: "/images/techStack/nextjs.png",
-    classname: "bg-white p-0.5",
+    classname: "bg-black text-white p-0.5",
   },
   {
     title: "React.js",
@@ -43,7 +43,7 @@ export const data: dataInterface[] = [
     classname: " p-0.5",
   },
   {
-    title: "Node Js",
+    title: "Node.js",
     description: "Backend Development",
     image: "/images/techStack/nodejs.png",
     classname: " p-2",

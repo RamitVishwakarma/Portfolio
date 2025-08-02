@@ -53,13 +53,13 @@ const MoreAboutMe = () => {
                 Casual Me
               </h3>
               <p className="text-lg font-thin text-balance text-white/75 leading-9 tracking-wider pr-4 ">
-                In my free time, I love playing competetive FPS games to
+                In my free time, I love playing competitive FPS games to
                 challenge my reaction time and strategic thinking. Growing up, I
-                enjoyed playing football and relished scoring goals and winning
+                enjoyed playing football and loved scoring goals and winning
                 matches.<span className="flex py-2"></span> Feeling lethargic, I
-                unwind by watching web series ,cooking and movies or listening
-                to audiobooks. I have a deep interest in finance and enjoy
-                reading about how the financial world works.
+                unwind by watching web series, cooking, or listening to
+                audiobooks. I have a deep interest in finance and enjoy reading
+                about how the financial world works.
                 <span className="flex py-2"></span> To keep a balance, I make
                 sure to get outside and &quot;touch some grass&quot; once a
                 week, preventing myself from becoming a complete nerd.

@@ -20,13 +20,13 @@ const Introduction = () => {
             Ramit Vishwakarma
           </h1>
           <div className="text-sm text-white/80 pt-3 pb-1">
-            Full Stack Web Developer @{" "}
-            <span className="text-blue">KonnectYari</span>
+            Full Stack Web Developer{" "}
+            <span className="text-blue">@KonnectBox</span>
           </div>
           <p className="text-white/75  py-2 text-balance leading-8 tracking-wide">
             Hello, I&apos;m Ramit, a Full Stack Web Developer based in
-            <span className="text-white font-bold"> Noida, India</span> having a
-            year of experience. I like to{" "}
+            <span className="text-white font-bold"> Noida, India</span> having 2
+            years of experience. I like to{" "}
             <span className="text-white font-bold">build scalable</span> and
             interactive web apps focusing on writing clean, efficient and
             <span className="text-white font-bold"> maintainable</span> code. I
