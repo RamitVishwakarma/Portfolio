@@ -5,15 +5,17 @@ import ImageCarousel from "./ImageCarousel";
 
 const MoreAboutMe = () => {
   const images = [
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601251/Portfolio/About%20ME%20Images/GithubEdited_fg8csd.png",
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722601252/Portfolio/About%20ME%20Images/Codechef_Edited_ol2o2p.png",
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722622174/Portfolio/About%20ME%20Images/HaccachinoEdited_mw0gfc.png",
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621945/Portfolio/About%20ME%20Images/CodingEdit_aqj6fi.png",
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722621816/Portfolio/About%20ME%20Images/Hackathon_ooaogs.png",
+    "/images/MoreAboutMe/coding.png",
+    "/images/MoreAboutMe/codechef.png",
+    "/images/MoreAboutMe/github.png",
+    "/images/MoreAboutMe/haccacino.jpg",
+    "/images/MoreAboutMe/codecubicle.jpg",
   ];
 
   const casualImages = [
-    "https://res.cloudinary.com/dhkxbgwmt/image/upload/v1722623447/Portfolio/About%20ME%20Images/Dia2_mij998.png",
+    "/images/MoreAboutMe/cooking.jpeg",
+    "/images/MoreAboutMe/outside.jpeg",
+    "/images/MoreAboutMe/rank.webp",
   ];
 
   return (
@@ -31,10 +33,9 @@ const MoreAboutMe = () => {
               <p className="text-lg font-light text-white/80 leading-9 tracking-wider">
                 I thrive on solving impactful problems, diving into open-source
                 projects, and contributing to codebases. Competitive programming
-                excites me; with 2 stars on CodeChef, I aim for 5 by my senior
-                year. Recently, I&apos;ve been exploring Web 3.0 and blockchain,
-                drawn by their complexities. Hackathons fuel my passion for
-                quick, impactful solutions.
+                excites me; with 2 stars on CodeChef. Recently, I&apos;ve been
+                exploring Web 3.0 and blockchain, drawn by their complexities.
+                Hackathons fuel my passion for quick, impactful solutions.
                 <span className="flex py-2"></span> As a full-stack developer
                 focused on the front end, I love creating scalable, web-deployed
                 products. Seeing my code in action and generating real-world

@@ -85,15 +85,15 @@ export const data: dataInterface[] = [
     classname: "bg-black p-0.5",
   },
   {
-    title: "HTML ",
-    description: "Markup Language",
-    image: "/images/techStack/html.png",
-    classname: "bg-black pb-2",
+    title: "Docker",
+    description: "For Containerization",
+    image: "/images/techStack/docker.png",
+    classname: "bg-black pb-2 text-center",
   },
   {
-    title: "CSS",
-    description: "Styling Language",
-    image: "/images/techStack/css.png",
+    title: "AWS",
+    description: "For Deployments",
+    image: "/images/techStack/aws.png",
     classname: "bg-black p-2",
   },
 ];
