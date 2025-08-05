@@ -166,7 +166,7 @@ const ProjectContainer = () => {
             <div className="z-10 lg:flex max-lg:flex-col ">
               <div className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/10  z-10">
                 <Image
-                  src="/images/showcases/industrialai.png"
+                  src="/images/showcases/endeavor.png"
                   width={640}
                   height={360}
                   alt="industrial-ai"
