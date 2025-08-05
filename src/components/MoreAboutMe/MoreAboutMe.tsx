@@ -5,17 +5,17 @@ import ImageCarousel from "./ImageCarousel";
 
 const MoreAboutMe = () => {
   const images = [
-    "/images/MoreAboutMe/coding.png",
-    "/images/MoreAboutMe/codechef.png",
-    "/images/MoreAboutMe/github.png",
-    "/images/MoreAboutMe/haccacino.jpg",
-    "/images/MoreAboutMe/codecubicle.jpg",
+    "/images/moreAboutMe/coding.png",
+    "/images/moreAboutMe/codechef.png",
+    "/images/moreAboutMe/github.png",
+    "/images/moreAboutMe/haccacino.jpg",
+    "/images/moreAboutMe/codecubicle.jpg",
   ];
 
   const casualImages = [
-    "/images/MoreAboutMe/cooking.jpeg",
-    "/images/MoreAboutMe/outside.jpeg",
-    "/images/MoreAboutMe/rank.webp",
+    "/images/moreAboutMe/cooking.jpeg",
+    "/images/moreAboutMe/pune.jpeg",
+    "/images/moreAboutMe/ascrank.webp",
   ];
 
   return (
