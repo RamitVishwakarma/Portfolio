@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Every round runs through one Express API backed by Postgres">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#b0b0b0"/>
+    </marker>
+  </defs>
+  <rect width="760" height="480" fill="#000000"/>
+  <text x="24" y="36" font-size="15" font-weight="700" fill="#FFFFFF">Every round runs through one Express API backed by Postgres</text>
+
+  <g fill="none" stroke="#b0b0b0" stroke-width="1.25">
+    <path d="M380 108V140" marker-end="url(#arrow)"/>
+    <path d="M380 212V244" marker-end="url(#arrow)"/>
+    <path d="M380 316V344"/>
+    <path d="M107 344H653"/>
+    <path d="M107 344V372" marker-end="url(#arrow)"/>
+    <path d="M289 344V372" marker-end="url(#arrow)"/>
+    <path d="M471 344V372" marker-end="url(#arrow)"/>
+    <path d="M653 344V372" marker-end="url(#arrow)"/>
+  </g>
+  <text x="390" y="232" font-size="11.5" fill="#b0b0b0">REST over HTTPS, cookie auth</text>
+
+  <rect x="230" y="60" width="300" height="48" rx="8" fill="none" stroke="#b0b0b0" stroke-width="1.25"/>
+  <text x="380" y="88" text-anchor="middle" font-weight="700" fill="#FFFFFF">Applicants and core team</text>
+
+  <rect x="170" y="140" width="420" height="72" rx="8" fill="none" stroke="#b0b0b0" stroke-width="1.25"/>
+  <text x="380" y="164" text-anchor="middle" font-weight="700" fill="#FFFFFF">Next.js 15 frontend on Vercel</text>
+  <text x="380" y="182" text-anchor="middle" font-size="11.5" fill="#d1d1d1">TypeScript, Tailwind, Zustand, Monaco code editor</text>
+  <text x="380" y="198" text-anchor="middle" font-size="11.5" fill="#d1d1d1">Vercel Web Analytics and Speed Insights</text>
+
+  <rect x="170" y="244" width="420" height="72" rx="8" fill="none" stroke="#b0b0b0" stroke-width="1.25"/>
+  <text x="380" y="268" text-anchor="middle" font-weight="700" fill="#FFFFFF">Express API in Docker</text>
+  <text x="380" y="286" text-anchor="middle" font-size="11.5" fill="#d1d1d1">JWT cookies and Google OAuth through Passport</text>
+  <text x="380" y="302" text-anchor="middle" font-size="11.5" fill="#d1d1d1">Quiz, tasks, contest, admin dashboard, Excel export</text>
+
+  <rect x="24" y="372" width="166" height="72" rx="8" fill="#a8fe96" fill-opacity="0.12" stroke="#a8fe96" stroke-width="2"/>
+  <text x="107" y="396" text-anchor="middle" font-weight="700" fill="#FFFFFF">PostgreSQL</text>
+  <text x="107" y="414" text-anchor="middle" font-size="11.5" fill="#FFFFFF">Prisma ORM</text>
+  <text x="107" y="430" text-anchor="middle" font-size="11.5" fill="#FFFFFF">Docker + health check</text>
+
+  <rect x="206" y="372" width="166" height="72" rx="8" fill="none" stroke="#b0b0b0" stroke-width="1.25"/>
+  <text x="289" y="396" text-anchor="middle" font-weight="700" fill="#FFFFFF">Judge0</text>
+  <text x="289" y="414" text-anchor="middle" font-size="11.5" fill="#d1d1d1">Runs submitted code</text>
+  <text x="289" y="430" text-anchor="middle" font-size="11.5" fill="#d1d1d1">against my test cases</text>
+
+  <rect x="388" y="372" width="166" height="72" rx="8" fill="none" stroke="#b0b0b0" stroke-width="1.25"/>
+  <text x="471" y="396" text-anchor="middle" font-weight="700" fill="#FFFFFF">AWS S3</text>
+  <text x="471" y="414" text-anchor="middle" font-size="11.5" fill="#d1d1d1">Resumes and</text>
+  <text x="471" y="430" text-anchor="middle" font-size="11.5" fill="#d1d1d1">profile photos</text>
+
+  <rect x="570" y="372" width="166" height="72" rx="8" fill="none" stroke="#b0b0b0" stroke-width="1.25"/>
+  <text x="653" y="396" text-anchor="middle" font-weight="700" fill="#FFFFFF">Email + Web Push</text>
+  <text x="653" y="414" text-anchor="middle" font-size="11.5" fill="#d1d1d1">Nodemailer updates</text>
+  <text x="653" y="430" text-anchor="middle" font-size="11.5" fill="#d1d1d1">Browser notifications</text>
+
+  <text x="24" y="468" font-size="11.5" fill="#b0b0b0">Highlighted: Postgres, where deployment day went wrong.</text>
+</svg>
