@@ -8,10 +8,9 @@ export type Post = {
 export const posts: Post[] = [
   {
     slug: "recruitment-platform-v2",
-    title:
-      "Recruitment Platform V2: Building It, Shipping It, and the Postgres Night Before Launch",
+    title: "Recruitment Platform V2 and the Postgres evening before launch",
     summary:
-      "How I built the platform 500 students used to apply to GDSC JSSATEN, and how I rescued the production database six hours before launch.",
+      "How I built the platform 500 students used to apply to GDSC JSSATEN, and how I fixed its production database six hours before launch.",
     date: "2025-09-06",
   },
 ];
