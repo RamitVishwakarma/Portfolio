@@ -81,14 +81,15 @@ const ProjectContainer = () => {
                   <p className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
                     Recruitment-Platform facilitated the onboarding of over 500
                     applicants and streamlined task completion, project
-                    submission, and aptitude rounds significantly speeding up
-                    the recruitment process for the GDSC team.
+                    submission, aptitude rounds and coding contest,
+                    significantly speeding up the recruitment process for the
+                    GDSC team.
                   </p>
                 </div>
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
-                    github="https://github.com/RamitVishwakarma/Recruitment-Platform"
-                    live="https://recplatform.ramitvishwakarma.in/"
+                    github="https://github.com/RamitVishwakarma/RecruitmentPlatformV2Frontend"
+                    live="https://recruitments2025.ramitvishwakarma.in/"
                     color="#e3bebf"
                     classname="bg-[#753f40] hover:bg-[#8c494b] text-[#e3bebf]"
                   />
@@ -146,7 +147,7 @@ const ProjectContainer = () => {
                 <div className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/Course21-Admin-Panel"
-                    live="/course21"
+                    live="https://course21.ramitvishwakarma.in/"
                     color="#acebff"
                     classname="bg-[#004fab] hover:bg-[#0057db] text-[#acebff]"
                   />
