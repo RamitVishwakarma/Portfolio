@@ -31,7 +31,7 @@ const Navbar = () => {
           </li>
           <a
             target="_blank"
-            href="https://docs.google.com/document/d/1K9fCd5mHKVKd0_kOI8H9YsXCUrvcL4hYSyI4L4BcYqE/edit?usp=sharing"
+            href="https://drive.google.com/file/d/1sY-s29YtqxV-ZEI2bRugIjY_wEE4e4HY/view?usp=sharing"
             className="hover:text-green cursor-pointer">
             Resume
           </a>
