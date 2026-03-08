@@ -12,7 +12,7 @@
     "@vercel/speed-insights": "^1.0.12",
     "framer-motion": "^12.0.0-alpha.0",
     "mailgun-js": "^0.22.0",
-    "next": "14.2.4",
+    "next": "14.2.35",
     "nodemailer": "^6.9.14",
     "react": "^18",
     "react-dom": "^18",
