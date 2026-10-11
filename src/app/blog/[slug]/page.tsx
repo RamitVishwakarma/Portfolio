@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Wrapper from "@/components/Wrapper";
 import Markdown from "@/components/Blog/Markdown";
 import { formatDate, getPost, posts } from "@/content/blog/posts";
+import { readingMinutes } from "@/content/blog/read";
 
 type Props = { params: { slug: string } };
 
@@ -41,7 +42,9 @@ const page = ({ params }: Props) => {
         <h1 className="text-white text-4xl md:text-5xl font-ProductSans font-bold pt-6 pb-4">
           {post.title}
         </h1>
-        <p className="text-grey-300 pb-10">{formatDate(post.date)}</p>
+        <p className="text-grey-300 pb-10">
+          {formatDate(post.date)} · {readingMinutes(content)} min read
+        </p>
         <Markdown content={content} />
       </article>
     </Wrapper>

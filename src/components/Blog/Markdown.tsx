@@ -38,6 +38,12 @@ const components: Components = {
       {children}
     </code>
   ),
+  pre: ({ children }) => (
+    <pre className="bg-grey-900 rounded-xl p-4 my-6 overflow-x-auto text-sm leading-6 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-sm [&_code]:text-grey-200">
+      {children}
+    </pre>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
   blockquote: ({ children }) => (
     <blockquote className="border-l-4 border-green pl-4 my-6 italic [&>p]:pb-0">
       {children}
@@ -61,15 +67,27 @@ const components: Components = {
     </td>
   ),
   // Images sit inside a <p>, so the caption uses spans instead of <figure>.
+  // An .mp4 source renders as a video, with a poster of the same name in .webp.
   img: ({ src, alt, title }) => (
     <span className="block my-4">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        className="w-full rounded-xl border border-grey-900"
-      />
+      {src?.endsWith(".mp4") ? (
+        <video
+          src={src}
+          poster={src.replace(/\.mp4$/, ".webp")}
+          aria-label={alt}
+          controls
+          preload="none"
+          className="w-full rounded-xl border border-grey-900"
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          className="w-full rounded-xl border border-grey-900"
+        />
+      )}
       {title && (
         <span className="block text-center text-sm text-grey-300 pt-2">
           {title}
