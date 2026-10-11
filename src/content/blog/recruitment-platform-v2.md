@@ -1,4 +1,4 @@
-In April 2025, about 500 students applied to Google Developer Groups at JSS Academy of Technical Education, Noida (GDSC JSSATEN) through one platform I built myself. Recruitment Platform V2 took each applicant from sign-up through a quiz, a domain task, a live coding contest and an interview. I spent four months building it, and on the evening before launch I had to rebuild its Postgres migrations from scratch.
+In April 2025, about 500 students applied to Google Developer Groups at JSS Academy of Technical Education, Noida (GDSC JSSATEN) through one platform I built myself as the chapter's lead. Recruitment Platform V2 took each applicant from sign-up through a quiz, a domain task, a live coding contest and an interview. I spent four months building it, and on the evening before launch I had to rebuild its Postgres migrations from scratch.
 
 ## Why I built it
 
