@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Ramit Vishwakarma",
     description:
-      "Frontend and full stack engineer in Noida. Projects, experience and writing on what I have built and shipped.",
+      "Full stack developer in Noida. Projects, experience and writing on what I have built and shipped.",
     url: "/",
     siteName: "Ramit Vishwakarma",
     images: ["/images/Ramit.jpg"],

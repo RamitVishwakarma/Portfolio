@@ -13,17 +13,17 @@ export interface ExperienceItem {
 export const experience: ExperienceItem[] = [
   {
     company: "Weya AI",
-    role: "Frontend Developer",
+    role: "Full Stack Developer",
     dates: "Aug 2025 to present",
     place: "Noida",
     logo: "/images/logos/weya.avif",
     summary:
-      "Weya builds voice, WhatsApp and video AI agents for businesses. I joined as a frontend intern and moved to full time in March 2026. My work covers the Next.js dashboard, the Node.js API, Postgres and the Go services.",
+      "Weya builds voice, WhatsApp and video AI agents for businesses. I joined as a software developer intern in August 2025 and have been a full stack developer since March 2026, across the Next.js dashboard, the Node.js API, Postgres and the Go services.",
     highlights: [
-      "Built a React Flow builder for multi-stage voice agents, and Call Journey, a Sankey view of how calls move through an agent's stages.",
-      "Designed agent versioning with auto-save across three repositories.",
+      "Shipped a React Flow builder for multi-stage voice agents, and Call Journey, a Sankey view of how calls move through an agent's stages.",
+      "Shipped agent versioning with auto-save across the dashboard, the API and the database.",
       "Moved the backend of the embeddable chat and voice widget to serverless functions.",
-      "Tracked down production problems, including a 27-minute database query and pod restarts caused by a CSV export.",
+      "Fixed production problems end to end, including a 27-minute database query and pod restarts caused by a CSV export.",
     ],
   },
   {
@@ -34,10 +34,11 @@ export const experience: ExperienceItem[] = [
     logo: "/images/logos/konnectyari.png",
     logoOnLight: true,
     summary:
-      "Worked on cloudX, KonnectBox's multi-tenant platform for hands-on cloud labs, in Next.js 14 and TypeScript.",
+      "Built cloudX, KonnectBox's multi-tenant platform for hands-on cloud labs, in Next.js 14 and TypeScript, from the screens to the server controllers behind them.",
     highlights: [
-      "Built the cohorts, tenant management, catalogue and lab template modules.",
-      "Added Azure as a second cloud provider next to AWS.",
+      "Built the cohorts, tenant management, catalogue, cloud resources, my-labs and lab template modules.",
+      "Added Azure as a second cloud provider next to AWS, with VM templates for AWS, Azure and vCenter.",
+      "Built role management inside tenants on top of Keycloak single sign-on.",
     ],
   },
   {
@@ -58,9 +59,11 @@ export const experience: ExperienceItem[] = [
     dates: "2023 to 2025",
     place: "Noida",
     logo: "/images/logos/gdsc.png",
-    summary: "Built and ran the club's recruitment platform for two seasons.",
+    summary:
+      "Built and ran the club's recruitment platform for two seasons, and led HackHive, the club's GSSoC 2024 open-source project.",
     highlights: [
-      "About 500 students applied through Recruitment Platform V2 in April 2025, including a live coding round judged by Judge0.",
+      "Over 500 students applied through Recruitment 2k24 in 2024.",
+      "Recruitment Platform V2 had 1,433 visitors and 12,067 page views in five days of April 2025, with a live coding round judged by Judge0.",
     ],
   },
 ];
