@@ -36,6 +36,22 @@ V2 is two repositories. The first is a Next.js 15 frontend, [RecruitmentPlatform
 
 The API handles every round. It hands out quiz questions, stores task links, sends contest code to Judge0 and checks the output against test cases kept in the repo. Prisma defines the data in 11 models, including `User`, `Question` and `ContestSubmission`. Swagger documents the API at `/docs`.
 
+The API and Judge0 ran on AWS EC2 in Mumbai, each on its own t3.medium instance. During recruitment week the API server's CPU never went above 3.5%, and the AWS bill for all of April 2025 came to 15.22 dollars.
+
+![The EC2 console with the recruitment-platform API and Judge0 on separate t3.medium instances. Instance IDs and addresses are blurred.](/blog/recruitment-platform-v2/ec2-instances.webp "The API and Judge0 on separate EC2 instances")
+
+![CloudWatch for the API instance from 12 to 17 April 2025. CPU peaked at 3.45%.](/blog/recruitment-platform-v2/cloudwatch.webp "CloudWatch for the API server, 12 to 17 April 2025")
+
+![AWS cost and usage for April 2025: 15.22 dollars in total, 0.72 dollars a day.](/blog/recruitment-platform-v2/aws-cost.webp "AWS cost for April 2025")
+
+During the drive the API and Judge0 ran on AWS EC2 in Mumbai, each on its own t3.medium instance. The API server's CPU never went above 3.5% that week, and the whole AWS bill for April 2025 came to 15.22 dollars.
+
+![The EC2 console with the recruitment-platform API and Judge0 on separate t3.medium instances. Instance IDs and addresses are blurred.](/blog/recruitment-platform-v2/ec2-instances.webp "The API and Judge0 on separate EC2 instances")
+
+![CloudWatch for the API instance from 12 to 17 April 2025. CPU peaked at 3.45%.](/blog/recruitment-platform-v2/cloudwatch.webp "CloudWatch for the API server, 12 to 17 April 2025")
+
+![AWS cost and usage for April 2025: 15.22 dollars in total, 0.72 dollars a day](/blog/recruitment-platform-v2/aws-cost.webp "AWS cost for April 2025")
+
 ## The Postgres evening before launch
 
 On 12 April 2025, about six hours before the quiz opened at midnight, the production database would not migrate. The fix took about 90 minutes and seven commits. The commit messages show how the evening went better than I can.
@@ -80,7 +96,25 @@ The build took about 470 commits across the two repositories and 109 merged pull
 
 The frontend shipped with Vercel Web Analytics and Speed Insights, so Vercel collected page views and Core Web Vitals during recruitment week.
 
-> Coming soon: visitors, page views, the peak day and top pages for 12 to 18 April 2025.
+From 11 to 15 April 2025 the site had 1,433 visitors and 12,067 page views, with a 17% bounce rate. Traffic jumped on the evening of 12 April, hours before the quiz opened at midnight, and stayed high through the quiz and the task round after it.
+
+![Vercel Web Analytics for 11 to 15 April 2025: 1,433 visitors, 12,067 page views and a 17% bounce rate.](/blog/recruitment-platform-v2/analytics-apr-11-15.webp "Vercel Web Analytics, 11 to 15 April 2025")
+
+The dashboard was the busiest page, with 2,800 views from 973 visitors, more than the landing page. Applicants came back to it between rounds to see what had unlocked. The aptitude quiz page had 925 views, the task round 469, and the first coding problem 223.
+
+![Top pages for the same five days: the landing page, dashboard, register, login, quiz and coding problems.](/blog/recruitment-platform-v2/top-pages.webp "Top pages, 11 to 15 April 2025")
+
+Three in four referred visitors came from Instagram links. 97% of visitors were in India and 68% used a phone. Desktop visitors were only a third of the audience but made almost half the page views, 5,600 of 12,067, which fits the quiz and coding rounds being easier on a laptop.
+
+![Referrers, countries, devices and operating systems for 11 to 15 April 2025.](/blog/recruitment-platform-v2/audience.webp "Where visitors came from and what they used")
+
+Speed Insights gave the site a Real Experience Score of 100 on desktop for 15 to 21 April. Largest Contentful Paint was 1.28 seconds, Interaction to Next Paint 88 milliseconds and layout shift zero. The only route under 90 was the quiz page, at 85.
+
+![Speed Insights for 15 to 21 April 2025: Real Experience Score 100, FCP 0.74 s, LCP 1.28 s, INP 88 ms, CLS 0.](/blog/recruitment-platform-v2/speed-insights.webp "Speed Insights on desktop, 15 to 21 April 2025")
+
+In the 24 hours around the quiz, Vercel's firewall handled 58,000 requests and blocked 10 of them as DDoS mitigation.
+
+![Vercel Firewall for the day of the quiz: 58.0k requests, 57.9k allowed, 10 denied.](/blog/recruitment-platform-v2/firewall.webp "Vercel Firewall, 24 hours around the quiz")
 
 ## Where V2 fits in my journey
 
@@ -99,4 +133,14 @@ These are my projects so far, in order:
 - **Make health checks explicit.** Postgres with `pg_isready` plus `depends_on: service_healthy` kept the API from starting before the database was ready.
 - **Plan for idle databases.** A `/wakeDb` ping costs one query and saves a candidate from a cold-start timeout.
 
-> Coming soon: screenshots of the landing page, the applicant dashboard, the coding contest editor and the admin dashboard.
+## Screenshots
+
+![The landing page at recruitments2025.ramitvishwakarma.in.](/blog/recruitment-platform-v2/landing.webp "The landing page")
+
+![An applicant's dashboard showing the countdown to the quiz on the evening of 12 April 2025.](/blog/recruitment-platform-v2/quiz-countdown.webp "Quiz countdown, applicant view")
+
+![The API response for a coding contest submission: 12 of 12 test cases passed, score 100.](/blog/recruitment-platform-v2/contest-submission.webp "A contest submission judged against 12 test cases")
+
+![The interview shortlist email the platform sent on 16 April 2025.](/blog/recruitment-platform-v2/shortlist-email.webp "Interview shortlist email")
+
+![The admin applicant table with aptitude, project, shortlist and interview status for each applicant. Names are blurred.](/blog/recruitment-platform-v2/admin-applicants.webp "Admin applicant table, names blurred")

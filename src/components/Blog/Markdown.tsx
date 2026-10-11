@@ -60,9 +60,22 @@ const components: Components = {
       {children}
     </td>
   ),
-  img: ({ src, alt }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className="w-full rounded-xl my-4" />
+  // Images sit inside a <p>, so the caption uses spans instead of <figure>.
+  img: ({ src, alt, title }) => (
+    <span className="block my-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className="w-full rounded-xl border border-grey-900"
+      />
+      {title && (
+        <span className="block text-center text-sm text-grey-300 pt-2">
+          {title}
+        </span>
+      )}
+    </span>
   ),
 };
 
