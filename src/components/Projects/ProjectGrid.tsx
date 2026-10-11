@@ -157,6 +157,15 @@ const ProjectGrid = () => {
                     Read the story
                   </Link>
                 )}
+                {project.press && (
+                  <a
+                    href={project.press}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-pink hover:underline underline-offset-4">
+                    In the news
+                  </a>
+                )}
               </div>
             </div>
           </article>

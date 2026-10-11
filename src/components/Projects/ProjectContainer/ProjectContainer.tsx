@@ -110,6 +110,7 @@ const FeaturedCard = ({ project }: { project: Project }) => {
               github={project.github}
               live={project.live}
               story={project.story}
+              press={project.press}
               color={theme.buttonIcon}
               classname={theme.button}
             />

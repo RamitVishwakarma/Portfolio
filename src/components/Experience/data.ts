@@ -18,8 +18,9 @@ export const experience: ExperienceItem[] = [
     place: "Noida",
     logo: "/images/logos/weya.avif",
     summary:
-      "Weya builds voice, WhatsApp and video AI agents for businesses. I joined as a software developer intern in August 2025 and have been a full stack developer since March 2026, across the Next.js dashboard, the Node.js API, Postgres and the Go services.",
+      "Weya builds voice, WhatsApp and video AI agents for businesses. I joined as a software developer intern in August 2025 and have been a full stack developer since March 2026, across the Next.js dashboard, the Node.js API, Postgres, the Go services and Avalok, the video agent app I built.",
     highlights: [
+      "Built Avalok, the LiveKit video agent app behind Dharavi Didi, the AI assistant the Adani Group's Dharavi redevelopment company launched in July 2026. It handled 15,163 video sessions from 4,287 people in its first 10 weeks.",
       "Shipped a React Flow builder for multi-stage voice agents, and Call Journey, a Sankey view of how calls move through an agent's stages.",
       "Shipped agent versioning with auto-save across the dashboard, the API and the database.",
       "Moved the backend of the embeddable chat and voice widget to serverless functions.",

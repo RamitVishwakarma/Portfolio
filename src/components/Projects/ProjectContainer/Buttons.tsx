@@ -9,12 +9,14 @@ const Buttons = ({
   github,
   live,
   story,
+  press,
 }: {
   classname: string;
   color: string;
   github?: string;
   live?: string;
   story?: string;
+  press?: string;
 }) => {
   return (
     <>
@@ -42,6 +44,14 @@ const Buttons = ({
           className={`${classname} px-6 py-1.5 rounded-md flex items-center gap-2 font-medium text-nowrap max-sm:px-2`}>
           Read the story
         </Link>
+      )}
+      {press && (
+        <a
+          href={press}
+          target="_blank"
+          className={`${classname} px-6 py-1.5 rounded-md flex items-center gap-2 font-medium text-nowrap max-sm:px-2`}>
+          In the news
+        </a>
       )}
     </>
   );

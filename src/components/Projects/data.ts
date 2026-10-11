@@ -18,11 +18,29 @@ export interface Project {
   live?: string;
   github?: string;
   story?: string;
+  // Press coverage of the project.
+  press?: string;
   // Featured projects show on the home page, in this order, with this theme.
   featured?: Theme;
 }
 
 export const projects: Project[] = [
+  {
+    slug: "dharavi-didi",
+    name: "Dharavi Didi",
+    year: "2026",
+    categories: ["Full stack", "Client work"],
+    description:
+      "The 24x7 AI assistant the Adani Group's Dharavi redevelopment company launched for Dharavi's residents, on video calls, voice calls and WhatsApp. Its video calls run on Avalok, the LiveKit video agent app I built at Weya AI.",
+    metrics: ["15,163 video sessions", "4,287 people", "First 10 weeks"],
+    tags: ["Next.js 16", "LiveKit", "Redis", "PostgreSQL", "OpenTelemetry", "GKE"],
+    accent: "bg-orange",
+    poster: "/images/projects/dharavi-didi.webp",
+    video: "/videos/projects/dharavi-didi.mp4",
+    press:
+      "https://www.businesstoday.in/latest/corporate/story/dharavi-didi-adani-launches-ai-companion-for-verified-redevelopment-updates-544743-2026-07-23",
+    featured: "rose",
+  },
   {
     slug: "recruitment-platform-v2",
     name: "Recruitment Platform V2",
@@ -38,7 +56,7 @@ export const projects: Project[] = [
     live: "https://recruitments2025.ramitvishwakarma.in",
     github: "https://github.com/RamitVishwakarma/RecruitmentPlatformV2Frontend",
     story: "/blog/recruitment-platform-v2",
-    featured: "rose",
+    featured: "blue",
   },
   {
     slug: "janus",
@@ -55,7 +73,6 @@ export const projects: Project[] = [
     live: "https://janus.ramitvishwakarma.in",
     github: "https://github.com/RamitVishwakarma/Janus",
     story: "/blog/janus-macos-account-switcher",
-    featured: "blue",
   },
   {
     slug: "twin-crown",
