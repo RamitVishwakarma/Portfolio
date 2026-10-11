@@ -183,7 +183,7 @@ export const projects: Project[] = [
     year: "2024",
     categories: ["Frontend", "Client work"],
     description:
-      "An admin panel for course creators, with drag-and-drop ordering of courses, modules and lectures, user and role management, and video processing and transcoding.",
+      "An admin panel for course creators, with drag-and-drop ordering of courses, modules and lectures, roles and permissions, and HLS playback with transcoding status for every lecture.",
     metrics: ["Drag and drop", "Role management"],
     tags: ["React", "TypeScript", "Tailwind", "dnd-kit"],
     accent: "bg-blue",
