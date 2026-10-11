@@ -44,12 +44,33 @@ const Experience = () => {
                   </p>
                 </div>
               </div>
-              <p className="text-grey-200 leading-7 pt-4">{item.summary}</p>
+              {item.summary && (
+                <p className="text-grey-200 leading-7 pt-4">{item.summary}</p>
+              )}
               <ul className="list-disc pl-6 pt-2 text-grey-200 leading-7 space-y-1">
                 {item.highlights.map((h) => (
                   <li key={h}>{h}</li>
                 ))}
               </ul>
+              {item.earlier?.map((earlier) => (
+                <div
+                  key={earlier.role}
+                  className="mt-5 pt-4 border-t border-grey-900">
+                  <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
+                    <h4 className="text-white text-lg font-ProductSans font-bold">
+                      {earlier.role}
+                    </h4>
+                    <span className="text-grey-300 text-sm pt-0.5">
+                      {earlier.dates}
+                    </span>
+                  </div>
+                  <ul className="list-disc pl-6 pt-2 text-grey-200 leading-7 space-y-1">
+                    {earlier.highlights.map((h) => (
+                      <li key={h}>{h}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </li>
           ))}
         </ol>

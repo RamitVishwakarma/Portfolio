@@ -1,3 +1,9 @@
+export interface EarlierRole {
+  role: string;
+  dates: string;
+  highlights: string[];
+}
+
 export interface ExperienceItem {
   company: string;
   role: string;
@@ -6,25 +12,42 @@ export interface ExperienceItem {
   logo?: string;
   // Dark logos need a light backing to show on the black page.
   logoOnLight?: boolean;
-  summary: string;
+  summary?: string;
   highlights: string[];
+  // Earlier positions at the same company, newest first.
+  earlier?: EarlierRole[];
 }
 
 export const experience: ExperienceItem[] = [
   {
     company: "Weya AI",
     role: "Full Stack Developer",
-    dates: "Aug 2025 to present",
+    dates: "Mar 2026 to present",
     place: "Noida",
     logo: "/images/logos/weya.avif",
     summary:
-      "Weya builds voice, WhatsApp and video AI agents for businesses. I joined as a software developer intern in August 2025 and have been a full stack developer since March 2026, across the Next.js dashboard, the Node.js API, Postgres, the Go services and Avalok, the video agent app I built.",
+      "Weya builds voice, WhatsApp and video AI agents for businesses. I work across the Next.js dashboard, the Node.js API, PostgreSQL, the Go services and Avalok, the video agent app I built.",
     highlights: [
-      "Built Avalok, the LiveKit video agent app behind Dharavi Didi, the AI assistant the Adani Group's Dharavi redevelopment company launched in July 2026. It handled 15,163 video sessions from 4,287 people in its first 10 weeks.",
-      "Shipped a React Flow builder for multi-stage voice agents, and Call Journey, a Sankey view of how calls move through an agent's stages.",
-      "Shipped agent versioning with auto-save across the dashboard, the API and the database.",
-      "Moved the backend of the embeddable chat and voice widget to serverless functions.",
-      "Fixed production problems end to end, including a 27-minute database query and pod restarts caused by a CSV export.",
+      "Built Avalok, the LiveKit video agent app behind Dharavi Didi, the Adani Group's 24x7 AI assistant for the Dharavi redevelopment. It handled 15,163 video sessions from 4,287 people in its first 10 weeks.",
+      "Built Avalok in Next.js 16 with signed campaign links, a Redis concurrency cap per organization, per-IP rate limits, LiveKit recordings to S3 and OpenTelemetry, autoscaling on GKE from 1 to 10 pods.",
+      "Shipped Call Journey across the API, Postgres and the dashboard. Teams define ordered stages on an agent, a rollup counts every dial against them, and campaign analytics draws the flow as a Sankey chart.",
+      "Shipped agent versioning with auto-save across 3 repositories.",
+      "Root-caused a production Postgres outage at 100% CPU, and rewrote a query that averaged 27 minutes per call as a LATERAL join on existing indexes.",
+      "Built a Go service that streams log exports from Postgres as gzip, 4.8x smaller on a 301,000-row export, running as a Cloud Run function that costs nothing when idle.",
+      "Traced random API pod restarts to in-memory CSV exports that peaked at 663 MB, and replaced them with streamed exports.",
+      "Run production releases on a Postgres database with 2 million calls and 4.8 million call logs.",
+    ],
+    earlier: [
+      {
+        role: "Software Developer Intern, Frontend",
+        dates: "Aug 2025 to Mar 2026",
+        highlights: [
+          "Moved the dashboard's server state to TanStack Query and lazy-loaded heavy routes, taking Largest Contentful Paint from 3 to 4 seconds down to under 1 second.",
+          "Built a React Flow builder for multi-stage voice agents, where each conversation stage is a node, with client validation that mirrors the API's rules.",
+          "Built CSV lead upload with in-browser validation that checks 100,000+ rows in under 2 seconds before anything reaches the API.",
+          "Built the live agent testing screen, where teams try a voice agent from the browser before they launch a campaign.",
+        ],
+      },
     ],
   },
   {
@@ -34,24 +57,25 @@ export const experience: ExperienceItem[] = [
     place: "Remote",
     logo: "/images/logos/konnectyari.png",
     logoOnLight: true,
-    summary:
-      "Built cloudX, KonnectBox's multi-tenant platform for hands-on cloud labs, in Next.js 14 and TypeScript, from the screens to the server controllers behind them.",
+    summary: "KonnectBox's cloudX is a multi-tenant platform for hands-on cloud labs.",
     highlights: [
-      "Built the cohorts, tenant management, catalogue, cloud resources, my-labs and lab template modules.",
-      "Added Azure as a second cloud provider next to AWS, with VM templates for AWS, Azure and vCenter.",
+      "Built cloudX in Next.js 14 and TypeScript, including its cohorts, tenant management, catalogue, cloud resources and lab template modules.",
+      "Added Azure as a second cloud provider next to AWS, with Azure lab templates, catalogue integration and an explore-lab flow.",
+      "Built the create and edit flows for AWS, Azure and vCenter VM templates with React Hook Form, Zod and shadcn/ui.",
       "Built role management inside tenants on top of Keycloak single sign-on.",
+      "Wrote the Next.js server controllers and services behind those screens, with 95 merged commits in 5 months.",
     ],
   },
   {
     company: "Freelance",
     role: "Web Developer",
-    dates: "2024 to present",
+    dates: "Apr 2024 to present",
     place: "Remote",
     summary: "Sites and admin panels for clients.",
     highlights: [
-      "Twin Crown, a real-estate sales site with 3D floor plans and a voice sales chat.",
-      "Course21, the admin panel for a course-selling platform.",
-      "IndustrialAI, a responsive landing page delivered in three days.",
+      "Twin Crown: the sales site for a residential project at twincrown.co, with 3D models of all 11 floor plans in three.js, a text and voice sales chat, and automated follow-up on abandoned chats.",
+      "Course21: an admin panel for course creators, with drag-and-drop ordering of courses, modules and lectures, roles and permissions, and HLS playback for every lecture.",
+      "IndustrialAI: a pixel-perfect, responsive landing page in Next.js, delivered in 3 days against a 1-week deadline.",
     ],
   },
   {
@@ -60,11 +84,10 @@ export const experience: ExperienceItem[] = [
     dates: "2023 to 2025",
     place: "Noida",
     logo: "/images/logos/gdsc.png",
-    summary:
-      "Built and ran the club's recruitment platform for two seasons, and led HackHive, the club's GSSoC 2024 open-source project.",
     highlights: [
-      "Over 500 students applied through Recruitment 2k24 in 2024.",
-      "Recruitment Platform V2 had 1,433 visitors and 12,067 page views in five days of April 2025, with a live coding round judged by Judge0.",
+      "Built and ran the club's recruitment platform for two seasons. Over 500 students applied through Recruitment 2k24 in 2024.",
+      "Recruitment Platform V2 had 1,433 visitors and 12,067 page views in five days of April 2025, with a live coding round judged by Judge0 that I built end to end.",
+      "Led HackHive, the club's GSSoC 2024 open-source project, building its React and Vite frontend and reviewing pull requests from 22 contributors.",
     ],
   },
 ];
