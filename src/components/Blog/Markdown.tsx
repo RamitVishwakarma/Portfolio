@@ -38,6 +38,12 @@ const components: Components = {
       {children}
     </code>
   ),
+  pre: ({ children }) => (
+    <pre className="bg-grey-900 rounded-xl p-4 my-6 overflow-x-auto text-sm leading-6 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-sm [&_code]:text-grey-200">
+      {children}
+    </pre>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
   blockquote: ({ children }) => (
     <blockquote className="border-l-4 border-green pl-4 my-6 italic [&>p]:pb-0">
       {children}

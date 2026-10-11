@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Wrapper from "@/components/Wrapper";
 import { formatDate, posts } from "@/content/blog/posts";
+import { readPost, readingMinutes } from "@/content/blog/read";
 
 export const metadata: Metadata = {
   title: "Blog | Ramit Vishwakarma",
@@ -12,9 +13,16 @@ const page = () => {
   return (
     <Wrapper>
       <main className="py-20 max-w-3xl mx-auto">
-        <h1 className="text-white text-6xl text-center pb-10 font-Anton">
+        <h1 className="text-white text-6xl text-center pb-4 font-Anton">
           Blog
         </h1>
+        <p className="text-grey-300 text-center pb-10">
+          <a
+            href="/blog/rss.xml"
+            className="hover:text-green underline underline-offset-4">
+            Subscribe with RSS
+          </a>
+        </p>
         <ul className="flex flex-col gap-6">
           {posts.map((post) => (
             <li key={post.slug}>
@@ -22,7 +30,8 @@ const page = () => {
                 href={`/blog/${post.slug}`}
                 className="block rounded-xl border border-grey-900 p-6 hover:border-green group">
                 <p className="text-grey-300 text-sm pb-2">
-                  {formatDate(post.date)}
+                  {formatDate(post.date)} ·{" "}
+                  {readingMinutes(readPost(post.slug))} min read
                 </p>
                 <h2 className="text-white text-2xl font-ProductSans font-bold pb-2 group-hover:text-green">
                   {post.title}
