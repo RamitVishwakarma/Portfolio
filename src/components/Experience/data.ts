@@ -80,14 +80,26 @@ export const experience: ExperienceItem[] = [
   },
   {
     company: "GDG On Campus JSSATEN",
-    role: "Core Team Member",
-    dates: "2023 to 2025",
+    role: "GDG Lead",
+    dates: "2024 to 2025",
     place: "Noida",
     logo: "/images/logos/gdsc.png",
+    summary:
+      "Three years with the chapter: a member, then Web Lead, then lead of the whole chapter.",
     highlights: [
-      "Built and ran the club's recruitment platform for two seasons. Over 500 students applied through Recruitment 2k24 in 2024.",
-      "Recruitment Platform V2 had 1,433 visitors and 12,067 page views in five days of April 2025, with a live coding round judged by Judge0 that I built end to end.",
-      "Led HackHive, the club's GSSoC 2024 open-source project, building its React and Vite frontend and reviewing pull requests from 22 contributors.",
+      "Led the chapter and ran its 2025 recruitment on Recruitment Platform V2, which had 1,433 visitors and 12,067 page views in five days of April 2025.",
+      "Built the platform's live coding round end to end, with submissions judged by a self-hosted Judge0 server.",
+    ],
+    earlier: [
+      {
+        role: "Web Lead",
+        dates: "2023 to 2024",
+        highlights: [
+          "Led the web team and built Recruitment 2k24, which took over 500 applicants through the 2024 season.",
+          "Led HackHive, the chapter's GSSoC 2024 open-source project, building its React and Vite frontend and reviewing pull requests from 22 contributors.",
+        ],
+      },
+      { role: "Member", dates: "2022 to 2023", highlights: [] },
     ],
   },
 ];

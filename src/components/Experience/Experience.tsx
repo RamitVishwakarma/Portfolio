@@ -64,11 +64,13 @@ const Experience = () => {
                       {earlier.dates}
                     </span>
                   </div>
-                  <ul className="list-disc pl-6 pt-2 text-grey-200 leading-7 space-y-1">
-                    {earlier.highlights.map((h) => (
-                      <li key={h}>{h}</li>
-                    ))}
-                  </ul>
+                  {earlier.highlights.length > 0 && (
+                    <ul className="list-disc pl-6 pt-2 text-grey-200 leading-7 space-y-1">
+                      {earlier.highlights.map((h) => (
+                        <li key={h}>{h}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </li>
