@@ -55,6 +55,20 @@ export const posts: Post[] = [
       "How I built the platform 500 students used to apply to GDSC JSSATEN, and how I fixed its production database six hours before launch.",
     date: "2025-09-06",
   },
+  {
+    slug: "zealicon-2025",
+    title: "Zealicon 2025: 4,971 visitors in a week and a Vercel team paused",
+    summary:
+      "I built the platform behind JSSATEN's college fest, from Razorpay passes and Zeal IDs to the site and its deploys. What the fest week looked like from the dashboards.",
+    date: "2025-05-24",
+  },
+  {
+    slug: "recruitment-2k24",
+    title: "Recruitment 2k24, my first production project",
+    summary:
+      "The GDSC JSSATEN recruitment platform I built in 2024: registration, domain quizzes, project submissions and an admin panel that took 500+ applicants through one season.",
+    date: "2024-07-22",
+  },
 ];
 
 export const getPost = (slug: string) => posts.find((p) => p.slug === slug);

@@ -120,7 +120,7 @@ In the 24 hours around the quiz, Vercel's firewall handled 58,000 requests and b
 
 These are my projects so far, in order:
 
-1. **Recruitment 2k24 (V1).** My first production-level project after learning frontend.
+1. **[Recruitment 2k24 (V1)](/blog/recruitment-2k24).** My first production-level project after learning frontend.
 2. **Course 21.** A freelance build for a client.
 3. **A startup, working on CloudX.**
 4. **Recruitment Platform V2.** Live for about 500 students, with the coding contest V1 never had.
