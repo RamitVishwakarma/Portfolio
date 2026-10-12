@@ -1,4 +1,4 @@
-Recruitment 2k24 was my first production project. It is the platform Google Developer Student Clubs at JSS Academy of Technical Education, Noida, used to recruit its 2024 batch. Over 500 students registered, picked a domain, took a timed quiz and submitted a project, and the core team shortlisted them from an admin panel. I built it as the chapter's Web Lead between December 2023 and March 2024, and later cut a promo video for it in After Effects.
+Recruitment 2k24 was my first production project. It is the platform Google Developer Student Clubs at JSS Academy of Technical Education, Noida, used to recruit its 2024 batch. Over 500 students registered, picked a domain, took a timed quiz and submitted a project, and the core team shortlisted them from an admin panel. I built it between December 2023 and March 2024, in my year as a member of the chapter, and later cut a promo video for it in After Effects.
 
 ![A one-minute walkthrough of Recruitment 2k24.](/videos/recruitmentPlatform2024.mp4 "The Recruitment 2k24 promo video")
 
