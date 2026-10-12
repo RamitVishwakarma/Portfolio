@@ -81,25 +81,32 @@ export const experience: ExperienceItem[] = [
   {
     company: "GDG On Campus JSSATEN",
     role: "GDG Lead",
-    dates: "2024 to 2025",
+    dates: "2025 to 2026",
     place: "Noida",
     logo: "/images/logos/gdsc.png",
     summary:
       "Three years with the chapter: a member, then Web Lead, then lead of the whole chapter.",
     highlights: [
-      "Led the chapter and ran its 2025 recruitment on Recruitment Platform V2, which had 1,433 visitors and 12,067 page views in five days of April 2025.",
-      "Built the platform's live coding round end to end, with submissions judged by a self-hosted Judge0 server.",
+      "Led the chapter and led development of the Zealicon 2025 platform, with paid Zeal IDs through Razorpay, event enrollment and a merch store. It had 4,971 visitors and 14,010 page views in fest week.",
+      "Built Zephyr, the chapter's AI assistant that answers students' questions about GDG, its team and its events, in Next.js 15 with chat sessions and Markdown answers.",
     ],
     earlier: [
       {
         role: "Web Lead",
-        dates: "2023 to 2024",
+        dates: "2024 to 2025",
         highlights: [
-          "Led the web team and built Recruitment 2k24, which took over 500 applicants through the 2024 season.",
+          "Led development of Recruitment Platform V2, which ran the chapter's 2025 recruitment and had 1,433 visitors and 12,067 page views in five days of April 2025.",
+          "Built the platform's live coding round end to end, with submissions judged by a self-hosted Judge0 server.",
           "Led HackHive, the chapter's GSSoC 2024 open-source project, building its React and Vite frontend and reviewing pull requests from 22 contributors.",
         ],
       },
-      { role: "Member", dates: "2022 to 2023", highlights: [] },
+      {
+        role: "Member",
+        dates: "2023 to 2024",
+        highlights: [
+          "Built Recruitment 2k24, my first production project, which took over 500 applicants through the 2024 season.",
+        ],
+      },
     ],
   },
 ];
