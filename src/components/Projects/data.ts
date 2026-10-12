@@ -47,7 +47,7 @@ export const projects: Project[] = [
     year: "2025",
     categories: ["Full stack"],
     description:
-      "The platform GDSC JSSATEN ran its 2025 recruitment on. About 500 students went from sign-up through an aptitude quiz, a domain task and a live coding contest judged by Judge0, and the core team ran every round from one admin dashboard.",
+      "The platform GDSC JSSATEN has run its recruitment on every year since 2025. In April 2025 about 500 students went from sign-up through an aptitude quiz, a domain task and a live coding contest judged by Judge0, and the core team ran every round from one admin dashboard.",
     metrics: ["1,433 visitors in 5 days", "12,067 page views", "Speed score 100"],
     tags: ["Next.js 15", "TypeScript", "Express", "PostgreSQL", "Prisma", "Judge0", "AWS"],
     accent: "bg-pink",

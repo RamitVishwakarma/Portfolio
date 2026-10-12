@@ -88,6 +88,7 @@ export const experience: ExperienceItem[] = [
       "Three years with the chapter: a member, then Web Lead, then lead of the whole chapter.",
     highlights: [
       "Led the chapter and led development of the Zealicon 2025 platform, with paid Zeal IDs through Razorpay, event enrollment and a merch store. It had 4,971 visitors and 14,010 page views in fest week.",
+      "Led the next recruitment season on Recruitment Platform V2, which the chapter has run every year since 2025, guiding the new Web Lead and web team.",
       "Built Zephyr, the chapter's AI assistant that answers students' questions about GDG, its team and its events, in Next.js 15 with chat sessions and Markdown answers.",
     ],
     earlier: [
