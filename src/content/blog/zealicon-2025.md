@@ -1,4 +1,4 @@
-Zealicon is the annual techno-cultural fest of JSS Academy of Technical Education, Noida. For Zealicon 2025 I built the platform behind it: the website where students browse events and buy merch, the paid Zeal ID that gets them through the gate, and the API, payments and deploys underneath. From 9 to 16 May 2025 the site had 4,971 visitors and 14,010 page views, and it used so much bandwidth that Vercel paused my account.
+Zealicon is the annual techno-cultural fest of JSS Academy of Technical Education, Noida. For Zealicon 2025, as lead of the college's Google Developer Groups chapter, I built the platform behind it: the website where students browse events and buy merch, the paid Zeal ID that gets them through the gate, and the API, payments and deploys underneath. From 9 to 16 May 2025 the site had 4,971 visitors and 14,010 page views, and it used so much bandwidth that Vercel paused my account.
 
 ![Vercel Web Analytics for zealicon2025.in, 9 to 16 May 2025: 4,971 visitors, 14,010 page views and a 52% bounce rate.](/blog/zealicon-2025/analytics-may-9-16.webp "Vercel Web Analytics for fest week, 9 to 16 May 2025")
 
