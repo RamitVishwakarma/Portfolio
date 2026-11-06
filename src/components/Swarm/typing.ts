@@ -146,18 +146,23 @@ export function prepareTyping(
   // it moves (sticky navbar, layout shifts above it).
   let positions: Rect[] = [];
   let finished = false;
+  // The element's top-left in page coordinates, read once per frame.
   let cache = { frame: -1, x: 0, y: 0 };
   const origin = () => {
     if (cache.frame !== frameNo) {
       const r = root.getBoundingClientRect();
-      cache = { frame: frameNo, x: r.left, y: r.top };
+      cache = {
+        frame: frameNo,
+        x: r.left + window.scrollX,
+        y: r.top + window.scrollY,
+      };
     }
     return cache;
   };
 
   const toRel = (r: DOMRect, x: number, o: { x: number; y: number }): Rect => ({
-    x: x - o.x,
-    y: r.top - o.y,
+    x: x + window.scrollX - o.x,
+    y: r.top + window.scrollY - o.y,
     w: 0,
     h: r.height,
   });
@@ -228,13 +233,9 @@ export function prepareTyping(
     caretAt(index) {
       const rel = positions[Math.max(0, Math.min(index, positions.length - 1))];
       if (!rel) return null;
+      // No live layout or scroll reads here: origin() is primed per frame.
       const o = origin();
-      return {
-        x: rel.x + o.x + window.scrollX,
-        y: rel.y + o.y + window.scrollY,
-        w: 0,
-        h: rel.h,
-      };
+      return { x: rel.x + o.x, y: rel.y + o.y, w: 0, h: rel.h };
     },
     finish() {
       if (finished) return;

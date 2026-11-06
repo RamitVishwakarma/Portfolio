@@ -26,6 +26,8 @@ export interface BuildOptions {
   optional?: boolean;
   /** Built first and shown less faint while waiting (navbar, the name). */
   priority?: boolean;
+  /** Name of the cursor that should build this when it's free ("Docker"). */
+  owner?: string;
 }
 
 type TaskState = "pending" | "claimed" | "building" | "done";
@@ -45,6 +47,9 @@ export interface Task {
   caption?: string;
   optional: boolean;
   priority: boolean;
+  owner?: string;
+  /** When this first could have started (for owner hand-off). */
+  readySince: number;
   state: TaskState;
   /** Within the look-ahead band below the viewport. */
   inView: boolean;
@@ -101,6 +106,8 @@ export interface Agent {
   ringAngle: number | null;
   /** Phones: an extra cursor that only joins the finale, drawn small. */
   mini: boolean;
+  /** Waiting without its label (bottom corners on narrow screens). */
+  quiet: boolean;
   dom: AgentDom | null;
 }
 
@@ -108,14 +115,19 @@ export interface Burst {
   x: number;
   y: number;
   t0: number;
+  /** Paper launched up from the ring; positions relative to the centre. */
   confetti: {
-    angle: number;
-    speed: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
     color: string;
     w: number;
     h: number;
     spin: number;
   }[];
+  /** Top of the area the finale may draw in (below the navbar), viewport px. */
+  top: number;
 }
 
 export interface SwarmSnapshot {
@@ -143,6 +155,9 @@ const EMPTY: SwarmSnapshot = {
 const CATCH_UP_MS = 1500;
 /** The splash stays up at least this long after navigation starts. */
 const SPLASH_MS = 1900;
+/** ...and at least this long after it first paints, but never past SPLASH_MAX. */
+const SPLASH_AFTER_PAINT = 2000;
+const SPLASH_MAX = 3000;
 
 /**
  * How faint an element is before it's built. Text is kept readable, frames
@@ -152,7 +167,7 @@ const SPLASH_MS = 1900;
  */
 export function ghostFor(kind: BuildKind, priority: boolean) {
   if (priority || kind === "block") return 0.6;
-  return kind === "text" ? 0.45 : 0.3;
+  return kind === "text" ? 0.5 : 0.3;
 }
 
 const now = () => performance.now();
@@ -293,6 +308,8 @@ class SwarmEngine {
       caption: opts.caption,
       optional: !!opts.optional,
       priority: !!opts.priority,
+      owner: opts.owner,
+      readySince: 0,
       state: "pending",
       inView: false,
       visible: false,
@@ -351,6 +368,7 @@ class SwarmEngine {
     this.gen++;
     this.skipped = true;
     document.documentElement.dataset.splash = "done";
+    this.startedAt = Math.min(this.startedAt, now());
     for (const t of this.taskList()) {
       t.cleanup?.();
       t.cleanup = undefined;
@@ -427,8 +445,10 @@ class SwarmEngine {
     this.phase = "running";
     this.gen++;
     this.roster++;
-    // The cursors start as the splash fades out.
-    this.startedAt = now() + this.endSplash();
+    // The cursors start as the splash fades out. A tab opened in the
+    // background keeps its splash until it is actually looked at.
+    const hiddenAtStart = document.hidden;
+    this.startedAt = hiddenAtStart ? now() + 1e9 : now() + this.endSplash(false);
     this.heroLine = window.scrollY + window.innerHeight;
     this.burst = null;
     this.scrim = 0;
@@ -459,13 +479,14 @@ class SwarmEngine {
           : { x: rand(0, vw), y: -40 };
       return this.makeAgent(def, i, { x: p.x + sx, y: p.y + sy });
     });
+    this.fromSplash();
     this.stagger();
     // Opened in a background tab: hold the opening wave until it's seen.
-    if (document.hidden) {
+    if (hiddenAtStart) {
       const onShow = () => {
         if (document.hidden) return;
         document.removeEventListener("visibilitychange", onShow);
-        this.startedAt = now();
+        this.startedAt = now() + this.endSplash(true);
         this.stagger();
       };
       document.addEventListener("visibilitychange", onShow);
@@ -508,6 +529,7 @@ class SwarmEngine {
       dark: isDark(def.color),
       ringAngle: null,
       mini: false,
+      quiet: false,
       dom: null,
     };
   }
@@ -515,31 +537,67 @@ class SwarmEngine {
   /** The swarm streams in as a quick wave: all of it within about a second. */
   private stagger() {
     const t = Math.max(now(), this.startedAt);
-    const step = this.agents.length > 8 ? 60 : 120;
-    for (const a of this.agents) a.activateAt = t + 150 + a.index * step;
+    const step = this.agents.length > 8 ? 45 : 90;
+    for (const a of this.agents) a.activateAt = t + 120 + a.index * step;
   }
 
   /**
-   * Fade the splash out once it has been up for SPLASH_MS since navigation.
-   * Returns how long until the page is visible again.
+   * Fade the splash out: at least SPLASH_MS after navigation and
+   * SPLASH_AFTER_PAINT after it first painted (or after the tab was first
+   * shown), capped at SPLASH_MAX. Its text leaves first, then the cursors
+   * take over from the pills and the backdrop fades. Returns how long until
+   * the cursors may start moving.
    */
-  private endSplash() {
+  private endSplash(fromShow: boolean) {
     const d = document.documentElement;
     if (d.dataset.splash === "done") return 0;
-    const wait = Math.max(0, SPLASH_MS - performance.now());
+    const t = performance.now();
+    let wait: number;
+    if (fromShow) {
+      wait = SPLASH_AFTER_PAINT;
+    } else {
+      const paint = performance
+        .getEntriesByType("paint")
+        .find((e) => e.name === "first-contentful-paint");
+      const end = Math.min(
+        Math.max(SPLASH_MS, (paint?.startTime ?? t) + SPLASH_AFTER_PAINT),
+        SPLASH_MAX
+      );
+      wait = Math.max(0, end - t);
+    }
     window.setTimeout(() => {
-      if (d.dataset.splash !== "done") d.dataset.splash = "out";
+      if (d.dataset.splash === "done") return;
+      d.dataset.splash = "out";
+      // The pills become the real cursors, exactly where they were.
+      for (const a of this.agents) {
+        a.opacity = 1;
+        a.targetOpacity = 1;
+      }
+      this.wake();
       window.setTimeout(() => {
         d.dataset.splash = "done";
-      }, 500);
+      }, 650);
     }, wait);
-    return wait + 250;
+    return wait;
+  }
+
+  /** Start each cursor where its pill sits on the splash. */
+  private fromSplash() {
+    if (document.documentElement.dataset.splash === "done") return;
+    const pills = document.querySelectorAll<HTMLElement>(".swarm-splash li");
+    for (const a of this.agents) {
+      const r = pills[a.index]?.getBoundingClientRect();
+      if (!r || !r.width) continue;
+      a.x = r.left + window.scrollX;
+      a.y = r.top + window.scrollY;
+    }
   }
 
   private listen() {
     if (this.listening) return;
     this.listening = true;
     window.addEventListener("scroll", this.wake, { passive: true });
+    window.addEventListener("resize", this.wake, { passive: true });
     // Keyboard users get the full page as soon as they start tabbing into it,
     // and find-in-page gets everything at full strength.
     document.addEventListener("keydown", (e) => {
@@ -580,13 +638,16 @@ class SwarmEngine {
     // The finale plays below the navbar, which stays undimmed.
     const nav = document.querySelector('a[href="/"]')?.closest(".sticky");
     const top = Math.max(0, nav?.getBoundingClientRect().bottom ?? 0);
-    const R = Math.min(vw, vh - top) * 0.36;
+    const phone = vw < 640;
+    const R = Math.min(vw, vh - top) * (phone ? 0.42 : 0.36);
     const cx = vw / 2;
     const cy = top + (vh - top) / 2;
     const ringPoint = (a: Agent) => ({
       x: window.scrollX + cx + Math.cos(a.ringAngle ?? 0) * R,
       y: window.scrollY + cy + Math.sin(a.ringAngle ?? 0) * R,
     });
+    const ease = (x: number) =>
+      x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 
     const outro = async () => {
       if (!natural) {
@@ -610,13 +671,26 @@ class SwarmEngine {
           this.roster++;
           this.emit(true);
         }
-        const n = this.agents.length;
+        // Labelled cursors spread evenly round the ring; the small ones fill
+        // the gaps between them.
+        const full = this.agents.filter((a) => !a.mini);
+        const minis = this.agents.filter((a) => a.mini);
+        const step = (Math.PI * 2) / full.length;
+        full.forEach((a, k) => {
+          a.ringAngle = k * step - Math.PI / 2;
+        });
+        minis.forEach((a, k) => {
+          const gap = k % full.length;
+          const slot = Math.floor(k / full.length) + 1;
+          const per = Math.ceil(minis.length / full.length) + 1;
+          a.ringAngle = gap * step - Math.PI / 2 + (step * slot) / per;
+        });
         // The page dims and the whole swarm gathers in a ring...
         this.scrimTarget = 1;
         await Promise.all(
-          this.agents.map((a, i) => {
-            a.ringAngle = (i / n) * Math.PI * 2 - Math.PI / 2;
+          this.agents.map((a) => {
             a.docked = false;
+            a.quiet = false;
             a.leaving = true;
             a.active = true;
             a.targetOpacity = 1;
@@ -625,38 +699,52 @@ class SwarmEngine {
           })
         );
         await this.sleep(700, gen, null);
-        // ...clicks together: the burst...
+        // ...clicks together: the burst, confetti thrown up off the ring...
         for (const a of this.agents) a.pressed = true;
+        const pieces = phone ? 130 : 220;
         this.burst = {
           x: window.scrollX + cx,
           y: window.scrollY + cy,
           t0: now(),
-          confetti: Array.from({ length: 120 }, (_, i) => ({
-            angle: rand(0, Math.PI * 2),
-            speed: rand(0.3, 1) * Math.max(vw, vh) * 0.5,
-            color: this.agents[i % n].color,
-            w: rand(4, 7),
-            h: rand(8, 12),
-            spin: rand(-12, 12),
-          })),
+          top,
+          confetti: Array.from({ length: pieces }, (_, i) => {
+            const ang = rand(0, Math.PI * 2);
+            const v = rand(380, 820);
+            return {
+              x: Math.cos(ang) * R,
+              y: Math.sin(ang) * R,
+              vx: Math.cos(ang) * v * 0.45 + rand(-60, 60),
+              vy: -v * rand(0.55, 1),
+              color: this.agents[i % this.agents.length].color,
+              w: rand(6, 10),
+              h: rand(10, 16),
+              spin: rand(-14, 14),
+            };
+          }),
         };
         this.revealed = true;
         this.emit(true);
         await this.sleep(160, gen, null);
         for (const a of this.agents) a.pressed = false;
-        // ...orbits for a moment, then fades away.
+        // ...orbits, quick at first and settling, then fades out together.
         const t0 = now();
+        let last = t0;
         for (;;) {
           await this.step(gen, null);
-          const e = now() - t0;
+          const t = now();
+          const e = t - t0;
+          const dt = (t - last) / 1000;
+          last = t;
+          const speed = Math.PI - (Math.PI - 0.7) * Math.min(1, e / 900);
+          const fade = ease(Math.min(1, Math.max(0, (e - 1500) / 600)));
           for (const a of this.agents) {
-            a.ringAngle = (a.ringAngle ?? 0) + 0.014;
+            a.ringAngle = (a.ringAngle ?? 0) + speed * dt;
             const p = ringPoint(a);
             a.x = p.x;
             a.y = p.y;
-            if (e > 1500) a.targetOpacity = 0;
+            a.opacity = a.targetOpacity = 1 - fade;
           }
-          if (e > 1500) this.scrimTarget = 0;
+          this.scrim = this.scrimTarget = 1 - fade;
           if (e > 2100) break;
         }
         this.complete(gen, 0);
@@ -711,25 +799,25 @@ class SwarmEngine {
         window.scrollY + vh >= document.documentElement.scrollHeight - 2,
     };
     for (const task of this.taskList()) {
-      if (task.typing && task.state === "building") task.typing.prime();
+      if (task.typing && task.state !== "done") task.typing.prime();
     }
     const waiters = this.waiters;
     this.waiters = [];
     for (const w of waiters) w();
 
     const running = this.phase === "running";
-    const vw = window.innerWidth;
-    const resting = this.agents.filter((a) => !a.mini).length;
     for (const a of this.agents) {
       if (!a.active && running && a.activateAt && t >= a.activateAt) {
         a.active = true;
         a.targetOpacity = 1;
         a.idleSince = t;
       }
-      // Idle cursors wait in a row along the bottom edge, in shot.
+      // Waiting cursors stay put on screen as the page scrolls.
       if (a.docked && !a.task) {
-        a.x = window.scrollX + ((a.index + 0.5) / resting) * vw;
-        a.y = window.scrollY + vh - 26;
+        const spot = this.parkSpot(a);
+        a.x = window.scrollX + spot.x;
+        a.y = window.scrollY + spot.y;
+        a.quiet = spot.quiet;
       }
       a.opacity += (a.targetOpacity - a.opacity) * 0.14;
       if (a.sel && !a.pressed) {
@@ -739,7 +827,7 @@ class SwarmEngine {
       if (a.ripples.length) a.ripples = a.ripples.filter((r) => t - r.t0 < 520);
     }
     this.scrim += (this.scrimTarget - this.scrim) * 0.12;
-    if (this.burst && t - this.burst.t0 > 1600) this.burst = null;
+    if (this.burst && t - this.burst.t0 > 2200) this.burst = null;
 
     if (running) {
       if (t - this.lastSchedule > 100) {
@@ -801,6 +889,36 @@ class SwarmEngine {
     return y > -c.h && y < (atEnd ? vh : vh - 24);
   }
 
+  private caretAbove(c: Rect | null) {
+    return !!c && c.y - this.vp.sy <= -c.h;
+  }
+
+  /**
+   * Sentences the visitor has already scrolled past are finished at once,
+   * so nothing above the viewport stays faint. True if the task is now done.
+   */
+  private flushAbove(task: Task) {
+    const typing = task.typing;
+    const segs = task.segs;
+    if (!typing || !segs) return false;
+    segs.forEach((job, k) => {
+      if (job.done || job.agent) return;
+      const seg = typing.segments[k];
+      if (this.caretAbove(typing.caretAt(seg.start + job.typed))) {
+        job.typed = seg.end - seg.start;
+        typing.type(k, job.typed);
+        job.done = true;
+      }
+    });
+    if (segs.every((j) => j.done) && task.state !== "done") {
+      task.cleanup?.();
+      task.cleanup = undefined;
+      this.finishTask(task);
+      return true;
+    }
+    return false;
+  }
+
   /** Where a segment's typing would resume, if that's on screen. */
   private segmentOnScreen(task: Task, i: number) {
     const seg = task.typing?.segments[i];
@@ -833,6 +951,7 @@ class SwarmEngine {
         eligible.push(t);
         if (t.visible) onScreen++;
       } else if (t.state === "building" && t.segs) {
+        if (this.flushAbove(t)) continue;
         t.segs.forEach((s, i) => {
           if (!s.agent && !s.done && this.segmentOnScreen(t, i)) {
             segJobs.push({ task: t, i });
@@ -875,48 +994,94 @@ class SwarmEngine {
           : 1)
     );
 
+    const tNow = now();
+    for (const t of eligible) if (!t.readySince) t.readySince = tNow;
+    const names = new Set(this.agents.map((a) => a.name));
     for (const a of idle) {
       if (!eligible.length) break;
+      // Its own card first: Docker draws the Docker card.
+      const mine = eligible.findIndex((t) => t.owner === a.name);
+      if (mine >= 0) {
+        const [task] = eligible.splice(mine, 1);
+        void this.run(a, task);
+        continue;
+      }
+      // Leave a card for its owner for a moment, if that cursor exists.
+      const pickable = eligible.filter(
+        (t) =>
+          !t.owner || !names.has(t.owner) || tNow - t.readySince > 1500
+      );
+      if (!pickable.length) continue;
       // Of the next few jobs in reading order, take the one closest by.
-      const pool = eligible[0].priority ? 1 : Math.min(eligible.length, 4);
+      const pool = pickable[0].priority ? 1 : Math.min(pickable.length, 4);
       let best = 0;
       let bestScore = Infinity;
       for (let i = 0; i < pool; i++) {
-        const c = center(eligible[i].el);
+        const c = center(pickable[i].el);
         const score = Math.hypot(c.x - a.x, c.y - a.y) + i * 140;
         if (score < bestScore) {
           bestScore = score;
           best = i;
         }
       }
-      const [task] = eligible.splice(best, 1);
+      const task = pickable[best];
+      eligible.splice(eligible.indexOf(task), 1);
       void this.run(a, task);
     }
   }
 
-  /** Idle cursors slip off the bottom of the screen instead of loitering. */
-  private dock(t: number) {
-    // Keep the whole cast on stage through the opening.
-    if (t < this.startedAt + 2000) return;
+  /**
+   * Where an idle cursor waits, in viewport px. Wide screens: loosely in the
+   * side gutters, labels showing. Narrow screens: a quiet cluster in the
+   * bottom corners, arrows only, so no copy is covered.
+   */
+  private parkSpot(a: Agent) {
     const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = vw >= 1200 ? 120 : vw >= 800 ? 80 : 40;
+    const gutter = Math.max(0, (vw - 1440) / 2) + pad;
+    const resting = this.agents.filter((x) => !x.mini).length;
+    const side = a.index % 2;
+    const row = Math.floor(a.index / 2);
+    const rows = Math.ceil(resting / 2);
+    // A stable little offset per cursor, so the gutters don't look gridded.
+    const j = ((a.index * 37) % 11) / 11;
+    if (gutter >= 100) {
+      return {
+        quiet: false,
+        x: side ? vw - gutter + 4 + j * 8 : 10 + j * 8,
+        y: vh * (0.2 + 0.62 * ((row + 0.5) / rows)) + (j - 0.5) * 24,
+      };
+    }
+    return {
+      quiet: true,
+      x: side ? vw - 18 - row * 13 : 6 + row * 13,
+      y: vh - 22 - (row % 2) * 6,
+    };
+  }
+
+  /** Idle cursors drift to their waiting spot instead of loitering on copy. */
+  private dock(t: number) {
     for (const a of this.agents) {
       if (!a.active || a.task || a.leaving || a.moving || a.docked) continue;
-      a.targetOpacity = 0.8;
-      if (t < a.idleSince + 450) continue;
+      if (t < a.idleSince + 350) continue;
       a.moving = true;
-      const resting = this.agents.filter((x) => !x.mini).length;
       this.moveTo(
         a,
-        () => ({
-          x: window.scrollX + ((a.index + 0.5) / resting) * vw,
-          y: window.scrollY + window.innerHeight - 26,
-        }),
+        () => {
+          const s = this.parkSpot(a);
+          return { x: window.scrollX + s.x, y: window.scrollY + s.y };
+        },
         this.gen,
         null,
         0.7
       )
         .then((arrived) => {
-          if (arrived && !a.task) a.docked = true;
+          if (arrived && !a.task) {
+            a.docked = true;
+            a.quiet = this.parkSpot(a).quiet;
+            a.targetOpacity = a.quiet ? 0.6 : 0.9;
+          }
         })
         .catch(() => {})
         .finally(() => {
@@ -973,6 +1138,7 @@ class SwarmEngine {
     task.agent = a;
     a.task = task;
     a.docked = false;
+    a.quiet = false;
     a.targetOpacity = 1;
     this.setAttr(task, "claimed");
     const overshoot = !a.landed;
@@ -1135,6 +1301,7 @@ class SwarmEngine {
     segs[i].agent = a;
     a.task = task;
     a.docked = false;
+    a.quiet = false;
     a.targetOpacity = 1;
     const overshoot = !a.landed;
     a.landed = true;
@@ -1189,7 +1356,15 @@ class SwarmEngine {
       for (;;) {
         await this.step(gen, task);
         const t = now();
-        if (!this.caretOnScreen(typing.caretAt(seg.start + job.typed))) {
+        const at = typing.caretAt(seg.start + job.typed);
+        if (this.caretAbove(at)) {
+          // Scrolled past mid-sentence: finish it now.
+          job.typed = len;
+          typing.type(current, len);
+          break;
+        }
+        if (!this.caretOnScreen(at)) {
+          // Below the fold: hand it back, progress kept, and go wait.
           job.agent = null;
           a.caret = null;
           return false;

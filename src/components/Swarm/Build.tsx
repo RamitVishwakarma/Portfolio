@@ -26,6 +26,8 @@ type BuildProps = Omit<AllHTMLAttributes<HTMLElement>, "as"> & {
   caption?: string;
   optional?: boolean;
   priority?: boolean;
+  /** Name of the cursor that should build this when it's free. */
+  owner?: string;
   children?: ReactNode;
 };
 
@@ -40,6 +42,7 @@ const Build = ({
   caption,
   optional,
   priority,
+  owner,
   children,
   ...rest
 }: BuildProps) => {
@@ -53,8 +56,9 @@ const Build = ({
       caption,
       optional,
       priority,
+      owner,
     });
-  }, [id, as, kind, caption, optional, priority]);
+  }, [id, as, kind, caption, optional, priority, owner]);
 
   return createElement(
     as,

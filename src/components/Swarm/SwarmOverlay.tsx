@@ -143,7 +143,7 @@ export const SwarmSkipLink = () => {
           main.focus();
         }
       }}
-      className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:font-bold focus:text-black">
+      className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[95] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:font-bold focus:text-black">
       Skip the animation and show the full page
     </button>
   );
@@ -183,10 +183,14 @@ const SwarmOverlay = () => {
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
-          // Waiting in the bottom row: arrows only, bobbing.
+          // Waiting: bobbing gently; on narrow screens arrows only.
           const docked = a.docked && !a.task;
           if (d.root.hasAttribute("data-docked") !== docked) {
             d.root.toggleAttribute("data-docked", docked);
+          }
+          const quiet = docked && a.quiet;
+          if (d.root.hasAttribute("data-quiet") !== quiet) {
+            d.root.toggleAttribute("data-quiet", quiet);
           }
           // Status only while it's fresh and its target is actually on screen.
           const age = t - a.statusAt;
@@ -220,7 +224,7 @@ const SwarmOverlay = () => {
           // Keep labels clear of each other: try the default spot, then nudges
           // and the other side of the arrow.
           const onScreen =
-            !docked &&
+            !quiet &&
             !a.mini &&
             a.opacity > 0.05 &&
             vx > -40 &&
@@ -312,14 +316,17 @@ const SwarmOverlay = () => {
             ?.closest(".sticky")
             ?.getBoundingClientRect();
           const top = Math.max(0, nav?.bottom ?? 0);
-          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.65).toFixed(3)})`;
+          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.8).toFixed(3)})`;
           ctx.fillRect(0, top, vw, vh - top);
         }
 
         // Wireframe around what is still to be built; claimed jobs march in
-        // the colour of the cursor that took them.
+        // the colour of the cursor that took them. Not while the splash is up.
+        const html = document.documentElement;
+        const splashUp =
+          html.classList.contains("swarm-on") && html.dataset.splash !== "done";
         ctx.lineWidth = 1;
-        for (const task of swarm.taskList()) {
+        for (const task of splashUp ? [] : swarm.taskList()) {
           if (task.removed) continue;
           if (task.state !== "pending" && task.state !== "claimed") continue;
           if (!swarm.isReady(task)) continue;
@@ -335,15 +342,20 @@ const SwarmOverlay = () => {
           }
           const owner = task.agent;
           ctx.setLineDash([4, 4]);
-          ctx.lineDashOffset = owner ? -t / 40 : 0;
-          ctx.strokeStyle = owner
-            ? rgba(owner.color, 0.9)
-            : "rgba(255, 255, 255, 0.24)";
           roundRect(ctx, r.left + 0.5, r.top + 0.5, r.width - 1, r.height - 1, 8);
           if (owner) {
             ctx.fillStyle = rgba(owner.color, 0.03);
             ctx.fill();
           }
+          // Dark dashes under light ones, offset, so the outline reads on
+          // the light project cards as well as on black.
+          ctx.lineDashOffset = (owner ? -t / 40 : 0) + 4;
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+          ctx.stroke();
+          ctx.lineDashOffset = owner ? -t / 40 : 0;
+          ctx.strokeStyle = owner
+            ? rgba(owner.color, 0.9)
+            : "rgba(255, 255, 255, 0.3)";
           ctx.stroke();
         }
         ctx.setLineDash([]);
@@ -397,30 +409,33 @@ const SwarmOverlay = () => {
           }
         }
 
-        // The finale: rainbow rings and confetti from the ring of cursors.
+        // The finale: rainbow rings and confetti thrown up off the ring,
+        // kept below the navbar.
         const b = swarm.burst;
         if (b) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, b.top, vw, vh - b.top);
+          ctx.clip();
           const bx = b.x - sx;
           const by = b.y - sy;
-          const reach = Math.max(vw, vh) * 0.45;
+          const reach = Math.max(vw, vh) * 0.5;
           RAINBOW.forEach((color, i) => {
-            const raw = (t - b.t0 - i * 55) / 800;
+            const raw = (t - b.t0 - i * 55) / 850;
             if (raw <= 0 || raw >= 1) return;
             const p = 1 - Math.pow(1 - raw, 3);
             ctx.globalAlpha = 1 - raw * raw;
             ctx.strokeStyle = color;
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 6;
             ctx.beginPath();
             ctx.arc(bx, by, 24 + p * reach, 0, Math.PI * 2);
             ctx.stroke();
           });
-          // Confetti: spinning paper that bursts out, then falls.
           const e = Math.max(0, t - b.t0) / 1000;
-          const fade = Math.max(0, 1 - Math.max(0, e - 0.9) / 0.6);
+          const fade = Math.max(0, 1 - Math.max(0, e - 1.3) / 0.7);
           for (const c of b.confetti) {
-            const travel = c.speed * (1 - Math.exp(-e * 3.2));
-            const x = bx + Math.cos(c.angle) * travel;
-            const y = by + Math.sin(c.angle) * travel + 260 * e * e;
+            const x = bx + c.x + c.vx * e;
+            const y = by + c.y + c.vy * e + 0.5 * 950 * e * e;
             ctx.save();
             ctx.globalAlpha = fade;
             ctx.translate(x, y);
@@ -430,6 +445,7 @@ const SwarmOverlay = () => {
             ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
             ctx.restore();
           }
+          ctx.restore();
           ctx.globalAlpha = 1;
         }
       }),
@@ -451,7 +467,7 @@ const SwarmOverlay = () => {
       {live && (
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+          className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
           <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
           {snap.agents.map((a) => (
             <Cursor key={`${snap.roster}-${a.index}`} agent={a} />

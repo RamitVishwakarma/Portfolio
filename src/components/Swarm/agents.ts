@@ -1,6 +1,7 @@
 // The swarm is named after the stack the site is built with. The first eight
-// wear the site's rainbow palette (tailwind.config.ts); the other eight are
-// deep shades spaced at least 30° apart in hue, so no two read as the same.
+// wear the site's rainbow palette (tailwind.config.ts); the next six are deep
+// shades spaced at least 30° apart in hue, and Vercel and shadcn wear their
+// own white and black, so no two read as the same.
 export interface AgentDef {
   name: string;
   color: string;
@@ -21,8 +22,8 @@ export const AGENTS: AgentDef[] = [
   { name: "Docker", color: "#6d28d9" },
   { name: "AWS", color: "#b91c1c" },
   { name: "Git", color: "#a35a00" },
-  { name: "Vercel", color: "#a21caf" },
-  { name: "shadcn", color: "#be185d" },
+  { name: "Vercel", color: "#ffffff" },
+  { name: "shadcn", color: "#0a0a0a" },
 ];
 
 // Fewer, faster cursors on phones so the page stays readable while it builds.
