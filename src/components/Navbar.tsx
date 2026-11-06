@@ -20,7 +20,7 @@ const Navbar = () => {
     aboutSection.scrollIntoView({ behavior: "smooth" });
   };
   return (
-    <Build
+    <Build priority
       kind="block"
       caption="drawing <nav>"
       className="max-w-[90rem] lg:px-[7.5rem] md:px-20 px-10 mx-auto sticky top-0 z-20 backdrop-blur-xl m-auto bg-black/60">
@@ -28,33 +28,33 @@ const Navbar = () => {
         <Link
           href="/"
           className=" w-fit cursor-pointer leading-5 hover:text-green font-ProductSans font-bold">
-          <Build kind="text" className="font-ProductSans text-xl">
+          <Build priority kind="text" className="font-ProductSans text-xl">
             RV
           </Build>
         </Link>
         <ul className="flex gap-6 font-medium">
-          <Build
+          <Build priority
             as="li"
             kind="text"
             onClick={scrollToContact}
             className="hover:text-green cursor-pointer">
             Contact
           </Build>
-          <Build
+          <Build priority
             as="li"
             kind="text"
             onClick={scrollToAbout}
             className="hover:text-green cursor-pointer">
             About
           </Build>
-          <Build
+          <Build priority
             as={Link}
             kind="text"
             href="/blog"
             className="hover:text-green cursor-pointer">
             Blog
           </Build>
-          <Build
+          <Build priority
             as="a"
             kind="text"
             target="_blank"

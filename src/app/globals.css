@@ -112,11 +112,16 @@ body {
    It stays readable, findable and in the accessibility tree throughout. */
 html.swarm-on [data-swarm="pending"],
 html.swarm-on [data-swarm="claimed"] {
-  opacity: 0.14;
+  opacity: 0.25;
 }
 html.swarm-on [data-swarm="pending"][data-swarm-priority],
 html.swarm-on [data-swarm="claimed"][data-swarm-priority] {
-  opacity: 0.4;
+  opacity: 0.45;
+}
+/* inside a faint ancestor the ancestor's level already applies */
+html.swarm-on :is([data-swarm="pending"], [data-swarm="claimed"])
+  :is([data-swarm="pending"], [data-swarm="claimed"]) {
+  opacity: 1;
 }
 .swarm-cursor {
   will-change: transform, opacity;
@@ -143,6 +148,9 @@ html.swarm-on [data-swarm="claimed"][data-swarm-priority] {
   left: auto;
   right: calc(100% - 4px);
   align-items: flex-end;
+}
+.swarm-hint {
+  transition: opacity 300ms ease;
 }
 @keyframes swarm-bounce {
   0%,

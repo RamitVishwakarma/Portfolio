@@ -150,7 +150,7 @@ const Avatars = ({ agents }: { agents: Agent[] }) => {
 };
 
 interface Placement {
-  /** Below 800px the HUD is a slim bar under the navbar. */
+  /** Below 800px the HUD lives just under the navbar. */
   mobile: boolean;
   /** Desktop: the empty stretch of navbar after the "RV" logo. */
   left: number;
@@ -169,9 +169,9 @@ function usePlacement(): Placement {
     navBottom: 56,
   });
   useEffect(() => {
+    const logo = document.querySelector('a[href="/"]');
+    const nav = logo?.closest(".sticky");
     const measure = () => {
-      const logo = document.querySelector('a[href="/"]');
-      const nav = logo?.closest(".sticky");
       const links = nav?.querySelector("ul");
       const lr = logo?.getBoundingClientRect();
       const nr = nav?.getBoundingClientRect();
@@ -180,31 +180,64 @@ function usePlacement(): Placement {
       const next: Placement = {
         mobile: window.innerWidth < 800,
         left,
-        room: (ur?.left ?? window.innerWidth) - left - 24,
+        room: Math.max(0, (ur?.left ?? window.innerWidth) - left - 24),
         navTop: Math.max(0, nr?.top ?? 0),
         navBottom: Math.max(0, nr?.bottom ?? 56),
       };
       setP((old) =>
-        JSON.stringify(old) === JSON.stringify(next) ? old : next
+        old.mobile === next.mobile &&
+        old.left === next.left &&
+        old.room === next.room &&
+        old.navTop === next.navTop &&
+        old.navBottom === next.navBottom
+          ? old
+          : next
       );
     };
     measure();
-    const late = window.setTimeout(measure, 600);
+    // The navbar is sticky, so only its size matters (late font swaps too).
+    const ro = new ResizeObserver(measure);
+    if (nav) ro.observe(nav);
     window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, { passive: true });
     return () => {
-      window.clearTimeout(late);
+      ro.disconnect();
       window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure);
     };
   }, []);
   return p;
 }
 
+/** Phones: whether the visitor is at the top, and heading down the page. */
+function useScrollState(enabled: boolean) {
+  const [state, setState] = useState({ atTop: true, down: false });
+  useEffect(() => {
+    if (!enabled) return;
+    let lastY = window.scrollY;
+    let down = false;
+    const check = () => {
+      const y = window.scrollY;
+      if (y > lastY + 2) down = true;
+      else if (y < lastY - 2) down = false;
+      lastY = y;
+      const atTop = y < 40;
+      setState((old) =>
+        old.atTop === atTop && old.down === down ? old : { atTop, down }
+      );
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    return () => window.removeEventListener("scroll", check);
+  }, [enabled]);
+  return state;
+}
+
 const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
   const settled = snap.phase === "complete" || snap.phase === "idle";
   const [collapsed, setCollapsed] = useState(settled);
+  const [settledIn, setSettledIn] = useState(false);
   const place = usePlacement();
+  const { mobile } = place;
+  const scroll = useScrollState(mobile);
 
   useEffect(() => {
     if (snap.phase === "idle") return setCollapsed(true);
@@ -215,19 +248,31 @@ const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
     return () => window.clearTimeout(id);
   }, [snap.phase, snap.revealed]);
 
-  const building = !snap.revealed && snap.phase !== "idle";
-  const pct = snap.total ? Math.round((snap.done / snap.total) * 100) : 0;
+  // Phones: after 5 s of building the bar slims down to a progress line.
+  useEffect(() => {
+    if (snap.phase !== "running") return setSettledIn(false);
+    const id = window.setTimeout(() => setSettledIn(true), 5000);
+    return () => window.clearTimeout(id);
+  }, [snap.phase, snap.roster]);
+
+  const building = snap.phase === "running" || (snap.phase === "finishing" && !snap.revealed);
+  const pct = Math.round(snap.progress * 100);
   const count = snap.agents.length;
-  const { mobile } = place;
-  const roomy = place.room >= 470;
+  const tier = place.room >= 680 ? 2 : place.room >= 430 ? 1 : 0;
+  // Phones, while building: full bar at first and whenever scrolling back up;
+  // otherwise just a progress line and a small Skip chip.
+  const slim = mobile && building && (scroll.down || settledIn);
+  // Phones, once done: the Replay chip only shows at the very top.
+  const hidden = mobile && collapsed && !scroll.atTop;
 
   const progress = (
     <span
       className={
         mobile
-          ? "absolute bottom-0 left-0 h-[2px] w-full bg-white/10"
-          : "h-1.5 w-14 overflow-hidden rounded-full bg-white/15"
+          ? "pointer-events-none fixed left-0 h-[2px] w-full bg-white/10"
+          : "h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-white/15"
       }
+      style={mobile ? { top: place.navBottom } : undefined}
       aria-hidden>
       <span
         className="swarm-progress block h-full rounded-full"
@@ -236,67 +281,93 @@ const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
     </span>
   );
 
+  const hint = (
+    <span
+      className="swarm-hint shrink-0 whitespace-nowrap text-white/70"
+      style={{ opacity: snap.waiting ? 1 : 0 }}
+      aria-hidden>
+      {tier === 2 && !mobile ? "keep scrolling " : ""}
+      <span className="swarm-bounce inline-block">↓</span>
+    </span>
+  );
+
   // Desktop: inside the navbar's empty middle, so it never covers content.
-  // Mobile: a slim bar under the navbar while building, then a small chip.
-  const style = mobile
-    ? collapsed
+  // Mobile: a slim bar under the navbar, then small chips in its corner.
+  const style: React.CSSProperties = mobile
+    ? collapsed || slim
       ? { top: place.navBottom + 8, right: 12 }
       : { top: place.navBottom, left: 0, right: 0 }
-    : { top: place.navTop + 12, left: place.left };
+    : { top: place.navTop + 12, left: place.left, maxWidth: place.room };
   const shell = mobile
-    ? collapsed
+    ? collapsed || slim
       ? "rounded-full border border-white/15 p-1 text-xs"
       : "h-9 justify-between gap-2 border-b border-white/10 px-3 text-xs"
     : `h-8 gap-2.5 rounded-full border border-white/15 text-[13px] ${
         collapsed ? "p-1" : "pl-1.5 pr-1"
       }`;
 
+  const buildingCopy = mobile
+    ? "Built live by my stack"
+    : tier === 2
+    ? `${count} cursors named after my stack are building this page`
+    : tier === 1
+    ? `${count} cursors named after my stack`
+    : "Building live";
+  const doneCopy = snap.skipped
+    ? "Full page shown"
+    : mobile
+    ? `Built by ${count} cursors named after my stack`
+    : tier === 2
+    ? `Built by ${count} cursors, each named after a tool I use`
+    : tier === 1
+    ? `Built by ${count} cursors named after my stack`
+    : "Built by my stack";
+
   // One wrapper and one button in every state, so keyboard focus survives
   // Skip → Replay → collapsed.
   return (
-    <div
-      data-swarm-ui
-      data-swarm-hud
-      style={style}
-      className={`pointer-events-auto fixed z-[61] flex items-center bg-black/85 text-white shadow-2xl backdrop-blur-xl ${shell}`}>
-      {!collapsed &&
-        (building ? (
-          <>
-            {roomy && !mobile && <Avatars agents={snap.agents} />}
-            <span className="min-w-0 truncate whitespace-nowrap">
-              {roomy || mobile ? "Watch my stack build this page" : "Building live"}
-              {snap.waiting && (
-                <span className="swarm-bounce ml-1.5 inline-block" aria-hidden>
-                  ↓
-                </span>
-              )}
-            </span>
-            {progress}
-          </>
-        ) : (
-          <span className="min-w-0 truncate whitespace-nowrap pl-1.5">
-            <span className="text-green" aria-hidden>
-              ✓{" "}
-            </span>
-            {snap.skipped ? (
-              "Full page shown"
-            ) : roomy ? (
-              `Built by ${count} cursors, each named after a tool I use`
-            ) : (
-              `Built by ${count} cursors named after my stack`
-            )}
-          </span>
-        ))}
-      <button
-        key="action"
-        onClick={building ? swarm.skip : swarm.rebuild}
-        aria-label={building ? "Skip the animation" : "Replay the live build"}
-        className={`shrink-0 whitespace-nowrap rounded-full font-bold hover:text-green ${
-          collapsed ? "px-2.5 py-1" : "bg-white/10 px-2.5 py-0.5 hover:bg-white/20"
+    <>
+      {mobile && building && progress}
+      <div
+        data-swarm-ui
+        data-swarm-hud
+        style={style}
+        className={`pointer-events-auto fixed z-[61] flex items-center bg-black/85 text-white shadow-2xl backdrop-blur-xl transition-opacity duration-300 ${shell} ${
+          hidden ? "pointer-events-none opacity-0" : ""
         }`}>
-        {building ? "Skip" : "↻ Replay"}
-      </button>
-    </div>
+        {!collapsed &&
+          !slim &&
+          (building ? (
+            <>
+              {tier === 2 && !mobile && <Avatars agents={snap.agents} />}
+              <span className="min-w-0 truncate whitespace-nowrap pl-1">
+                {buildingCopy}
+              </span>
+              {hint}
+              {!mobile && progress}
+            </>
+          ) : (
+            <span className="min-w-0 truncate whitespace-nowrap pl-1.5">
+              <span className="text-green" aria-hidden>
+                ✓{" "}
+              </span>
+              {doneCopy}
+            </span>
+          ))}
+        <button
+          key="action"
+          tabIndex={hidden ? -1 : undefined}
+          onClick={building ? swarm.skip : swarm.rebuild}
+          aria-label={building ? "Skip the animation" : "Replay the live build"}
+          className={`shrink-0 whitespace-nowrap rounded-full font-bold hover:text-green ${
+            collapsed || slim
+              ? "px-2.5 py-1"
+              : "bg-white/10 px-2.5 py-0.5 hover:bg-white/20"
+          }`}>
+          {building ? "Skip" : "↻ Replay"}
+        </button>
+      </div>
+    </>
   );
 };
 
@@ -342,6 +413,13 @@ const SwarmOverlay = () => {
         const taken: Box[] = hud
           ? [{ l: hud.left - 8, t: hud.top - 8, r: hud.right + 8, b: hud.bottom + 8 }]
           : [];
+        // Lines being typed right now stay readable: labels avoid them.
+        for (const a of swarm.agents) {
+          if (!a.caret) continue;
+          const cy = a.caret.y - sy;
+          const cx = a.caret.x - sx;
+          taken.push({ l: cx - 320, t: cy - 2, r: cx + 4, b: cy + a.caret.h + 2 });
+        }
 
         // Cursors are plain DOM, moved without re-rendering React.
         for (const a of swarm.agents) {
@@ -389,24 +467,38 @@ const SwarmOverlay = () => {
             a.chip ? a.chip.label.length * 6.1 + 52 : 0
           );
           const h = 20 + (status ? 22 : 0) + (a.chip ? 44 : 0);
-          const preferLeft = a.faceLeft ?? vx > vw - 140;
+          // On the finale ring, labels sit on the outer side of their cursor.
+          const ring = a.ringAngle;
+          const preferLeft =
+            ring !== null ? Math.cos(ring) < -0.2 : vx > vw - 140;
+          const preferUp = ring !== null && Math.sin(ring) < -0.35;
           let flip = preferLeft;
-          let dy = 0;
+          let dy = preferUp ? -h - 26 : 0;
           if (onScreen) {
-            const options: [boolean, number][] = [
-              [preferLeft, 0],
-              [!preferLeft, 0],
-              [preferLeft, 22],
-              [!preferLeft, 22],
-              [preferLeft, -h - 26],
-              [!preferLeft, -h - 26],
-              [preferLeft, 44],
-            ];
+            const up = -h - 26;
+            const options: [boolean, number][] = preferUp
+              ? [
+                  [preferLeft, up],
+                  [!preferLeft, up],
+                  [preferLeft, 0],
+                  [!preferLeft, 0],
+                ]
+              : [
+                  [preferLeft, 0],
+                  [!preferLeft, 0],
+                  [preferLeft, 22],
+                  [!preferLeft, 22],
+                  [preferLeft, up],
+                  [!preferLeft, up],
+                  [preferLeft, 44],
+                ];
+            const fits = (box: Box) =>
+              box.l >= 8 && box.r <= vw - 8 && box.t >= 8 && box.b <= vh - 8;
             let chosen: Box | null = null;
             for (const [f, off] of options) {
-              const l = f ? vx - 4 - w : vx + 16;
+              const l = f ? vx + 4 - w : vx + 16;
               const box = { l, t: vy + 20 + off, r: l + w, b: vy + 20 + off + h };
-              if (box.l < 0 || box.r > vw) continue;
+              if (!fits(box)) continue;
               if (!taken.some((o) => hits(o, box))) {
                 flip = f;
                 dy = off;
@@ -414,7 +506,16 @@ const SwarmOverlay = () => {
                 break;
               }
             }
-            if (chosen) taken.push(chosen);
+            if (!chosen) {
+              // Nothing is free: at least keep the label fully on screen.
+              const l = flip ? vx + 4 - w : vx + 16;
+              if (l < 8) flip = false;
+              else if (l + w > vw - 8) flip = true;
+              if (vy + 20 + dy + h > vh - 8) dy = -h - 26;
+              else if (vy + 20 + dy < 8) dy = 0;
+            } else {
+              taken.push(chosen);
+            }
           }
           if (d.root.hasAttribute("data-flip") !== flip) {
             d.root.toggleAttribute("data-flip", flip);
@@ -437,6 +538,11 @@ const SwarmOverlay = () => {
         if (!ctx) return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, vw, vh);
+        // Finale backdrop: the page dims behind the ring of cursors.
+        if (swarm.scrim > 0.01) {
+          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.45).toFixed(3)})`;
+          ctx.fillRect(0, 0, vw, vh);
+        }
 
         // Wireframe around what is still to be built; claimed jobs march in
         // the colour of the cursor that took them.
@@ -463,7 +569,7 @@ const SwarmOverlay = () => {
             : "rgba(255, 255, 255, 0.24)";
           roundRect(ctx, r.left + 0.5, r.top + 0.5, r.width - 1, r.height - 1, 8);
           if (owner) {
-            ctx.fillStyle = rgba(owner.color, 0.06);
+            ctx.fillStyle = rgba(owner.color, 0.03);
             ctx.fill();
           }
           ctx.stroke();
@@ -568,7 +674,7 @@ const SwarmOverlay = () => {
   const announcement = !onHome
     ? ""
     : snap.phase === "running"
-    ? "This page is being built by an animation. Everything is already readable; press Skip the animation to show it at full strength."
+    ? "Parts of this page are shown faintly while an animation builds them. Press Skip the animation to show everything now."
     : snap.revealed
     ? "The full page is now shown."
     : "";

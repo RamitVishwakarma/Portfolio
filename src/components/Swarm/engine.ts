@@ -1,14 +1,20 @@
 import { AGENTS, MOBILE_AGENTS } from "./agents";
-import { prepareTyping, type Rect, type Typing } from "./typing";
+import {
+  nextTypingFrame,
+  prepareTyping,
+  type Rect,
+  type Typing,
+} from "./typing";
 
 export type { Rect };
 
 /**
- * How a cursor builds an element:
- * - text:  types the element's text in place, caret and all
- * - block: drags a selection box corner to corner and the element is drawn in
- * - image: carries the asset in as a file chip and drops it
- * - pop:   clicks and the element pops in
+ * How cursors build an element:
+ * - text:  typed in place, caret and all; long text is split into sentences
+ *          that several cursors type at once
+ * - block: a selection box is dragged corner to corner and paints it in
+ * - image: carried in as a file chip and dropped
+ * - pop:   clicked, and it stamps in
  */
 export type BuildKind = "text" | "block" | "image" | "pop";
 
@@ -18,12 +24,17 @@ export interface BuildOptions {
   caption?: string;
   /** Doesn't hold up "build complete" (e.g. marquee cards scrolled out of view). */
   optional?: boolean;
-  /** Built before anything else on screen (the name in the hero). */
+  /** Built first and shown less faint while waiting (navbar, the name). */
   priority?: boolean;
 }
 
 type TaskState = "pending" | "claimed" | "building" | "done";
 type Phase = "idle" | "running" | "finishing" | "complete";
+
+interface SegmentJob {
+  agent: Agent | null;
+  done: boolean;
+}
 
 export interface Task {
   id: string;
@@ -33,7 +44,7 @@ export interface Task {
   optional: boolean;
   priority: boolean;
   state: TaskState;
-  /** Within a screen of the viewport: cursors may start on it. */
+  /** Within the look-ahead band below the viewport. */
   inView: boolean;
   /** Actually on screen. */
   visible: boolean;
@@ -43,6 +54,8 @@ export interface Task {
   top: number;
   agent: Agent | null;
   removed: boolean;
+  typing?: Typing;
+  segs?: SegmentJob[];
   cleanup?: () => void;
   anim?: Animation;
 }
@@ -82,8 +95,8 @@ export interface Agent {
   ripples: { x: number; y: number; t0: number }[];
   /** Deep colour: label text and outline flip to light. */
   dark: boolean;
-  /** Finale: labels face outward from the ring. */
-  faceLeft: boolean | null;
+  /** Finale: where on the ring this cursor sits (labels face outward). */
+  ringAngle: number | null;
   dom: AgentDom | null;
 }
 
@@ -98,6 +111,8 @@ export interface SwarmSnapshot {
   phase: Phase;
   done: number;
   total: number;
+  /** 0–1, with the first screen weighted so the bar moves early. */
+  progress: number;
   agents: Agent[];
   roster: number;
   waiting: boolean;
@@ -106,26 +121,41 @@ export interface SwarmSnapshot {
   revealed: boolean;
   /** Visitor has already watched a build in this browser. */
   seen: boolean;
+  startedAt: number;
 }
 
 const EMPTY: SwarmSnapshot = {
   phase: "idle",
   done: 0,
   total: 0,
+  progress: 0,
   agents: [],
   roster: 0,
   waiting: false,
   skipped: false,
   revealed: false,
   seen: false,
+  startedAt: 0,
 };
 
 const SEEN_KEY = "swarm-seen";
 /** An element left unclaimed on screen this long is shown without a cursor. */
-const CATCH_UP_MS = 2500;
-/** Opacity of not-yet-built content (see globals.css), and of the hero name. */
-export const GHOST = 0.14;
-export const GHOST_PRIORITY = 0.4;
+const CATCH_UP_MS = 1500;
+/** Opacity of not-yet-built content (see globals.css), and of priority items. */
+export const GHOST = 0.25;
+export const GHOST_PRIORITY = 0.45;
+
+const now = () => performance.now();
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v));
+const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
+const easeInOut = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutBack = (t: number) => {
+  const c1 = 0.9;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
 
 function isDark(hex: string) {
   const n = parseInt(hex.slice(1), 16);
@@ -140,17 +170,7 @@ function setMask(el: HTMLElement, value: string) {
   el.style.setProperty("-webkit-mask", value);
 }
 
-const now = () => performance.now();
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
-const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
-const easeInOut = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-const easeOutBack = (t: number) => {
-  const c1 = 0.9;
-  const c3 = c1 + 1;
-  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-};
+const onHome = () => window.location.pathname === "/";
 
 export function pageRect(el: Element): Rect {
   const r = el.getBoundingClientRect();
@@ -189,7 +209,7 @@ function once(fn: () => void) {
   };
 }
 
-/** The build was skipped or restarted: drop everything. */
+/** The build was skipped or restarted, or someone else finished the task. */
 class Aborted extends Error {}
 /** The visitor scrolled past this element: finish it now. */
 class Rush extends Error {}
@@ -199,25 +219,31 @@ class SwarmEngine {
   agents: Agent[] = [];
   /** Shared burst when the build completes, in page coordinates. */
   burst: Burst | null = null;
+  /** Finale backdrop: 0–1 strength of the dimming scrim. */
+  scrim = 0;
 
   private byEl = new WeakMap<Element, Task>();
   private phase: Phase = "idle";
   private settled = false;
   private skipped = false;
   private revealed = false;
-  private waitOn = 0;
-  private waitOff = 0;
-  private waiting = false;
   private rebuilding = false;
   private gen = 0;
   private roster = 0;
   private base = 1;
   private boost = 1;
+  private segTarget = 120;
   private startedAt = 0;
+  private heroLine = 0;
   private raf = 0;
   private sleeping = false;
   private keyboard = false;
   private listening = false;
+  private waitOn = 0;
+  private waitOff = 0;
+  private waiting = false;
+  private waitTimer = 0;
+  private scrimTarget = 0;
   private waiters: Array<() => void> = [];
   private ahead: IntersectionObserver | null = null;
   private seenIO: IntersectionObserver | null = null;
@@ -303,6 +329,18 @@ class SwarmEngine {
   // ---- Controls ----------------------------------------------------------
 
   skip = () => {
+    // During the finale's gather, Skip jumps straight to the payoff.
+    if (this.phase === "finishing" && !this.revealed) {
+      this.gen++;
+      this.revealed = true;
+      this.skipped = true;
+      this.burst = null;
+      this.scrimTarget = 0;
+      for (const a of this.agents) a.targetOpacity = 0;
+      this.complete(this.gen, 400);
+      this.emit(true);
+      return;
+    }
     if (this.phase !== "running") return;
     this.gen++;
     this.skipped = true;
@@ -324,6 +362,7 @@ class SwarmEngine {
     this.gen++;
     // The old swarm fades out while the page glides back up.
     for (const a of this.agents) a.targetOpacity = 0;
+    this.scrimTarget = 0;
     const reset = () => {
       this.rebuilding = false;
       this.settled = false;
@@ -342,6 +381,8 @@ class SwarmEngine {
         t.inView = false;
         t.visible = false;
         t.visibleSince = 0;
+        t.typing = undefined;
+        t.segs = undefined;
         this.setAttr(t, "pending");
         // Re-observing makes the observers report fresh positions.
         this.ahead?.unobserve(t.el);
@@ -372,6 +413,8 @@ class SwarmEngine {
 
   private observe(task: Task) {
     if (!this.ahead) {
+      // Frames, cards and images start just before they scroll in; text is
+      // only typed once it's on screen, so the visitor watches it happen.
       this.ahead = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
@@ -385,9 +428,7 @@ class SwarmEngine {
           }
           this.wake();
         },
-        // Cursors start just before an element scrolls in, so the visitor
-        // arrives to a section mid-build and watches it finish.
-        { rootMargin: "0px 0px 15% 0px" }
+        { rootMargin: "0px 0px 25% 0px" }
       );
       this.seenIO = new IntersectionObserver((entries) => {
         for (const e of entries) {
@@ -395,12 +436,8 @@ class SwarmEngine {
           if (!t) continue;
           t.visible = e.isIntersecting;
           t.visibleSince = e.isIntersecting ? t.visibleSince || now() : 0;
-          // Scrolled past it: don't keep the visitor's content hidden above.
-          if (
-            !e.isIntersecting &&
-            e.boundingClientRect.bottom <= 0 &&
-            this.phase === "running"
-          ) {
+          // Scrolled past it: don't keep the visitor's content faint above.
+          if (!e.isIntersecting && e.boundingClientRect.bottom <= 0) {
             this.pass(t);
           }
         }
@@ -413,8 +450,15 @@ class SwarmEngine {
 
   private pass(t: Task) {
     if (t.removed || t.state === "done" || this.phase !== "running") return;
-    if (t.state === "pending") this.finishTask(t);
-    else t.rush = true;
+    const typingNow = t.segs?.some((s) => s.agent && !s.done);
+    if (t.state === "pending" || (t.state === "building" && t.segs && !typingNow)) {
+      // Nobody is working on it right now: finish it outright.
+      t.cleanup?.();
+      t.cleanup = undefined;
+      this.finishTask(t);
+    } else {
+      t.rush = true;
+    }
   }
 
   private start() {
@@ -423,22 +467,14 @@ class SwarmEngine {
     this.gen++;
     this.roster++;
     this.startedAt = now();
+    this.heroLine = window.scrollY + window.innerHeight;
     this.burst = null;
+    this.scrim = 0;
+    this.scrimTarget = 0;
     this.revealed = false;
     this.waiting = false;
     this.waitOn = 0;
     this.waitOff = 0;
-    // Watched the opening: don't replay it on the next visit.
-    const gen0 = this.gen;
-    window.setTimeout(() => {
-      if (
-        gen0 === this.gen &&
-        this.phase === "running" &&
-        window.location.pathname === "/"
-      ) {
-        this.remember();
-      }
-    }, 4000);
     (window as unknown as { __swarmReady?: boolean }).__swarmReady = true;
     this.listen();
 
@@ -448,8 +484,8 @@ class SwarmEngine {
     const sy = window.scrollY;
     const mobile = vw < 640;
     this.base = mobile ? 1.5 : 1;
+    this.segTarget = mobile ? 70 : 120;
     const count = mobile ? MOBILE_AGENTS : AGENTS.length;
-    const t = now();
 
     this.agents = AGENTS.slice(0, count).map((def, i) => {
       // Fly in from all four edges of the screen.
@@ -470,8 +506,7 @@ class SwarmEngine {
         y: p.y + sy,
         opacity: 0,
         targetOpacity: 0,
-        // A short beat on the wireframe, then the swarm streams in as a wave.
-        activateAt: t + 150 + i * (mobile ? 200 : 160),
+        activateAt: 0,
         active: false,
         landed: false,
         docked: false,
@@ -488,13 +523,40 @@ class SwarmEngine {
         chip: null,
         ripples: [],
         dark: isDark(def.color),
-        faceLeft: null,
+        ringAngle: null,
         dom: null,
       };
     });
+    this.stagger();
+    // Opened in a background tab: hold the opening wave until it's seen.
+    if (document.hidden) {
+      const onShow = () => {
+        if (document.hidden) return;
+        document.removeEventListener("visibilitychange", onShow);
+        this.startedAt = now();
+        this.stagger();
+      };
+      document.addEventListener("visibilitychange", onShow);
+    }
+
+    // Watched the opening: don't replay it on the next visit.
+    const gen0 = this.gen;
+    window.setTimeout(() => {
+      if (gen0 === this.gen && this.phase === "running" && onHome()) {
+        this.remember();
+      }
+    }, 4000);
+
     this.emit(true);
     this.wake();
     this.loop();
+  }
+
+  /** The swarm streams in as a quick wave: all of it within about a second. */
+  private stagger() {
+    const t = now();
+    const step = this.agents.length > 8 ? 60 : 120;
+    for (const a of this.agents) a.activateAt = t + 150 + a.index * step;
   }
 
   private listen() {
@@ -502,9 +564,10 @@ class SwarmEngine {
     this.listening = true;
     window.addEventListener("scroll", this.wake, { passive: true });
     // Keyboard users get the full page as soon as they start tabbing into it,
-    // and find-in-page gets everything to search.
+    // and find-in-page gets everything at full strength.
     document.addEventListener("keydown", (e) => {
       if (e.key === "Tab") this.keyboard = true;
+      if (!onHome()) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") this.skip();
     });
     document.addEventListener("pointerdown", () => {
@@ -512,13 +575,14 @@ class SwarmEngine {
     });
     document.addEventListener("focusin", (e) => {
       const el = e.target as Element | null;
-      if (!this.keyboard || el?.closest?.("[data-swarm-ui]")) return;
+      if (!onHome() || !this.keyboard || el?.closest?.("[data-swarm-ui]")) return;
       this.skip();
     });
   }
 
   private wake = () => {
     if (this.phase !== "running") return;
+    window.clearTimeout(this.waitTimer);
     // Hand out new work on the very next frame.
     this.lastSchedule = 0;
     this.sleeping = false;
@@ -538,6 +602,7 @@ class SwarmEngine {
     this.phase = "finishing";
     this.settled = true;
     this.remember();
+    window.clearTimeout(this.waitTimer);
     const gen = this.gen;
     this.sleeping = false;
     if (!natural) this.revealed = true;
@@ -547,127 +612,88 @@ class SwarmEngine {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const n = this.agents.length;
-    const R = Math.min(vw, vh) * 0.2;
-    const { x: cx, y: cy } = natural ? this.gatherPoint(R) : { x: vw / 2, y: vh / 2 };
+    const R = Math.min(vw, vh) * 0.22;
+    const cx = vw / 2;
+    const cy = vh / 2;
+    const ringPoint = (a: Agent) => ({
+      x: window.scrollX + cx + Math.cos(a.ringAngle ?? 0) * R,
+      y: window.scrollY + cy + Math.sin(a.ringAngle ?? 0) * R,
+    });
 
     const outro = async () => {
+      if (!natural) {
+        for (const a of this.agents) a.targetOpacity = 0;
+        this.complete(gen, 450);
+        return;
+      }
       try {
-        if (natural) {
-          // Everyone gathers in a ring, labels facing out...
-          await Promise.all(
-            this.agents.map((a, i) => {
-              const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
-              a.docked = false;
-              a.leaving = true;
-              a.active = true;
-              a.targetOpacity = 1;
-              a.status = "";
-              a.faceLeft = Math.cos(ang) < -0.2;
-              return this.moveTo(
-                a,
-                () => ({
-                  x: window.scrollX + cx + Math.cos(ang) * R,
-                  y: window.scrollY + cy + Math.sin(ang) * R,
-                }),
-                gen,
-                null,
-                0.9
-              );
-            })
-          );
-          await this.sleep(350, gen, null);
-          // ...clicks together: burst...
-          for (const a of this.agents) a.pressed = true;
-          this.burst = {
-            x: window.scrollX + cx,
-            y: window.scrollY + cy,
-            t0: now(),
-            sparks: Array.from({ length: 44 }, (_, i) => ({
-              angle: rand(0, Math.PI * 2),
-              speed: rand(0.35, 0.75) * Math.max(vw, vh) * 0.45,
-              color: this.agents[i % n].color,
-              len: rand(6, 14),
-            })),
-          };
-          this.revealed = true;
-          this.emit(true);
-          await this.sleep(160, gen, null);
-          for (const a of this.agents) a.pressed = false;
-          await this.sleep(420, gen, null);
-        }
-        // ...and scatters off screen.
+        // The page dims and the whole swarm gathers in a ring...
+        this.scrimTarget = 1;
         await Promise.all(
-          this.agents.map((a) => {
+          this.agents.map((a, i) => {
+            a.ringAngle = (i / n) * Math.PI * 2 - Math.PI / 2;
+            a.docked = false;
             a.leaving = true;
-            const vx = a.x - window.scrollX;
-            const vy = a.y - window.scrollY;
-            const dx = vx - cx || rand(-1, 1);
-            const dy = vy - cy || rand(-1, 1);
-            const len = Math.hypot(dx, dy) || 1;
-            const reach = Math.max(vw, vh);
-            const tx = cx + (dx / len) * reach;
-            const ty = cy + (dy / len) * reach;
-            return this.moveTo(
-              a,
-              () => ({ x: window.scrollX + tx, y: window.scrollY + ty }),
-              gen,
-              null,
-              0.8
-            ).then(() => {
-              a.targetOpacity = 0;
-            });
+            a.active = true;
+            a.targetOpacity = 1;
+            a.status = "";
+            return this.moveTo(a, () => ringPoint(a), gen, null, 0.9);
           })
         );
-      } catch {
-        // A rebuild took over.
-      }
-      window.setTimeout(() => {
-        if (gen !== this.gen) return;
-        this.phase = "complete";
-        this.burst = null;
+        await this.sleep(700, gen, null);
+        // ...clicks together: the burst, and the payoff line...
+        for (const a of this.agents) a.pressed = true;
+        this.burst = {
+          x: window.scrollX + cx,
+          y: window.scrollY + cy,
+          t0: now(),
+          sparks: Array.from({ length: 48 }, (_, i) => ({
+            angle: rand(0, Math.PI * 2),
+            speed: rand(0.35, 0.8) * Math.max(vw, vh) * 0.45,
+            color: this.agents[i % n].color,
+            len: rand(6, 14),
+          })),
+        };
         this.revealed = true;
-        // Nothing is pending any more; drop the hiding rules entirely.
-        document.documentElement.classList.remove("swarm-on");
         this.emit(true);
-      }, 300);
+        await this.sleep(160, gen, null);
+        for (const a of this.agents) a.pressed = false;
+        // ...then orbits for a moment before fading away.
+        const t0 = now();
+        for (;;) {
+          await this.step(gen, null);
+          const e = now() - t0;
+          for (const a of this.agents) {
+            a.ringAngle = (a.ringAngle ?? 0) + 0.016;
+            const p = ringPoint(a);
+            a.x = p.x;
+            a.y = p.y;
+            if (e > 1100) a.targetOpacity = 0;
+          }
+          if (e > 1100) this.scrimTarget = 0;
+          if (e > 1700) break;
+        }
+        this.complete(gen, 0);
+      } catch {
+        // Skipped or rebuilt mid-finale.
+      }
     };
     void outro();
   }
 
-  /** The emptiest spot on screen for the finale ring. */
-  private gatherPoint(R: number) {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const rects: DOMRect[] = [];
-    for (const t of this.taskList()) {
-      if (t.removed || t.kind === "block") continue;
-      const r = t.el.getBoundingClientRect();
-      if (r.width > 0 && r.bottom > 0 && r.top < vh) rects.push(r);
-    }
-    let best = { x: vw / 2, y: vh / 2 };
-    let bestScore = Infinity;
-    for (const fx of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]) {
-      for (const fy of [0.3, 0.42, 0.54, 0.66]) {
-        const x = vw * fx;
-        const y = vh * fy;
-        const l = x - R - 90;
-        const r = x + R + 90;
-        const t = y - R - 10;
-        const b = y + R + 30;
-        if (l < 0 || r > vw || t < 70 || b > vh) continue;
-        let score = Math.abs(fx - 0.5) * 4000;
-        for (const e of rects) {
-          const w = Math.min(r, e.right) - Math.max(l, e.left);
-          const h = Math.min(b, e.bottom) - Math.max(t, e.top);
-          if (w > 0 && h > 0) score += w * h;
-        }
-        if (score < bestScore) {
-          bestScore = score;
-          best = { x, y };
-        }
-      }
-    }
-    return best;
+  private complete(gen: number, delay: number) {
+    window.setTimeout(() => {
+      if (gen !== this.gen) return;
+      this.phase = "complete";
+      this.burst = null;
+      this.scrim = 0;
+      this.scrimTarget = 0;
+      this.revealed = true;
+      for (const a of this.agents) a.ringAngle = null;
+      // Nothing is pending any more; drop the ghost rules entirely.
+      document.documentElement.classList.remove("swarm-on");
+      this.emit(true);
+    }, delay + 300);
   }
 
   private loop() {
@@ -682,11 +708,14 @@ class SwarmEngine {
   }
 
   private rate() {
-    return this.base * this.boost;
+    // The opening runs a touch slower so the hero reads as a scene.
+    const warm = now() - this.startedAt < 4000 ? 0.75 : 1;
+    return this.base * this.boost * warm;
   }
 
   private tick = async (t: number) => {
     this.raf = 0;
+    nextTypingFrame();
     const waiters = this.waiters;
     this.waiters = [];
     for (const w of waiters) w();
@@ -694,7 +723,7 @@ class SwarmEngine {
     const running = this.phase === "running";
     const vh = window.innerHeight;
     for (const a of this.agents) {
-      if (!a.active && running && t >= a.activateAt) {
+      if (!a.active && running && a.activateAt && t >= a.activateAt) {
         a.active = true;
         a.targetOpacity = 1;
         a.idleSince = t;
@@ -708,6 +737,7 @@ class SwarmEngine {
       }
       if (a.ripples.length) a.ripples = a.ripples.filter((r) => t - r.t0 < 520);
     }
+    this.scrim += (this.scrimTarget - this.scrim) * 0.12;
     if (this.burst && t - this.burst.t0 > 1100) this.burst = null;
 
     if (running) {
@@ -724,7 +754,7 @@ class SwarmEngine {
     }
 
     // Let this frame's cursor work (promise continuations) land before
-    // drawing, so selection boxes and clips stay in lockstep.
+    // drawing, so selection boxes and masks stay in lockstep.
     for (let i = 0; i < 8; i++) await Promise.resolve();
     for (const draw of Array.from(this.drawers)) draw(t);
 
@@ -735,13 +765,19 @@ class SwarmEngine {
       if (this.isQuiet()) {
         this.sleeping = true;
         this.emit();
+        // Asleep with work left below: surface the scroll nudge on time.
+        if (!this.waiting) {
+          window.clearTimeout(this.waitTimer);
+          this.waitTimer = window.setTimeout(() => this.emit(), 1600);
+        }
         return;
       }
     }
     if (
       this.phase === "running" ||
       this.phase === "finishing" ||
-      this.waiters.length
+      this.waiters.length ||
+      Math.abs(this.scrim - this.scrimTarget) > 0.01
     ) {
       this.loop();
     }
@@ -760,23 +796,67 @@ class SwarmEngine {
     );
   }
 
+  /** Whether a caret position (page coordinates) is comfortably on screen. */
+  private caretOnScreen(c: Rect | null) {
+    if (!c) return true;
+    const y = c.y - window.scrollY;
+    const vh = window.innerHeight;
+    // At the very bottom of the page nothing can scroll further up.
+    const atEnd =
+      window.scrollY + vh >= document.documentElement.scrollHeight - 2;
+    return y > -c.h && y < (atEnd ? vh : vh - 24);
+  }
+
+  /** Caret start of a text segment, if it's on screen. */
+  private segmentOnScreen(task: Task, i: number) {
+    const seg = task.typing?.segments[i];
+    return !!seg && this.caretOnScreen(task.typing?.caretAt(seg.start) ?? null);
+  }
+
   /** Hand the next elements to idle cursors: on screen first, top first. */
   private schedule() {
     const eligible: Task[] = [];
+    const segJobs: { task: Task; i: number }[] = [];
     let onScreen = 0;
     for (const t of this.taskList()) {
-      if (t.state === "pending" && !t.removed && t.inView && this.isReady(t)) {
+      if (t.removed) continue;
+      if (t.state === "pending" && t.inView && this.isReady(t)) {
+        // Text waits until it's on screen, so the typing is seen.
+        if (t.kind === "text" && !t.visible) continue;
         eligible.push(t);
         if (t.visible) onScreen++;
+      } else if (t.state === "building" && t.segs) {
+        t.segs.forEach((s, i) => {
+          if (!s.agent && !s.done && this.segmentOnScreen(t, i)) {
+            segJobs.push({ task: t, i });
+          }
+        });
       }
     }
-    this.hasEligible = eligible.length > 0;
+    this.hasEligible = eligible.length > 0 || segJobs.length > 0;
     // A backlog on screen speeds the swarm up (but let the opening breathe).
     this.boost =
       now() - this.startedAt < 3000 ? 1 : clamp(1 + onScreen / 8, 1, 2);
 
     const idle = this.agents.filter((a) => a.active && !a.task && !a.leaving);
-    if (!idle.length || !eligible.length) return;
+    if (!idle.length || !this.hasEligible) return;
+
+    // Join in on paragraphs already being typed first: many hands at once.
+    for (const job of segJobs) {
+      if (!idle.length) return;
+      const c = job.task.typing?.caretAt(job.task.typing.segments[job.i].start);
+      let best = 0;
+      let bestD = Infinity;
+      idle.forEach((a, k) => {
+        const d = c ? Math.hypot(c.x - a.x, c.y - a.y) : 0;
+        if (d < bestD) {
+          bestD = d;
+          best = k;
+        }
+      });
+      const [a] = idle.splice(best, 1);
+      void this.runSegment(a, job.task, job.i);
+    }
 
     eligible.sort(
       (a, b) =>
@@ -809,6 +889,8 @@ class SwarmEngine {
 
   /** Idle cursors slip off the bottom of the screen instead of loitering. */
   private dock(t: number) {
+    // Keep the whole cast on stage through the opening.
+    if (t < this.startedAt + 2000) return;
     const vw = window.innerWidth;
     for (const a of this.agents) {
       if (!a.active || a.task || a.leaving || a.moving || a.docked) continue;
@@ -837,7 +919,7 @@ class SwarmEngine {
 
   private checkComplete() {
     // The navbar outlives the home page; only finish the build on "/".
-    if (window.location.pathname !== "/") return;
+    if (!onHome()) return;
     let live = 0;
     let required = 0;
     const t0 = now();
@@ -858,8 +940,8 @@ class SwarmEngine {
           this.finishTask(t);
           continue;
         }
-        // Every cursor is busy and this has sat empty on screen: show it.
-        const since = Math.max(t.visibleSince, this.startedAt + 2200);
+        // Every cursor is busy and this has sat faint on screen: show it.
+        const since = Math.max(t.visibleSince, this.startedAt + 2500);
         if (t.visible && t.visibleSince && t0 - since > CATCH_UP_MS) {
           this.setAttr(t, "building");
           this.reveal(t, "fade");
@@ -888,23 +970,40 @@ class SwarmEngine {
     a.landed = true;
     const tag = task.el.tagName.toLowerCase();
     try {
-      if (task.kind === "text") await this.doText(a, task, gen, tag, overshoot);
-      else if (task.kind === "block")
-        await this.doBlock(a, task, gen, tag, overshoot);
+      let finished = true;
+      if (task.kind === "text") finished = await this.doText(a, task, gen, tag, overshoot);
+      else if (task.kind === "block") await this.doBlock(a, task, gen, tag, overshoot);
       else if (task.kind === "image") await this.doImage(a, task, gen, overshoot);
       else await this.doPop(a, task, gen, tag, overshoot);
-      if (gen === this.gen && !task.removed) this.finishTask(task);
-    } catch (err) {
-      if (err instanceof Rush) {
-        if (!task.removed) this.finishTask(task);
-      } else if (!(err instanceof Aborted)) {
-        console.error(err);
-        if (gen === this.gen && !task.removed) this.finishTask(task);
+      if (
+        finished &&
+        gen === this.gen &&
+        !task.removed &&
+        (task.state as TaskState) !== "done"
+      ) {
+        this.finishTask(task);
       }
+    } catch (err) {
+      this.handleError(err, task, gen);
     } finally {
       if (task.agent === a) task.agent = null;
       if (a.task === task) this.resetAgent(a);
       a.idleSince = now();
+    }
+  }
+
+  private handleError(err: unknown, task: Task, gen: number) {
+    if (err instanceof Rush) {
+      task.cleanup?.();
+      task.cleanup = undefined;
+      if (!task.removed && task.state !== "done") this.finishTask(task);
+    } else if (!(err instanceof Aborted)) {
+      console.error(err);
+      task.cleanup?.();
+      task.cleanup = undefined;
+      if (gen === this.gen && !task.removed && task.state !== "done") {
+        this.finishTask(task);
+      }
     }
   }
 
@@ -925,6 +1024,7 @@ class SwarmEngine {
     await this.frame();
     if (gen !== this.gen || task?.removed) throw new Aborted();
     if (task?.rush) throw new Rush();
+    if (task?.state === "done") throw new Aborted();
   }
 
   private async sleep(ms: number, gen: number, task: Task | null) {
@@ -976,13 +1076,11 @@ class SwarmEngine {
     }
   }
 
-  private caretPoint(typing: Typing, el: HTMLElement) {
-    const c = typing.caret();
-    if (c) return { x: c.x + 2, y: c.y + c.h };
-    const r = pageRect(el);
-    return { x: r.x, y: r.y };
-  }
-
+  /**
+   * First cursor on a text element: split it into sentences, type the first,
+   * and keep taking free sentences while others join in. Resolves true when
+   * this cursor typed the last one.
+   */
   private async doText(
     a: Agent,
     task: Task,
@@ -992,44 +1090,120 @@ class SwarmEngine {
   ) {
     const typing = prepareTyping(
       task.el,
-      task.priority ? GHOST_PRIORITY : GHOST
+      task.priority ? GHOST_PRIORITY : GHOST,
+      this.segTarget
     );
-    const cleanup = once(() => typing.finish());
-    task.cleanup = cleanup;
+    typing.measure();
+    task.typing = typing;
+    task.segs = typing.segments.map(() => ({ agent: null, done: false }));
+    task.cleanup = once(() => typing.finish());
+    task.segs[0].agent = a;
+    this.setStatus(a, task.caption ?? `typing <${tag}>`);
+    const start = typing.caretAt(typing.segments[0].start);
+    await this.moveTo(
+      a,
+      () => (start ? { x: start.x + 2, y: start.y + start.h } : center(task.el)),
+      gen,
+      task,
+      1,
+      overshoot
+    );
+    // Ghost spans and the element switch levels together: no dip.
+    typing.ghostOn();
+    this.setState(task, "building");
+    return this.typeSegments(a, task, gen, 0);
+  }
+
+  /** Another cursor joins a paragraph that's already being typed. */
+  private async runSegment(a: Agent, task: Task, i: number) {
+    const gen = this.gen;
+    const segs = task.segs;
+    const typing = task.typing;
+    if (!segs || !typing || segs[i].agent || segs[i].done) return;
+    segs[i].agent = a;
+    a.task = task;
+    a.docked = false;
+    a.targetOpacity = 1;
+    const overshoot = !a.landed;
+    a.landed = true;
     try {
-      this.setStatus(a, task.caption ?? `typing <${tag}>`);
-      await this.moveTo(
-        a,
-        () => this.caretPoint(typing, task.el),
-        gen,
-        task,
-        1,
-        overshoot
-      );
-      this.setState(task, "building");
-      typing.measure();
-      const total = typing.total;
-      let dur = clamp(200 + total * 20, 420, 2400) / this.rate();
+      this.setStatus(a, task.caption ?? `typing <${task.el.tagName.toLowerCase()}>`);
+      const start = typing.caretAt(typing.segments[i].start);
+      if (start) {
+        await this.moveTo(
+          a,
+          () => ({ x: start.x + 2, y: start.y + start.h }),
+          gen,
+          task,
+          1,
+          overshoot
+        );
+      }
+      const last = await this.typeSegments(a, task, gen, i);
+      if (last && gen === this.gen && !task.removed && task.state !== "done") {
+        this.finishTask(task);
+      }
+    } catch (err) {
+      this.handleError(err, task, gen);
+    } finally {
+      if (a.task === task) this.resetAgent(a);
+      a.idleSince = now();
+    }
+  }
+
+  /** Type segment `i`, then any free on-screen ones. True if all are done. */
+  private async typeSegments(a: Agent, task: Task, gen: number, i: number) {
+    const typing = task.typing as Typing;
+    const segs = task.segs as SegmentJob[];
+    let current: number | null = i;
+    while (current !== null) {
+      const seg = typing.segments[current];
+      const len = seg.end - seg.start;
+      let dur = clamp(160 + len * 16, 350, 1200) / this.rate();
       // The name is the money shot: type it at a readable pace.
-      if (task.priority) dur = Math.max(dur, total * 62);
-      const t0 = now();
+      if (task.priority) dur = Math.max(dur, len * 62);
+      let elapsed = 0;
+      let last = now();
       for (;;) {
         await this.step(gen, task);
-        const p = Math.min(1, (now() - t0) / dur);
-        typing.set(Math.round(total * p));
-        const c = typing.caret();
-        if (c) {
-          a.caret = c;
-          a.x += (c.x + 2 - a.x) * 0.45;
-          a.y += (c.y + c.h - a.y) * 0.45;
+        const t = now();
+        const c = typing.caretAt(seg.start + Math.round(len * Math.min(1, elapsed / dur)));
+        // Wait while the caret is below the fold, so typing is always seen.
+        if (this.caretOnScreen(c)) elapsed += t - last;
+        last = t;
+        const p = Math.min(1, elapsed / dur);
+        const n = Math.round(len * p);
+        typing.type(current, n);
+        const caret = typing.caretAt(seg.start + n);
+        if (caret) {
+          a.caret = caret;
+          a.x += (caret.x + 2 - a.x) * 0.45;
+          a.y += (caret.y + caret.h - a.y) * 0.45;
         }
         if (p >= 1) break;
       }
-    } finally {
-      cleanup();
-      if (task.cleanup === cleanup) task.cleanup = undefined;
+      segs[current].done = true;
       a.caret = null;
+      // Keep going with the next free sentence that's on screen.
+      current = null;
+      for (let k = 0; k < segs.length; k++) {
+        if (!segs[k].agent && !segs[k].done && this.segmentOnScreen(task, k)) {
+          segs[k].agent = a;
+          current = k;
+          const s = typing.caretAt(typing.segments[k].start);
+          if (s) {
+            await this.moveTo(a, () => ({ x: s.x + 2, y: s.y + s.h }), gen, task);
+          }
+          break;
+        }
+      }
     }
+    if (segs.every((s) => s.done)) {
+      task.cleanup?.();
+      task.cleanup = undefined;
+      return true;
+    }
+    return false;
   }
 
   private async doBlock(
@@ -1052,7 +1226,8 @@ class SwarmEngine {
       1,
       overshoot
     );
-    const ghost = `linear-gradient(rgba(0,0,0,${GHOST}),rgba(0,0,0,${GHOST}))`;
+    const g = task.priority ? GHOST_PRIORITY : GHOST;
+    const ghost = `linear-gradient(rgba(0,0,0,${g}),rgba(0,0,0,${g}))`;
     const draw = (p: number) =>
       setMask(
         el,
@@ -1067,8 +1242,7 @@ class SwarmEngine {
       // The selection paints the element in at full strength over its ghost.
       draw(0);
       this.setState(task, "building");
-      // One measurement drives both the selection box and the clip, so the
-      // element is revealed exactly inside the box being dragged.
+      // One measurement drives both the selection box and the mask.
       const r = pageRect(el);
       const dur =
         clamp(300 + Math.sqrt(r.w * r.h) * 0.9, 420, 1150) / this.rate();
@@ -1186,14 +1360,22 @@ class SwarmEngine {
   private emit(force = false) {
     let done = 0;
     let total = 0;
+    let weighted = 0;
+    let weightTotal = 0;
     for (const t of this.taskList()) {
       if (t.removed) continue;
       total++;
-      if (t.state === "done") done++;
+      // The first screen is weighted up so the bar visibly jumps early.
+      const w = t.top < this.heroLine ? 3 : 1;
+      weightTotal += w;
+      if (t.state === "done") {
+        done++;
+        weighted += w;
+      }
     }
     const busy = this.agents.some((a) => a.task);
-    // Nudge to scroll only after 1.5 s of nothing to do, and drop the nudge
-    // only after 600 ms of work, so it doesn't flicker.
+    // Nudge to scroll after 1 s of nothing to do on screen, and drop the
+    // nudge only after 600 ms of work, so it doesn't flicker.
     const idle =
       this.phase === "running" &&
       now() - this.startedAt > 2000 &&
@@ -1204,13 +1386,14 @@ class SwarmEngine {
     if (idle) {
       this.waitOff = 0;
       if (!this.waitOn) this.waitOn = t;
-      if (t - this.waitOn > 1500) this.waiting = true;
+      if (t - this.waitOn > 1000) this.waiting = true;
     } else {
       this.waitOn = 0;
       if (!this.waitOff) this.waitOff = t;
       if (t - this.waitOff > 600 || this.phase !== "running") this.waiting = false;
     }
     const waiting = this.waiting;
+    const progress = weightTotal ? weighted / weightTotal : 0;
     const seen =
       typeof document !== "undefined" &&
       document.documentElement.dataset.swarmSeen === "1";
@@ -1231,12 +1414,14 @@ class SwarmEngine {
       phase: this.phase,
       done,
       total,
+      progress,
       agents: this.agents,
       roster: this.roster,
       waiting,
       skipped: this.skipped,
       revealed: this.revealed,
       seen,
+      startedAt: this.startedAt,
     };
     this.listeners.forEach((fn) => fn());
   }

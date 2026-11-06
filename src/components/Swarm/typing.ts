@@ -5,41 +5,85 @@ export interface Rect {
   h: number;
 }
 
+export interface Segment {
+  /** Global character range [start, end). */
+  start: number;
+  end: number;
+}
+
 export interface Typing {
-  /** Number of characters to type. */
   total: number;
-  /** Measure every caret position once, so typing never forces a reflow. */
+  /** Sentence-sized slices that different cursors can type in parallel. */
+  segments: Segment[];
+  /** Measure every caret position, so typing never forces a reflow. */
   measure(): void;
-  /** Show the first `n` characters. */
-  set(n: number): void;
-  /** Where the caret is, in page coordinates. */
-  caret(): Rect | null;
+  /** Fade the untyped text to the ghost level (when typing starts). */
+  ghostOn(): void;
+  /** Show the first `n` characters of segment `i`. */
+  type(i: number, n: number): void;
+  /** Caret before global character `index`, in page coordinates. */
+  caretAt(index: number): Rect | null;
   /** Put every text node back exactly as React rendered it. */
   finish(): void;
+}
+
+let frameNo = 0;
+/** Called once per animation frame; element origins are re-read at most once per frame. */
+export function nextTypingFrame() {
+  frameNo++;
+}
+
+interface Unit {
+  /** Typed part of this slice; the first unit of a text node is React's own node. */
+  node: Text;
+  full: string;
+  ghost: HTMLSpanElement;
+  start: number;
+  created: boolean;
 }
 
 interface Piece {
   node: Text;
   full: string;
-  ghost: HTMLSpanElement;
   wrap: HTMLSpanElement | null;
+  units: Unit[];
 }
 
-const toPage = (r: DOMRect, x: number): Rect => ({
-  x: x + window.scrollX,
-  y: r.top + window.scrollY,
-  w: 0,
-  h: r.height,
-});
+/** Split text into segments at sentence ends, roughly `target` chars long. */
+function split(text: string, target: number): Segment[] {
+  const out: Segment[] = [];
+  let start = 0;
+  const min = Math.round(target * 0.4);
+  const max = Math.round(target * 1.4);
+  for (let i = 0; i < text.length; i++) {
+    const len = i - start;
+    const sentenceEnd = /[.!?]/.test(text[i]) && text[i + 1] === " ";
+    if ((sentenceEnd && len >= min) || (len >= max && text[i] === " ")) {
+      out.push({ start, end: i + 1 });
+      start = i + 1;
+    }
+  }
+  if (start < text.length) {
+    // Fold a short tail into the previous segment.
+    if (out.length && text.length - start < min) out[out.length - 1].end = text.length;
+    else out.push({ start, end: text.length });
+  }
+  return out;
+}
 
 /**
- * Lets a cursor "type" an element's existing text in place.
+ * Lets cursors "type" an element's existing text in place, several at once.
  *
- * Each text node keeps its React identity: it is emptied and the untyped rest
- * of its text sits in a faint sibling span. The full text is always laid
- * out, so the element never changes size while it is being typed.
+ * Text nodes keep their React identity: each is emptied, and its untyped text
+ * sits in a faint sibling span. Where a segment boundary falls inside a text
+ * node, extra text nodes are added for the later slices and removed again in
+ * finish(). The full text is always laid out, so nothing moves while typing.
  */
-export function prepareTyping(root: HTMLElement, ghostOpacity: number): Typing {
+export function prepareTyping(
+  root: HTMLElement,
+  ghostOpacity: number,
+  target: number
+): Typing {
   const nodes: Text[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -50,6 +94,11 @@ export function prepareTyping(root: HTMLElement, ghostOpacity: number): Typing {
     nodes.push(text);
   }
 
+  const fullText = nodes.map((n) => n.data).join("");
+  const segments = split(fullText, target);
+  const cuts = new Set(segments.map((s) => s.start));
+
+  let offset = 0;
   const pieces: Piece[] = nodes.map((node) => {
     const parent = node.parentElement as HTMLElement;
     let wrap: HTMLSpanElement | null = null;
@@ -61,92 +110,131 @@ export function prepareTyping(root: HTMLElement, ghostOpacity: number): Typing {
       wrap.appendChild(node);
     }
     const full = node.data;
-    const ghost = document.createElement("span");
-    // The untyped rest stays as faint as the element was before.
-    ghost.style.opacity = String(ghostOpacity);
-    ghost.textContent = full;
+    const units: Unit[] = [];
+    let from = 0;
+    let after: Node = node;
+    for (let i = 1; i <= full.length; i++) {
+      if (i < full.length && !cuts.has(offset + i)) continue;
+      const slice = full.slice(from, i);
+      const unitNode = units.length ? document.createTextNode("") : node;
+      if (units.length) {
+        after.parentNode?.insertBefore(unitNode, after.nextSibling);
+      }
+      const ghost = document.createElement("span");
+      ghost.textContent = slice;
+      unitNode.parentNode?.insertBefore(ghost, unitNode.nextSibling);
+      units.push({
+        node: unitNode,
+        full: slice,
+        ghost,
+        start: offset + from,
+        created: units.length > 0,
+      });
+      after = ghost;
+      from = i;
+    }
     node.data = "";
-    node.after(ghost);
-    return { node, full, ghost, wrap };
+    offset += full.length;
+    return { node, full, wrap, units };
   });
 
-  const total = pieces.reduce((sum, p) => sum + p.full.length, 0);
-  let typed = 0;
+  const allUnits = pieces.flatMap((p) => p.units);
+  const total = fullText.length;
+  // Caret positions are kept relative to the element, so they stay right if
+  // it moves (sticky navbar, layout shifts above it).
+  let positions: Rect[] = [];
   let finished = false;
-  // Caret rect before each character, plus one after the last.
-  let positions: Rect[] | null = null;
-
-  const liveCaret = (): Rect | null => {
-    let offset = 0;
-    for (const p of pieces) {
-      if (typed < offset + p.full.length) {
-        const r = p.ghost.getClientRects()[0];
-        return r ? toPage(r, r.left) : null;
-      }
-      offset += p.full.length;
+  let cache = { frame: -1, x: 0, y: 0 };
+  const origin = () => {
+    if (cache.frame !== frameNo) {
+      const r = root.getBoundingClientRect();
+      cache = { frame: frameNo, x: r.left, y: r.top };
     }
-    const last = pieces[pieces.length - 1];
-    if (!last) return null;
-    const range = document.createRange();
-    range.selectNodeContents(last.node);
-    const rects = range.getClientRects();
-    const r = rects[rects.length - 1];
-    return r ? toPage(r, r.right) : null;
+    return cache;
   };
+
+  const toRel = (r: DOMRect, x: number, o: { x: number; y: number }): Rect => ({
+    x: x - o.x,
+    y: r.top - o.y,
+    w: 0,
+    h: r.height,
+  });
 
   return {
     total,
+    segments,
     measure() {
-      if (typed !== 0) return;
+      cache.frame = -1;
+      const o = origin();
       const out: Rect[] = [];
       const range = document.createRange();
-      let prev: Rect | null = null;
-      for (const p of pieces) {
-        const node = p.ghost.firstChild;
-        for (let i = 0; i < p.full.length; i++) {
-          let rect: Rect | null = prev;
+      let prev: Rect = { x: 0, y: 0, w: 0, h: 0 };
+      for (const u of allUnits) {
+        const typed = u.node.data.length;
+        for (let i = 0; i < u.full.length; i++) {
+          const inTyped = i < typed;
+          const node = inTyped ? u.node : u.ghost.firstChild;
+          const at = inTyped ? i : i - typed;
+          let rect = prev;
           if (node) {
-            range.setStart(node, i);
-            range.setEnd(node, i + 1);
+            range.setStart(node, at);
+            range.setEnd(node, at + 1);
             const r = range.getClientRects()[0];
-            if (r && r.height > 0) rect = toPage(r, r.left);
+            if (r && r.height > 0) rect = toRel(r, r.left, o);
           }
+          out.push(rect);
           prev = rect;
-          out.push(rect ?? { x: 0, y: 0, w: 0, h: 0 });
         }
       }
-      const end = pieces[pieces.length - 1];
-      const endNode = end?.ghost.firstChild;
-      if (endNode && end.full.length) {
-        range.setStart(endNode, end.full.length - 1);
-        range.setEnd(endNode, end.full.length);
-        const r = range.getClientRects()[0];
-        out.push(r ? toPage(r, r.right) : out[out.length - 1]);
+      const last = allUnits[allUnits.length - 1];
+      if (last) {
+        const typed = last.node.data.length;
+        const node = typed === last.full.length ? last.node : last.ghost.firstChild;
+        const len = node?.textContent?.length ?? 0;
+        if (node && len) {
+          range.setStart(node, len - 1);
+          range.setEnd(node, len);
+          const r = range.getClientRects()[0];
+          out.push(r ? toRel(r, r.right, o) : prev);
+        } else out.push(prev);
       }
-      positions = out.length === total + 1 ? out : null;
+      positions = out;
     },
-    set(n) {
-      typed = n;
-      let offset = 0;
-      for (const p of pieces) {
-        const k = Math.max(0, Math.min(p.full.length, n - offset));
-        if (p.node.data.length !== k) {
-          p.node.data = p.full.slice(0, k);
-          p.ghost.textContent = p.full.slice(k);
+    ghostOn() {
+      for (const u of allUnits) u.ghost.style.opacity = String(ghostOpacity);
+    },
+    type(i, n) {
+      const seg = segments[i];
+      if (!seg) return;
+      for (const u of allUnits) {
+        if (u.start + u.full.length <= seg.start || u.start >= seg.end) continue;
+        const k = Math.max(0, Math.min(u.full.length, seg.start + n - u.start));
+        if (u.node.data.length !== k) {
+          u.node.data = u.full.slice(0, k);
+          u.ghost.textContent = u.full.slice(k);
         }
-        offset += p.full.length;
       }
     },
-    caret() {
-      if (positions) return positions[Math.min(typed, total)];
-      return liveCaret();
+    caretAt(index) {
+      const rel = positions[Math.max(0, Math.min(index, positions.length - 1))];
+      if (!rel) return null;
+      const o = origin();
+      return {
+        x: rel.x + o.x + window.scrollX,
+        y: rel.y + o.y + window.scrollY,
+        w: 0,
+        h: rel.h,
+      };
     },
     finish() {
       if (finished) return;
       finished = true;
       for (const p of pieces) {
+        for (const u of p.units) {
+          u.ghost.remove();
+          if (u.created) u.node.remove();
+        }
         p.node.data = p.full;
-        p.ghost.remove();
         if (p.wrap) p.wrap.replaceWith(p.node);
       }
     },

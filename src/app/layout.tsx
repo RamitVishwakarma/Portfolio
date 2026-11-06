@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   description: "Ramit Vishwakarma's portfolio website",
 };
 
-// Runs before first paint. On the home page it hides everything wrapped in
-// <Build> so the cursor swarm can build it live. The build plays once per
-// browser; later visits (and back/forward) get the finished page with a
-// "Rebuild live" button. Skipped for reduced motion and crawlers; ?swarm=0
+// Runs before first paint. On the home page it turns everything wrapped in
+// <Build> into a faint ghost that the cursor swarm then builds live. The build
+// plays once per browser; later visits (and back/forward) get the finished
+// page with a "↻ Replay" button. Skipped for reduced motion and crawlers; ?swarm=0
 // turns it off and ?swarm=1 forces it on. If the app hasn't booted within 3 s
 // the page is shown as normal.
 const swarmBoot = `(function(){try{
