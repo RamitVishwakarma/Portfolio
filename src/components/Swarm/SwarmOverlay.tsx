@@ -12,7 +12,15 @@ import { swarm, type Agent, type SwarmSnapshot } from "./engine";
 
 /** How long a cursor's status chip stays up after it picks up a job. */
 const STATUS_MS = 1200;
-const RAINBOW = ["#ff8885", "#fafe8e", "#77effd", "#9e8bfd", "#ff9dfb"];
+const RAINBOW = [
+  "#ff8885",
+  "#ffc67e",
+  "#fafe8e",
+  "#a8fe96",
+  "#77effd",
+  "#9e8bfd",
+  "#ff9dfb",
+];
 
 function rgba(hex: string, alpha: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -34,6 +42,15 @@ function roundRect(
     ctx.rect(x, y, w, h);
   }
 }
+
+interface Box {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
+}
+const hits = (a: Box, b: Box) =>
+  a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
 
 function useSwarm() {
   return useSyncExternalStore(
@@ -75,21 +92,23 @@ const Cursor = ({ agent }: { agent: Agent }) => {
         <path
           d="M3 2.5v16.2l4.4-4.1 2.9 6.6 3.1-1.35-2.85-6.45 6.15-.2L3 2.5z"
           fill={agent.color}
-          stroke="#0b0b0b"
+          stroke={agent.dark ? "#ffffff" : "#0b0b0b"}
           strokeWidth="1.4"
           strokeLinejoin="round"
         />
       </svg>
       <div className="swarm-tags">
         <span
-          className="whitespace-nowrap rounded-full px-2 py-[3px] font-ProductSans text-[11px] font-bold leading-none text-black shadow-lg ring-1 ring-black/60"
+          className={`whitespace-nowrap rounded-full px-2 py-[3px] font-ProductSans text-[11px] font-bold leading-none shadow-lg ring-1 ${
+            agent.dark ? "text-white ring-white/40" : "text-black ring-black/60"
+          }`}
           style={{ background: agent.color }}>
           {agent.name}
         </span>
         <span
           data-status
           className="whitespace-nowrap rounded-md border bg-black/85 px-1.5 py-[3px] font-mono text-[10px] leading-none text-white/85"
-          style={{ display: "none", borderColor: rgba(agent.color, 0.45) }}
+          style={{ display: "none", borderColor: rgba(agent.color, 0.6) }}
         />
         <span
           data-chip
@@ -110,11 +129,13 @@ const Cursor = ({ agent }: { agent: Agent }) => {
 const Avatars = ({ agents }: { agents: Agent[] }) => {
   const shown = agents.slice(0, 4);
   return (
-    <span className="flex items-center max-five:hidden" aria-hidden>
+    <span className="flex items-center" aria-hidden>
       {shown.map((a, i) => (
         <span
           key={a.index}
-          className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-black text-[10px] font-bold text-black"
+          className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-black text-[10px] font-bold ${
+            a.dark ? "text-white" : "text-black"
+          }`}
           style={{ background: a.color, marginLeft: i ? -8 : 0 }}>
           {a.name[0]}
         </span>
@@ -128,123 +149,152 @@ const Avatars = ({ agents }: { agents: Agent[] }) => {
   );
 };
 
-/** Whether the page is scrolled down to the footer, and the screen is narrow. */
-function useViewport() {
-  const [view, setView] = useState({ atBottom: false, narrow: false });
+interface Placement {
+  /** Below 800px the HUD is a slim bar under the navbar. */
+  mobile: boolean;
+  /** Desktop: the empty stretch of navbar after the "RV" logo. */
+  left: number;
+  room: number;
+  navTop: number;
+  navBottom: number;
+}
+
+/** Where the HUD fits inside (desktop) or just under (mobile) the navbar. */
+function usePlacement(): Placement {
+  const [p, setP] = useState<Placement>({
+    mobile: false,
+    left: 180,
+    room: 600,
+    navTop: 0,
+    navBottom: 56,
+  });
   useEffect(() => {
-    const check = () => {
-      const atBottom =
-        window.scrollY + window.innerHeight >
-        document.documentElement.scrollHeight - 110;
-      const narrow = window.innerWidth < 800;
-      setView((v) =>
-        v.atBottom === atBottom && v.narrow === narrow ? v : { atBottom, narrow }
+    const measure = () => {
+      const logo = document.querySelector('a[href="/"]');
+      const nav = logo?.closest(".sticky");
+      const links = nav?.querySelector("ul");
+      const lr = logo?.getBoundingClientRect();
+      const nr = nav?.getBoundingClientRect();
+      const ur = links?.getBoundingClientRect();
+      const left = (lr?.right ?? 150) + 28;
+      const next: Placement = {
+        mobile: window.innerWidth < 800,
+        left,
+        room: (ur?.left ?? window.innerWidth) - left - 24,
+        navTop: Math.max(0, nr?.top ?? 0),
+        navBottom: Math.max(0, nr?.bottom ?? 56),
+      };
+      setP((old) =>
+        JSON.stringify(old) === JSON.stringify(next) ? old : next
       );
     };
-    check();
-    window.addEventListener("scroll", check, { passive: true });
-    window.addEventListener("resize", check);
+    measure();
+    const late = window.setTimeout(measure, 600);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, { passive: true });
     return () => {
-      window.removeEventListener("scroll", check);
-      window.removeEventListener("resize", check);
+      window.clearTimeout(late);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure);
     };
   }, []);
-  return view;
+  return p;
 }
 
 const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
   const settled = snap.phase === "complete" || snap.phase === "idle";
-  const [userCollapsed, setCollapsed] = useState(settled);
-  const { atBottom, narrow } = useViewport();
-  // At the footer, keep clear of the centred footer content: on wide screens
-  // the pill moves to the empty corner, on narrow ones it shrinks to a button.
-  const collapsed = userCollapsed || (atBottom && narrow && snap.phase !== "running");
-  const corner = collapsed || atBottom;
+  const [collapsed, setCollapsed] = useState(settled);
+  const place = usePlacement();
 
   useEffect(() => {
     if (snap.phase === "idle") return setCollapsed(true);
-    if (snap.phase !== "complete") return setCollapsed(false);
-    const id = window.setTimeout(() => setCollapsed(true), 3500);
+    if (!snap.revealed) return setCollapsed(false);
+    // Always show the payoff line for a few seconds before tucking away.
+    setCollapsed(false);
+    const id = window.setTimeout(() => setCollapsed(true), 3800);
     return () => window.clearTimeout(id);
-  }, [snap.phase]);
+  }, [snap.phase, snap.revealed]);
 
-  const building = snap.phase === "running";
+  const building = !snap.revealed && snap.phase !== "idle";
   const pct = snap.total ? Math.round((snap.done / snap.total) * 100) : 0;
   const count = snap.agents.length;
+  const { mobile } = place;
+  const roomy = place.room >= 470;
+
+  const progress = (
+    <span
+      className={
+        mobile
+          ? "absolute bottom-0 left-0 h-[2px] w-full bg-white/10"
+          : "h-1.5 w-14 overflow-hidden rounded-full bg-white/15"
+      }
+      aria-hidden>
+      <span
+        className="swarm-progress block h-full rounded-full"
+        style={{ width: `${pct}%` }}
+      />
+    </span>
+  );
+
+  // Desktop: inside the navbar's empty middle, so it never covers content.
+  // Mobile: a slim bar under the navbar while building, then a small chip.
+  const style = mobile
+    ? collapsed
+      ? { top: place.navBottom + 8, right: 12 }
+      : { top: place.navBottom, left: 0, right: 0 }
+    : { top: place.navTop + 12, left: place.left };
+  const shell = mobile
+    ? collapsed
+      ? "rounded-full border border-white/15 p-1 text-xs"
+      : "h-9 justify-between gap-2 border-b border-white/10 px-3 text-xs"
+    : `h-8 gap-2.5 rounded-full border border-white/15 text-[13px] ${
+        collapsed ? "p-1" : "pl-1.5 pr-1"
+      }`;
 
   // One wrapper and one button in every state, so keyboard focus survives
-  // Skip → Rebuild → collapsed.
+  // Skip → Replay → collapsed.
   return (
     <div
       data-swarm-ui
-      className={`pointer-events-auto fixed bottom-4 z-[61] flex items-center gap-3 rounded-full border border-white/15 bg-black/85 text-sm text-white shadow-2xl backdrop-blur-xl ${
-        corner
-          ? "right-4"
-          : "left-1/2 max-w-[calc(100vw-2rem)] -translate-x-1/2"
-      } ${collapsed ? "p-1" : "py-1.5 pl-2 pr-1.5"}`}>
+      data-swarm-hud
+      style={style}
+      className={`pointer-events-auto fixed z-[61] flex items-center bg-black/85 text-white shadow-2xl backdrop-blur-xl ${shell}`}>
       {!collapsed &&
         (building ? (
           <>
-            <Avatars agents={snap.agents} />
-            <span className="whitespace-nowrap pl-1">
-              Watch my stack build this page
+            {roomy && !mobile && <Avatars agents={snap.agents} />}
+            <span className="min-w-0 truncate whitespace-nowrap">
+              {roomy || mobile ? "Watch my stack build this page" : "Building live"}
               {snap.waiting && (
                 <span className="swarm-bounce ml-1.5 inline-block" aria-hidden>
                   ↓
                 </span>
               )}
             </span>
-            <span
-              className="h-1.5 w-16 overflow-hidden rounded-full bg-white/15 max-five:hidden"
-              aria-hidden>
-              <span
-                className="swarm-progress block h-full rounded-full"
-                style={{ width: `${pct}%` }}
-              />
-            </span>
+            {progress}
           </>
         ) : (
-          <>
-            <span className="pl-2 text-green" aria-hidden>
-              ✓
+          <span className="min-w-0 truncate whitespace-nowrap pl-1.5">
+            <span className="text-green" aria-hidden>
+              ✓{" "}
             </span>
-            <span className="whitespace-nowrap">
-              {snap.skipped ? (
-                "Full page shown"
-              ) : (
-                <>
-                  Built by {count} cursors
-                  <span className="max-md:hidden">
-                    , each named after a tool I use
-                  </span>
-                </>
-              )}
-            </span>
-          </>
+            {snap.skipped ? (
+              "Full page shown"
+            ) : roomy ? (
+              `Built by ${count} cursors, each named after a tool I use`
+            ) : (
+              `Built by ${count} cursors named after my stack`
+            )}
+          </span>
         ))}
       <button
         key="action"
         onClick={building ? swarm.skip : swarm.rebuild}
-        aria-label={
-          building
-            ? "Skip the animation and show the full page"
-            : "Rebuild the page live"
-        }
-        className={`whitespace-nowrap rounded-full font-bold hover:text-green ${
-          collapsed
-            ? "px-3 py-1.5 max-five:px-2.5"
-            : "bg-white/10 px-3 py-1 hover:bg-white/20"
+        aria-label={building ? "Skip the animation" : "Replay the live build"}
+        className={`shrink-0 whitespace-nowrap rounded-full font-bold hover:text-green ${
+          collapsed ? "px-2.5 py-1" : "bg-white/10 px-2.5 py-0.5 hover:bg-white/20"
         }`}>
-        {building ? (
-          "Skip"
-        ) : (
-          <>
-            <span aria-hidden>↻</span>
-            <span className={collapsed ? "max-five:hidden" : ""}>
-              {collapsed ? " Rebuild live" : " Rebuild"}
-            </span>
-          </>
-        )}
+        {building ? "Skip" : "↻ Replay"}
       </button>
     </div>
   );
@@ -258,7 +308,15 @@ export const SwarmSkipLink = () => {
   return (
     <button
       data-swarm-ui
-      onClick={swarm.skip}
+      onClick={() => {
+        swarm.skip();
+        // This button disappears with the build: hand focus to the content.
+        const main = document.querySelector("main");
+        if (main) {
+          main.setAttribute("tabindex", "-1");
+          main.focus();
+        }
+      }}
       className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:font-bold focus:text-black">
       Skip the animation and show the full page
     </button>
@@ -277,25 +335,32 @@ const SwarmOverlay = () => {
         const vh = window.innerHeight;
         const sx = window.scrollX;
         const sy = window.scrollY;
-        const showStatus = vw >= 640;
+        const wide = vw >= 640;
+        const hud = document
+          .querySelector("[data-swarm-hud]")
+          ?.getBoundingClientRect();
+        const taken: Box[] = hud
+          ? [{ l: hud.left - 8, t: hud.top - 8, r: hud.right + 8, b: hud.bottom + 8 }]
+          : [];
 
         // Cursors are plain DOM, moved without re-rendering React.
         for (const a of swarm.agents) {
           const d = a.dom;
           if (!d) continue;
           const vx = a.x - sx;
-          d.root.style.transform = `translate3d(${vx}px, ${a.y - sy}px, 0)`;
+          const vy = a.y - sy;
+          d.root.style.transform = `translate3d(${vx}px, ${vy}px, 0)`;
           d.root.style.opacity = a.opacity.toFixed(3);
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
-          // Labels flip to the left near the right edge so they stay readable.
-          const flip = vx > vw - 140;
-          if (d.root.hasAttribute("data-flip") !== flip) {
-            d.root.toggleAttribute("data-flip", flip);
-          }
+          // Status only while it's fresh and its target is actually on screen.
           const status =
-            showStatus && !a.chip && a.status && t - a.statusAt < STATUS_MS
+            wide &&
+            !a.chip &&
+            a.status &&
+            t - a.statusAt < STATUS_MS &&
+            (!a.task || a.task.visible)
               ? a.status
               : "";
           if (d.status.dataset.text !== status) {
@@ -313,24 +378,68 @@ const SwarmOverlay = () => {
               if (a.chip.src) d.chipImg.src = a.chip.src;
             }
           }
+
+          // Keep labels clear of each other and of the HUD: try the default
+          // spot, then nudges and the other side of the arrow.
+          const onScreen =
+            a.opacity > 0.05 && vx > -40 && vx < vw + 40 && vy > -40 && vy < vh + 40;
+          const w = Math.max(
+            a.name.length * 6.6 + 18,
+            status ? status.length * 6.1 + 14 : 0,
+            a.chip ? a.chip.label.length * 6.1 + 52 : 0
+          );
+          const h = 20 + (status ? 22 : 0) + (a.chip ? 44 : 0);
+          const preferLeft = a.faceLeft ?? vx > vw - 140;
+          let flip = preferLeft;
+          let dy = 0;
+          if (onScreen) {
+            const options: [boolean, number][] = [
+              [preferLeft, 0],
+              [!preferLeft, 0],
+              [preferLeft, 22],
+              [!preferLeft, 22],
+              [preferLeft, -h - 26],
+              [!preferLeft, -h - 26],
+              [preferLeft, 44],
+            ];
+            let chosen: Box | null = null;
+            for (const [f, off] of options) {
+              const l = f ? vx - 4 - w : vx + 16;
+              const box = { l, t: vy + 20 + off, r: l + w, b: vy + 20 + off + h };
+              if (box.l < 0 || box.r > vw) continue;
+              if (!taken.some((o) => hits(o, box))) {
+                flip = f;
+                dy = off;
+                chosen = box;
+                break;
+              }
+            }
+            if (chosen) taken.push(chosen);
+          }
+          if (d.root.hasAttribute("data-flip") !== flip) {
+            d.root.toggleAttribute("data-flip", flip);
+          }
+          const tags = d.root.lastElementChild as HTMLElement | null;
+          const shift = dy ? `translateY(${dy}px)` : "";
+          if (tags && tags.style.transform !== shift) tags.style.transform = shift;
         }
 
         const canvas = canvasRef.current;
         if (!canvas) return;
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const w = Math.round(vw * dpr);
-        const h = Math.round(vh * dpr);
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w;
-          canvas.height = h;
+        const cw = Math.round(vw * dpr);
+        const ch = Math.round(vh * dpr);
+        if (canvas.width !== cw || canvas.height !== ch) {
+          canvas.width = cw;
+          canvas.height = ch;
         }
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, vw, vh);
 
-        // Wireframe of what is still to be built; claimed jobs march in the
-        // colour of the cursor that took them.
+        // Wireframe around what is still to be built; claimed jobs march in
+        // the colour of the cursor that took them.
         ctx.lineWidth = 1;
         for (const task of swarm.taskList()) {
           if (task.removed) continue;
@@ -351,12 +460,12 @@ const SwarmOverlay = () => {
           ctx.lineDashOffset = owner ? -t / 40 : 0;
           ctx.strokeStyle = owner
             ? rgba(owner.color, 0.9)
-            : "rgba(255, 255, 255, 0.28)";
-          ctx.fillStyle = owner
-            ? rgba(owner.color, 0.06)
-            : "rgba(255, 255, 255, 0.03)";
+            : "rgba(255, 255, 255, 0.24)";
           roundRect(ctx, r.left + 0.5, r.top + 0.5, r.width - 1, r.height - 1, 8);
-          ctx.fill();
+          if (owner) {
+            ctx.fillStyle = rgba(owner.color, 0.06);
+            ctx.fill();
+          }
           ctx.stroke();
         }
         ctx.setLineDash([]);
@@ -366,7 +475,7 @@ const SwarmOverlay = () => {
             const x = a.sel.x - sx;
             const y = a.sel.y - sy;
             ctx.globalAlpha = Math.max(0, a.sel.alpha);
-            ctx.fillStyle = rgba(a.color, 0.08);
+            ctx.fillStyle = rgba(a.color, 0.06);
             ctx.fillRect(x, y, a.sel.w, a.sel.h);
             ctx.strokeStyle = a.color;
             ctx.lineWidth = 1.5;
@@ -390,7 +499,7 @@ const SwarmOverlay = () => {
             ctx.fillStyle = a.color;
             roundRect(ctx, bx, by, tw + 10, 16, 4);
             ctx.fill();
-            ctx.fillStyle = "#000000";
+            ctx.fillStyle = a.dark ? "#ffffff" : "#000000";
             ctx.fillText(size, bx + 5, by + 11.5);
             ctx.globalAlpha = 1;
           }
@@ -410,19 +519,42 @@ const SwarmOverlay = () => {
           }
         }
 
-        // The shared "done" click: rainbow rings from the middle.
+        // The finale: rainbow rings and confetti from the ring of cursors.
         const b = swarm.burst;
         if (b) {
+          const bx = b.x - sx;
+          const by = b.y - sy;
+          const reach = Math.max(vw, vh) * 0.45;
           RAINBOW.forEach((color, i) => {
-            const p = Math.max(0, Math.min(1, (t - b.t0 - i * 70) / 650));
-            if (p <= 0 || p >= 1) return;
-            ctx.globalAlpha = 1 - p;
+            const raw = (t - b.t0 - i * 55) / 800;
+            if (raw <= 0 || raw >= 1) return;
+            const p = 1 - Math.pow(1 - raw, 3);
+            ctx.globalAlpha = 1 - raw * raw;
             ctx.strokeStyle = color;
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 5;
             ctx.beginPath();
-            ctx.arc(b.x - sx, b.y - sy, 20 + p * 160, 0, Math.PI * 2);
+            ctx.arc(bx, by, 24 + p * reach, 0, Math.PI * 2);
             ctx.stroke();
           });
+          const raw = Math.min(1, Math.max(0, (t - b.t0) / 1000));
+          const p = 1 - Math.pow(1 - raw, 2);
+          ctx.lineCap = "round";
+          ctx.lineWidth = 3;
+          for (const s of b.sparks) {
+            const d = 30 + p * s.speed;
+            const x1 = bx + Math.cos(s.angle) * d;
+            const y1 = by + Math.sin(s.angle) * d + raw * raw * 60;
+            ctx.globalAlpha = 1 - raw * raw;
+            ctx.strokeStyle = s.color;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(
+              x1 - Math.cos(s.angle) * s.len,
+              y1 - Math.sin(s.angle) * s.len
+            );
+            ctx.stroke();
+          }
+          ctx.lineCap = "butt";
           ctx.globalAlpha = 1;
         }
       }),
@@ -432,14 +564,12 @@ const SwarmOverlay = () => {
   const live =
     onHome && (snap.phase === "running" || snap.phase === "finishing");
   const showHud =
-    onHome &&
-    snap.total > 0 &&
-    (snap.phase !== "idle" || snap.seen);
+    onHome && snap.total > 0 && (snap.phase !== "idle" || snap.seen);
   const announcement = !onHome
     ? ""
     : snap.phase === "running"
-    ? "This page is being built by an animation. Press Skip to show everything now."
-    : snap.phase === "complete" || snap.phase === "finishing"
+    ? "This page is being built by an animation. Everything is already readable; press Skip the animation to show it at full strength."
+    : snap.revealed
     ? "The full page is now shown."
     : "";
 

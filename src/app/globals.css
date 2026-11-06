@@ -108,10 +108,15 @@ body {
   animation: slide 4s linear infinite;
 }
 
-/*? cursor swarm: elements wait hidden until a cursor builds them */
+/*? cursor swarm: content waits as a faint ghost until a cursor builds it.
+   It stays readable, findable and in the accessibility tree throughout. */
 html.swarm-on [data-swarm="pending"],
 html.swarm-on [data-swarm="claimed"] {
-  visibility: hidden;
+  opacity: 0.14;
+}
+html.swarm-on [data-swarm="pending"][data-swarm-priority],
+html.swarm-on [data-swarm="claimed"][data-swarm-priority] {
+  opacity: 0.4;
 }
 .swarm-cursor {
   will-change: transform, opacity;

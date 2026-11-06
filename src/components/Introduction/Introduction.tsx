@@ -8,7 +8,7 @@ const Introduction = () => {
   return (
     <>
       <div className="text-white pt-24 pb-40 m-auto flex items-center justify-between max-md:flex-col">
-        <div className="md:w-[60%] flex flex-col gap-2">
+        <div className="md:w-[60%] max-md:w-full flex flex-col gap-2">
           <div className="text-sm flex gap-4 items-center">
             <Build
               as="span"
@@ -31,7 +31,10 @@ const Introduction = () => {
             className="tracking-wide font-Anton text-5xl py-3">
             Ramit Vishwakarma
           </Build>
-          <Build kind="text" className="text-sm text-white/80 pt-3 pb-1">
+          <Build
+            kind="text"
+            priority
+            className="text-sm text-white/80 pt-3 pb-1">
             Full Stack Web Developer{" "}
             <span className="text-blue">@KonnectBox</span>
           </Build>

@@ -7,7 +7,7 @@ import {
   useLayoutEffect,
   useRef,
   type AllHTMLAttributes,
-  type ElementType,
+  type ForwardRefExoticComponent,
   type ReactNode,
 } from "react";
 import { swarm, type BuildKind } from "./engine";
@@ -16,8 +16,11 @@ const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type BuildProps = Omit<AllHTMLAttributes<HTMLElement>, "as"> & {
-  /** Tag or component to render (e.g. "h1", Link); the markup is unchanged. */
-  as?: ElementType;
+  /**
+   * Tag, or a ref-forwarding component such as next/link, to render in place
+   * of the original element; the markup is unchanged.
+   */
+  as?: keyof JSX.IntrinsicElements | ForwardRefExoticComponent<any>;
   kind?: BuildKind;
   /** Status under the cursor (or the file name, for `kind="image"`). */
   caption?: string;
@@ -51,11 +54,17 @@ const Build = ({
       optional,
       priority,
     });
-  }, [id, kind, caption, optional, priority]);
+  }, [id, as, kind, caption, optional, priority]);
 
   return createElement(
     as,
-    { ...rest, ref, "data-swarm": "pending", "data-swarm-id": id },
+    {
+      ...rest,
+      ref,
+      "data-swarm": "pending",
+      "data-swarm-id": id,
+      "data-swarm-priority": priority ? "" : undefined,
+    },
     children
   );
 };

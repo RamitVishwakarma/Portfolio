@@ -80,7 +80,18 @@ export interface Agent {
   caret: Rect | null;
   chip: { label: string; src?: string } | null;
   ripples: { x: number; y: number; t0: number }[];
+  /** Deep colour: label text and outline flip to light. */
+  dark: boolean;
+  /** Finale: labels face outward from the ring. */
+  faceLeft: boolean | null;
   dom: AgentDom | null;
+}
+
+export interface Burst {
+  x: number;
+  y: number;
+  t0: number;
+  sparks: { angle: number; speed: number; color: string; len: number }[];
 }
 
 export interface SwarmSnapshot {
@@ -91,6 +102,8 @@ export interface SwarmSnapshot {
   roster: number;
   waiting: boolean;
   skipped: boolean;
+  /** The finale has landed (or the build was skipped): show the payoff. */
+  revealed: boolean;
   /** Visitor has already watched a build in this browser. */
   seen: boolean;
 }
@@ -103,12 +116,29 @@ const EMPTY: SwarmSnapshot = {
   roster: 0,
   waiting: false,
   skipped: false,
+  revealed: false,
   seen: false,
 };
 
 const SEEN_KEY = "swarm-seen";
 /** An element left unclaimed on screen this long is shown without a cursor. */
-const CATCH_UP_MS = 1800;
+const CATCH_UP_MS = 2500;
+/** Opacity of not-yet-built content (see globals.css), and of the hero name. */
+export const GHOST = 0.14;
+export const GHOST_PRIORITY = 0.4;
+
+function isDark(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+}
+
+function setMask(el: HTMLElement, value: string) {
+  el.style.setProperty("mask", value);
+  el.style.setProperty("-webkit-mask", value);
+}
 
 const now = () => performance.now();
 const clamp = (v: number, lo: number, hi: number) =>
@@ -167,13 +197,17 @@ class Rush extends Error {}
 class SwarmEngine {
   tasks = new Map<string, Task>();
   agents: Agent[] = [];
-  /** Shared ripple when the build completes, in page coordinates. */
-  burst: { x: number; y: number; t0: number } | null = null;
+  /** Shared burst when the build completes, in page coordinates. */
+  burst: Burst | null = null;
 
   private byEl = new WeakMap<Element, Task>();
   private phase: Phase = "idle";
   private settled = false;
   private skipped = false;
+  private revealed = false;
+  private waitOn = 0;
+  private waitOff = 0;
+  private waiting = false;
   private rebuilding = false;
   private gen = 0;
   private roster = 0;
@@ -276,7 +310,7 @@ class SwarmEngine {
       t.cleanup?.();
       t.cleanup = undefined;
       if (!t.removed && t.state !== "done") {
-        t.el.style.clipPath = "";
+        setMask(t.el, "");
         this.finishTask(t);
       }
     }
@@ -288,6 +322,8 @@ class SwarmEngine {
     if (this.rebuilding) return;
     this.rebuilding = true;
     this.gen++;
+    // The old swarm fades out while the page glides back up.
+    for (const a of this.agents) a.targetOpacity = 0;
     const reset = () => {
       this.rebuilding = false;
       this.settled = false;
@@ -299,7 +335,7 @@ class SwarmEngine {
         t.cleanup?.();
         t.cleanup = undefined;
         t.anim?.cancel();
-        t.el.style.clipPath = "";
+        setMask(t.el, "");
         t.state = "pending";
         t.agent = null;
         t.rush = false;
@@ -336,8 +372,6 @@ class SwarmEngine {
 
   private observe(task: Task) {
     if (!this.ahead) {
-      // Cursors start on anything within a screen below the fold, so the next
-      // section is already under way when it scrolls in.
       this.ahead = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
@@ -345,10 +379,15 @@ class SwarmEngine {
             if (!t) continue;
             t.inView = e.isIntersecting;
             t.top = e.boundingClientRect.top + window.scrollY;
+            if (!e.isIntersecting && e.boundingClientRect.bottom <= 0) {
+              this.pass(t);
+            }
           }
           this.wake();
         },
-        { rootMargin: "0px 0px 60% 0px" }
+        // Cursors start just before an element scrolls in, so the visitor
+        // arrives to a section mid-build and watches it finish.
+        { rootMargin: "0px 0px 15% 0px" }
       );
       this.seenIO = new IntersectionObserver((entries) => {
         for (const e of entries) {
@@ -373,7 +412,7 @@ class SwarmEngine {
   }
 
   private pass(t: Task) {
-    if (t.removed || t.state === "done") return;
+    if (t.removed || t.state === "done" || this.phase !== "running") return;
     if (t.state === "pending") this.finishTask(t);
     else t.rush = true;
   }
@@ -385,6 +424,21 @@ class SwarmEngine {
     this.roster++;
     this.startedAt = now();
     this.burst = null;
+    this.revealed = false;
+    this.waiting = false;
+    this.waitOn = 0;
+    this.waitOff = 0;
+    // Watched the opening: don't replay it on the next visit.
+    const gen0 = this.gen;
+    window.setTimeout(() => {
+      if (
+        gen0 === this.gen &&
+        this.phase === "running" &&
+        window.location.pathname === "/"
+      ) {
+        this.remember();
+      }
+    }, 4000);
     (window as unknown as { __swarmReady?: boolean }).__swarmReady = true;
     this.listen();
 
@@ -416,8 +470,8 @@ class SwarmEngine {
         y: p.y + sy,
         opacity: 0,
         targetOpacity: 0,
-        // Hold the empty wireframe for a beat, then the swarm streams in.
-        activateAt: t + 350 + i * (mobile ? 150 : 110),
+        // A short beat on the wireframe, then the swarm streams in as a wave.
+        activateAt: t + 150 + i * (mobile ? 200 : 160),
         active: false,
         landed: false,
         docked: false,
@@ -433,6 +487,8 @@ class SwarmEngine {
         caret: null,
         chip: null,
         ripples: [],
+        dark: isDark(def.color),
+        faceLeft: null,
         dom: null,
       };
     });
@@ -462,50 +518,56 @@ class SwarmEngine {
   }
 
   private wake = () => {
+    if (this.phase !== "running") return;
     // Hand out new work on the very next frame.
     this.lastSchedule = 0;
-    if (!this.sleeping) return;
     this.sleeping = false;
     this.loop();
   };
 
-  private finish(natural: boolean) {
-    if (this.phase !== "running") return;
-    this.phase = "finishing";
-    this.settled = true;
+  private remember() {
     try {
       window.localStorage.setItem(SEEN_KEY, "1");
     } catch {
       // Storage blocked: the build just plays again next time.
     }
+  }
+
+  private finish(natural: boolean) {
+    if (this.phase !== "running") return;
+    this.phase = "finishing";
+    this.settled = true;
+    this.remember();
     const gen = this.gen;
     this.sleeping = false;
+    if (!natural) this.revealed = true;
     this.emit(true);
     this.loop();
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const n = this.agents.length;
-    const cx = vw / 2;
-    const cy = vh * 0.45;
+    const R = Math.min(vw, vh) * 0.2;
+    const { x: cx, y: cy } = natural ? this.gatherPoint(R) : { x: vw / 2, y: vh / 2 };
 
     const outro = async () => {
       try {
         if (natural) {
-          // Everyone gathers in the middle of the screen...
+          // Everyone gathers in a ring, labels facing out...
           await Promise.all(
             this.agents.map((a, i) => {
+              const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
               a.docked = false;
               a.leaving = true;
               a.active = true;
               a.targetOpacity = 1;
               a.status = "";
-              const ang = (i / n) * Math.PI * 2;
+              a.faceLeft = Math.cos(ang) < -0.2;
               return this.moveTo(
                 a,
                 () => ({
-                  x: window.scrollX + cx + Math.cos(ang) * 64,
-                  y: window.scrollY + cy + Math.sin(ang) * 40,
+                  x: window.scrollX + cx + Math.cos(ang) * R,
+                  y: window.scrollY + cy + Math.sin(ang) * R,
                 }),
                 gen,
                 null,
@@ -513,16 +575,25 @@ class SwarmEngine {
               );
             })
           );
-          // ...clicks together...
+          await this.sleep(350, gen, null);
+          // ...clicks together: burst...
           for (const a of this.agents) a.pressed = true;
           this.burst = {
             x: window.scrollX + cx,
             y: window.scrollY + cy,
             t0: now(),
+            sparks: Array.from({ length: 44 }, (_, i) => ({
+              angle: rand(0, Math.PI * 2),
+              speed: rand(0.35, 0.75) * Math.max(vw, vh) * 0.45,
+              color: this.agents[i % n].color,
+              len: rand(6, 14),
+            })),
           };
+          this.revealed = true;
+          this.emit(true);
           await this.sleep(160, gen, null);
           for (const a of this.agents) a.pressed = false;
-          await this.sleep(260, gen, null);
+          await this.sleep(420, gen, null);
         }
         // ...and scatters off screen.
         await Promise.all(
@@ -554,10 +625,49 @@ class SwarmEngine {
         if (gen !== this.gen) return;
         this.phase = "complete";
         this.burst = null;
+        this.revealed = true;
+        // Nothing is pending any more; drop the hiding rules entirely.
+        document.documentElement.classList.remove("swarm-on");
         this.emit(true);
       }, 300);
     };
     void outro();
+  }
+
+  /** The emptiest spot on screen for the finale ring. */
+  private gatherPoint(R: number) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const rects: DOMRect[] = [];
+    for (const t of this.taskList()) {
+      if (t.removed || t.kind === "block") continue;
+      const r = t.el.getBoundingClientRect();
+      if (r.width > 0 && r.bottom > 0 && r.top < vh) rects.push(r);
+    }
+    let best = { x: vw / 2, y: vh / 2 };
+    let bestScore = Infinity;
+    for (const fx of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]) {
+      for (const fy of [0.3, 0.42, 0.54, 0.66]) {
+        const x = vw * fx;
+        const y = vh * fy;
+        const l = x - R - 90;
+        const r = x + R + 90;
+        const t = y - R - 10;
+        const b = y + R + 30;
+        if (l < 0 || r > vw || t < 70 || b > vh) continue;
+        let score = Math.abs(fx - 0.5) * 4000;
+        for (const e of rects) {
+          const w = Math.min(r, e.right) - Math.max(l, e.left);
+          const h = Math.min(b, e.bottom) - Math.max(t, e.top);
+          if (w > 0 && h > 0) score += w * h;
+        }
+        if (score < bestScore) {
+          bestScore = score;
+          best = { x, y };
+        }
+      }
+    }
+    return best;
   }
 
   private loop() {
@@ -598,7 +708,7 @@ class SwarmEngine {
       }
       if (a.ripples.length) a.ripples = a.ripples.filter((r) => t - r.t0 < 520);
     }
-    if (this.burst && t - this.burst.t0 > 900) this.burst = null;
+    if (this.burst && t - this.burst.t0 > 1100) this.burst = null;
 
     if (running) {
       if (t - this.lastSchedule > 100) {
@@ -661,8 +771,9 @@ class SwarmEngine {
       }
     }
     this.hasEligible = eligible.length > 0;
-    // A backlog on screen speeds the whole swarm up.
-    this.boost = clamp(1 + onScreen / 6, 1, 2.6);
+    // A backlog on screen speeds the swarm up (but let the opening breathe).
+    this.boost =
+      now() - this.startedAt < 3000 ? 1 : clamp(1 + onScreen / 8, 1, 2);
 
     const idle = this.agents.filter((a) => a.active && !a.task && !a.leaving);
     if (!idle.length || !eligible.length) return;
@@ -725,6 +836,8 @@ class SwarmEngine {
   }
 
   private checkComplete() {
+    // The navbar outlives the home page; only finish the build on "/".
+    if (window.location.pathname !== "/") return;
     let live = 0;
     let required = 0;
     const t0 = now();
@@ -732,9 +845,15 @@ class SwarmEngine {
       if (t.removed) continue;
       live++;
       if (t.state === "done") continue;
+      const r = t.el.getBoundingClientRect();
+      // Jumped past without it ever crossing the screen (scrollbar drag, End).
+      if (r.bottom <= 0 && r.height > 0) {
+        this.pass(t);
+        // pass() finishes a pending task outright; a claimed one is rushed.
+        if (t.state === "pending" || (t.state as TaskState) === "done") continue;
+      }
       if (t.state === "pending" && this.isReady(t)) {
         // Hidden at this breakpoint (display: none) – nothing to build.
-        const r = t.el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) {
           this.finishTask(t);
           continue;
@@ -871,7 +990,10 @@ class SwarmEngine {
     tag: string,
     overshoot: boolean
   ) {
-    const typing = prepareTyping(task.el);
+    const typing = prepareTyping(
+      task.el,
+      task.priority ? GHOST_PRIORITY : GHOST
+    );
     const cleanup = once(() => typing.finish());
     task.cleanup = cleanup;
     try {
@@ -887,7 +1009,9 @@ class SwarmEngine {
       this.setState(task, "building");
       typing.measure();
       const total = typing.total;
-      const dur = clamp(200 + total * 20, 420, 2400) / this.rate();
+      let dur = clamp(200 + total * 20, 420, 2400) / this.rate();
+      // The name is the money shot: type it at a readable pace.
+      if (task.priority) dur = Math.max(dur, total * 62);
       const t0 = now();
       for (;;) {
         await this.step(gen, task);
@@ -928,13 +1052,20 @@ class SwarmEngine {
       1,
       overshoot
     );
-    const cleanup = once(() => {
-      el.style.clipPath = "";
-    });
+    const ghost = `linear-gradient(rgba(0,0,0,${GHOST}),rgba(0,0,0,${GHOST}))`;
+    const draw = (p: number) =>
+      setMask(
+        el,
+        `linear-gradient(#000,#000) 0 0 / ${(p * 100).toFixed(2)}% ${(
+          p * 100
+        ).toFixed(2)}% no-repeat, ${ghost}`
+      );
+    const cleanup = once(() => setMask(el, ""));
     task.cleanup = cleanup;
     try {
       a.pressed = true;
-      el.style.clipPath = "inset(0 100% 100% 0)";
+      // The selection paints the element in at full strength over its ghost.
+      draw(0);
       this.setState(task, "building");
       // One measurement drives both the selection box and the clip, so the
       // element is revealed exactly inside the box being dragged.
@@ -948,8 +1079,7 @@ class SwarmEngine {
         a.x = r.x + r.w * p;
         a.y = r.y + r.h * p;
         a.sel = { x: r.x, y: r.y, w: r.w * p, h: r.h * p, alpha: 1 };
-        const inset = ((1 - p) * 100).toFixed(2);
-        el.style.clipPath = `inset(0 ${inset}% ${inset}% 0)`;
+        draw(p);
         if (p >= 1) break;
       }
     } finally {
@@ -1015,25 +1145,26 @@ class SwarmEngine {
   private reveal(task: Task, style: "image" | "pop" | "fade") {
     const el = task.el;
     if (typeof el.animate !== "function") return;
+    // Called once the element has left its ghost state, so this is its
+    // real opacity.
     const opacity = getComputedStyle(el).opacity || "1";
+    const g = task.priority ? GHOST_PRIORITY : GHOST;
     const frames: Keyframe[] =
       style === "pop"
         ? [
-            { opacity: 0, scale: "0.6" },
+            { opacity: g, scale: "1" },
+            { opacity, scale: "1.12", offset: 0.45 },
             { opacity, scale: "1" },
           ]
         : style === "image"
         ? [
-            { opacity: 0, scale: "0.94", filter: "blur(10px)" },
-            { opacity, scale: "1", filter: "blur(0px)" },
+            { opacity: g, scale: "0.97", filter: "blur(6px) grayscale(1)" },
+            { opacity, scale: "1", filter: "blur(0px) grayscale(0)" },
           ]
-        : [{ opacity: 0 }, { opacity }];
+        : [{ opacity: g }, { opacity }];
     task.anim = el.animate(frames, {
-      duration: style === "pop" ? 380 : style === "image" ? 520 : 320,
-      easing:
-        style === "pop"
-          ? "cubic-bezier(.34,1.56,.64,1)"
-          : "cubic-bezier(.2,.8,.2,1)",
+      duration: style === "pop" ? 360 : style === "image" ? 560 : 360,
+      easing: "cubic-bezier(.2,.8,.2,1)",
     });
   }
 
@@ -1061,13 +1192,25 @@ class SwarmEngine {
       if (t.state === "done") done++;
     }
     const busy = this.agents.some((a) => a.task);
-    // Only nudge to scroll once the swarm has had a moment to arrive.
-    const waiting =
+    // Nudge to scroll only after 1.5 s of nothing to do, and drop the nudge
+    // only after 600 ms of work, so it doesn't flicker.
+    const idle =
       this.phase === "running" &&
       now() - this.startedAt > 2000 &&
       !busy &&
       !this.hasEligible &&
       done < total;
+    const t = now();
+    if (idle) {
+      this.waitOff = 0;
+      if (!this.waitOn) this.waitOn = t;
+      if (t - this.waitOn > 1500) this.waiting = true;
+    } else {
+      this.waitOn = 0;
+      if (!this.waitOff) this.waitOff = t;
+      if (t - this.waitOff > 600 || this.phase !== "running") this.waiting = false;
+    }
+    const waiting = this.waiting;
     const seen =
       typeof document !== "undefined" &&
       document.documentElement.dataset.swarmSeen === "1";
@@ -1078,6 +1221,7 @@ class SwarmEngine {
       s.done === done &&
       s.total === total &&
       s.waiting === waiting &&
+      s.revealed === this.revealed &&
       s.roster === this.roster &&
       s.seen === seen
     ) {
@@ -1091,6 +1235,7 @@ class SwarmEngine {
       roster: this.roster,
       waiting,
       skipped: this.skipped,
+      revealed: this.revealed,
       seen,
     };
     this.listeners.forEach((fn) => fn());

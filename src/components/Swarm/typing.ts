@@ -36,10 +36,10 @@ const toPage = (r: DOMRect, x: number): Rect => ({
  * Lets a cursor "type" an element's existing text in place.
  *
  * Each text node keeps its React identity: it is emptied and the untyped rest
- * of its text sits in an invisible sibling span. The full text is always laid
+ * of its text sits in a faint sibling span. The full text is always laid
  * out, so the element never changes size while it is being typed.
  */
-export function prepareTyping(root: HTMLElement): Typing {
+export function prepareTyping(root: HTMLElement, ghostOpacity: number): Typing {
   const nodes: Text[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -62,7 +62,8 @@ export function prepareTyping(root: HTMLElement): Typing {
     }
     const full = node.data;
     const ghost = document.createElement("span");
-    ghost.style.visibility = "hidden";
+    // The untyped rest stays as faint as the element was before.
+    ghost.style.opacity = String(ghostOpacity);
     ghost.textContent = full;
     node.data = "";
     node.after(ghost);
