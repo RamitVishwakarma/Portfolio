@@ -115,6 +115,10 @@ html.swarm-on [data-swarm="pending"],
 html.swarm-on [data-swarm="claimed"] {
   opacity: var(--swarm-ghost, 0.3);
 }
+/* unbuilt images wait in greyscale, so placing them reads as a change */
+html.swarm-on [data-swarm-kind="image"]:is([data-swarm="pending"], [data-swarm="claimed"]) {
+  filter: grayscale(1);
+}
 .swarm-cursor {
   will-change: transform, opacity;
 }
@@ -180,12 +184,13 @@ html.swarm-on [data-swarm="claimed"] {
 html.swarm-on:not([data-splash="done"]) .swarm-splash {
   display: flex;
 }
+/* the hand-off runs in steps set by the engine: words, then out, then done */
 html[data-splash="out"] .swarm-splash {
   opacity: 0;
   pointer-events: none;
-  transition-delay: 180ms;
 }
 /* the words leave first so they never sit over the page's own heading */
+html[data-splash="words"] .swarm-splash-text,
 html[data-splash="out"] .swarm-splash-text {
   opacity: 0;
   transition: opacity 150ms ease;
@@ -203,6 +208,27 @@ html[data-splash="out"] .swarm-splash li {
     opacity: 1;
     transform: translateY(0);
   }
+}
+/* each cursor in the roll-call pops in */
+@keyframes swarm-splash-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.swarm-splash-pop {
+  animation-name: swarm-splash-pop;
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
 }
 .swarm-splash-in {
   animation-name: swarm-splash-in;

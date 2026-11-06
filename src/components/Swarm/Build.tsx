@@ -28,6 +28,8 @@ type BuildProps = Omit<AllHTMLAttributes<HTMLElement>, "as"> & {
   priority?: boolean;
   /** Name of the cursor that should build this when it's free. */
   owner?: string;
+  /** Sits on a light background: text waits less faint to keep contrast. */
+  surface?: "light";
   children?: ReactNode;
 };
 
@@ -43,11 +45,13 @@ const Build = ({
   optional,
   priority,
   owner,
+  surface,
   children,
   ...rest
 }: BuildProps) => {
   const id = useId();
   const ref = useRef<HTMLElement>(null);
+  const ghost = ghostFor(kind, !!priority, surface === "light");
 
   useIsoLayoutEffect(() => {
     if (!ref.current) return;
@@ -57,8 +61,9 @@ const Build = ({
       optional,
       priority,
       owner,
+      ghost,
     });
-  }, [id, as, kind, caption, optional, priority, owner]);
+  }, [id, as, kind, caption, optional, priority, owner, ghost]);
 
   return createElement(
     as,
@@ -67,11 +72,12 @@ const Build = ({
       ref,
       "data-swarm": "pending",
       "data-swarm-id": id,
+      "data-swarm-kind": kind,
       // How faint it waits before it's built (set here so the first paint
       // already matches what the engine animates from).
       style: {
         ...(rest.style as object),
-        "--swarm-ghost": ghostFor(kind, !!priority),
+        "--swarm-ghost": ghost,
       },
     },
     children

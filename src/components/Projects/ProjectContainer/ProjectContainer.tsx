@@ -62,24 +62,24 @@ const ProjectContainer = () => {
               </Build>
               <div className="lg:w-[40%] max-lg:p-10 max-md:p-4 max-sm:p-2 py-10 pr-10 z-10 relative bg-[#ea546c]/20 flex flex-col justify-between ">
                 <div className="flex gap-4 flex-col">
-                  <Build as="h3" kind="text" className="text-[#753f41] text-4xl font-bold">
+                  <Build as="h3" kind="text" surface="light" className="text-[#753f41] text-4xl font-bold">
                     Recruitment-Platform
                   </Build>
                   <div className="text-sm flex gap-2 font-medium flex-wrap">
-                    <Build kind="pop" className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
+                    <Build kind="pop" surface="light" className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
                       React
                     </Build>
-                    <Build kind="pop" className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a] -blue py-0.5 px-3 rounded-full ">
+                    <Build kind="pop" surface="light" className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a] -blue py-0.5 px-3 rounded-full ">
                       Tailwind
                     </Build>
-                    <Build kind="pop" className="border-[#753f41] border-2 text-[#f6eaea]  bg-[#63393a] py-0.5 px-3 rounded-full ">
+                    <Build kind="pop" surface="light" className="border-[#753f41] border-2 text-[#f6eaea]  bg-[#63393a] py-0.5 px-3 rounded-full ">
                       Node
                     </Build>
-                    <Build kind="pop" className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
+                    <Build kind="pop" surface="light" className="border-[#753f41] border-2 text-[#f6eaea] bg-[#63393a]  py-0.5 px-3 rounded-full ">
                       Express
                     </Build>
                   </div>
-                  <Build as="p" kind="text" className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
+                  <Build as="p" kind="text" surface="light" className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#8d484a] py-2">
                     Recruitment-Platform facilitated the onboarding of over 500
                     applicants and streamlined task completion, project
                     submission, aptitude rounds and coding contest,
@@ -87,7 +87,7 @@ const ProjectContainer = () => {
                     GDSC team.
                   </Build>
                 </div>
-                <Build kind="pop" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
+                <Build kind="pop" surface="light" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/RecruitmentPlatformV2Frontend"
                     live="https://recruitments2025.ramitvishwakarma.in/"
@@ -178,25 +178,25 @@ const ProjectContainer = () => {
 
               <div className="lg:w-[40%] max-lg:p-10 max-md:p-4 max-sm:p-2 py-10 pr-10 z-10 relative bg-black/10 flex flex-col justify-between ">
                 <div className="flex gap-4 flex-col">
-                  <Build as="h3" kind="text" className="text-[#5b5751] text-4xl font-bold">
+                  <Build as="h3" kind="text" surface="light" className="text-[#5b5751] text-4xl font-bold">
                     IndustrialAI Landing
                   </Build>
                   <div className="text-sm flex gap-2 font-medium flex-wrap">
-                    <Build kind="pop" className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full">
+                    <Build kind="pop" surface="light" className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full">
                       NextJS
                     </Build>
-                    <Build kind="pop" className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full ">
+                    <Build kind="pop" surface="light" className="border-[#8f8b80]  bg-[#837e73] text-[#f7f7f5] border-2  py-1 px-3 rounded-full ">
                       Tailwind
                     </Build>
                   </div>
-                  <Build as="p" kind="text" className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#5b5751] py-2">
+                  <Build as="p" kind="text" surface="light" className="text-lg tracking-[-4%] font-semibold leading-8 text-balance text-[#5b5751] py-2">
                     I built the IndustrialAI landing page for a client. I
                     ensured it was completely responsive and pixel-perfect,
                     delivering a professional and visually appealing online
                     presence that met all the client&apos;s specifications.
                   </Build>
                 </div>
-                <Build kind="pop" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
+                <Build kind="pop" surface="light" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/IndustrialAI-Landing"
                     live="https://industrial-ai.ramitvishwakarma.in/"

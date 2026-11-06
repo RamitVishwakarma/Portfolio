@@ -40,10 +40,10 @@ const Splash = () => {
             return (
               <li
                 key={a.name}
-                className={`swarm-splash-in flex items-start ${
-                  i >= MOBILE_AGENTS ? "max-five:hidden" : ""
+                className={`swarm-splash-pop flex items-start ${
+                  i >= MOBILE_AGENTS ? "max-[639px]:hidden" : ""
                 }`}
-                style={{ animationDelay: `${150 + i * 20}ms` }}>
+                style={{ animationDelay: `${150 + i * 55}ms` }}>
                 <svg
                   className="swarm-arrow shrink-0"
                   width="22"
@@ -72,7 +72,7 @@ const Splash = () => {
         <div className="swarm-splash-text relative">
           <p
             className="swarm-splash-in text-sm text-grey-300/80"
-            style={{ animationDelay: "450ms" }}>
+            style={{ animationDelay: "700ms" }}>
             Each cursor is a tool I use.
           </p>
         </div>

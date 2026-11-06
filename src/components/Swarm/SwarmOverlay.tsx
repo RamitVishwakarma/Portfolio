@@ -188,7 +188,8 @@ const SwarmOverlay = () => {
           if (d.root.hasAttribute("data-docked") !== docked) {
             d.root.toggleAttribute("data-docked", docked);
           }
-          const quiet = docked && a.quiet;
+          // Label hidden while resting at an edge or flying to its spot.
+          const quiet = a.quiet && !a.task;
           if (d.root.hasAttribute("data-quiet") !== quiet) {
             d.root.toggleAttribute("data-quiet", quiet);
           }
@@ -240,13 +241,23 @@ const SwarmOverlay = () => {
           // On the finale ring, labels sit on the outer side of their cursor.
           const ring = a.ringAngle;
           const preferLeft =
-            ring !== null ? Math.cos(ring) < -0.2 : vx > vw - 140;
+            ring !== null
+              ? Math.cos(ring) < -0.2
+              : docked
+              ? false
+              : vx > vw - 140;
           const preferUp = ring !== null && Math.sin(ring) < -0.35;
           let flip = preferLeft;
           let dy = preferUp ? -h - 26 : 0;
           if (onScreen) {
             const up = -h - 26;
-            const options: [boolean, number][] = preferUp
+            const options: [boolean, number][] = docked
+              ? [
+                  [false, 0],
+                  [false, 22],
+                  [false, -h - 26],
+                ]
+              : preferUp
               ? [
                   [preferLeft, up],
                   [!preferLeft, up],
@@ -316,7 +327,7 @@ const SwarmOverlay = () => {
             ?.closest(".sticky")
             ?.getBoundingClientRect();
           const top = Math.max(0, nav?.bottom ?? 0);
-          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.8).toFixed(3)})`;
+          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.6).toFixed(3)})`;
           ctx.fillRect(0, top, vw, vh - top);
         }
 
