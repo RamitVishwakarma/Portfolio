@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Build from "../Swarm/Build";
 
@@ -13,6 +13,8 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
   const [previous, setPrevious] = useState<number | null>(null);
   // Bumped on every change so a slide re-mounts and replays its animation.
   const [turn, setTurn] = useState(0);
+  const currentRef = useRef<HTMLDivElement>(null);
+  const [exitFrom, setExitFrom] = useState<CSSProperties>({});
 
   useEffect(() => {
     if (previous === null) return;
@@ -21,6 +23,15 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
   }, [previous, turn]);
 
   const go = (index: number, dir: string) => {
+    // Clicked mid-slide: the leaving slide fades out from where it is now.
+    const el = currentRef.current;
+    if (el) {
+      const cs = getComputedStyle(el);
+      setExitFrom({
+        ["--from-transform" as string]: cs.transform === "none" ? "none" : cs.transform,
+        ["--from-opacity" as string]: cs.opacity,
+      });
+    }
     setDirection(dir);
     setPrevious(currentIndex);
     setCurrentIndex(index);
@@ -52,12 +63,13 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
     <Build kind="image" className="flex flex-col items-center mt-20">
       <div className="relative w-[36rem] h-[27rem] max-five:w-[25rem] max-five:h-[20rem] max-sm:w-[20rem] max-sm:h-[18rem] overflow-hidden rounded-lg">
         {previous !== null && (
-          <div key={`out-${turn}`} className="absolute carousel-exit">
+          <div key={`out-${turn}`} className="absolute carousel-exit" style={exitFrom}>
             {slide(previous)}
           </div>
         )}
         <div
           key={`in-${turn}`}
+          ref={currentRef}
           className={`absolute ${
             direction === "right" ? "carousel-in-right" : "carousel-in-left"
           }`}>

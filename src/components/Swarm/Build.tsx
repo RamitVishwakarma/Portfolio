@@ -30,6 +30,8 @@ type BuildProps = Omit<AllHTMLAttributes<HTMLElement>, "as"> & {
   owner?: string;
   /** Sits on a light background: text waits less faint to keep contrast. */
   surface?: "light";
+  /** On phones, appears together with the element it sits in. */
+  pack?: boolean;
   children?: ReactNode;
 };
 
@@ -46,6 +48,7 @@ const Build = ({
   priority,
   owner,
   surface,
+  pack,
   children,
   ...rest
 }: BuildProps) => {
@@ -62,8 +65,9 @@ const Build = ({
       priority,
       owner,
       ghost,
+      pack,
     });
-  }, [id, as, kind, caption, optional, priority, owner, ghost]);
+  }, [id, as, kind, caption, optional, priority, owner, ghost, pack]);
 
   return createElement(
     as,

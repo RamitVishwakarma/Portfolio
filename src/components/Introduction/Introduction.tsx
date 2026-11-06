@@ -17,7 +17,7 @@ const Introduction = () => {
               {" "}
               OPEN TO WORK{" "}
             </Build>
-            <Build as="span" kind="pop">
+            <Build as="span" kind="pop" className="max-five:hidden">
               |
             </Build>
             <Build
@@ -76,7 +76,7 @@ const Introduction = () => {
             <Image
               className="z-10 shadow-2xl border-4 border-blue/20 rounded-full md:w-10/12"
               src={Ramit}
-              alt="ProfilePic"
+              alt="Ramit Vishwakarma"
               priority
               sizes="(max-width: 800px) 80vw, 520px"
             />

@@ -22,7 +22,8 @@ const Testimonials = () => {
     const start = () => {
       const rate = anim?.playbackRate ?? 1;
       anim?.cancel();
-      const finalPosition = -el.scrollWidth / 2 - 8;
+      // One full set plus one gap (gap-12 = 48px): a seamless loop.
+      const finalPosition = -(el.scrollWidth + 48) / 2;
       anim = el.animate(
         [
           { transform: "translateX(0px)" },
@@ -80,8 +81,12 @@ const Testimonials = () => {
           <div
             className="absolute left-0 flex gap-12"
             ref={trackRef}
-            onMouseEnter={() => setSpeed(SLOW_DURATION)}
-            onMouseLeave={() => setSpeed(FAST_DURATION)}>
+            onPointerEnter={(e) => {
+              if (e.pointerType === "mouse") setSpeed(SLOW_DURATION);
+            }}
+            onPointerLeave={(e) => {
+              if (e.pointerType === "mouse") setSpeed(FAST_DURATION);
+            }}>
             {testimonialData.concat(testimonialData).map((data, idx) => (
               <TestimonialContainer data={data} key={idx} />
             ))}

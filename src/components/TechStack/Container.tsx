@@ -40,11 +40,12 @@ const Container = ({ data }: { data: dataInterface[] }) => {
             <div className="flex flex-col gap z-10 relative">
               <Build
                 kind="text"
+                pack
                 owner={owners[data.title]}
                 className="text-white/75 text-xl">
                 {data.title}
               </Build>
-              <Build kind="text" className="text-white/50 text-mg">
+              <Build kind="text" pack className="text-white/50 text-mg">
                 {data.description}
               </Build>
             </div>

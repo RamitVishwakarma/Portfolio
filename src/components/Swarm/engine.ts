@@ -30,6 +30,8 @@ export interface BuildOptions {
   owner?: string;
   /** How faint it waits (from ghostFor, set by Build). */
   ghost?: number;
+  /** On phones, appears together with the element it sits in. */
+  pack?: boolean;
 }
 
 type TaskState = "pending" | "claimed" | "building" | "done";
@@ -54,6 +56,8 @@ export interface Task {
   readySince: number;
   /** Opacity it waits at before it's built. */
   ghost: number;
+  pack: boolean;
+  heading: boolean;
   state: TaskState;
   /** Within the look-ahead band below the viewport. */
   inView: boolean;
@@ -296,6 +300,17 @@ class SwarmEngine {
   get viewport() {
     return this.vp;
   }
+
+  /** When the cursors took over from the splash. */
+  get handoffAt() {
+    return this.startedAt;
+  }
+
+  /** Visible text and buttons this frame (labels keep off them). */
+  obstacles: Rect[] = [];
+  private obstaclesAt = -1e9;
+  private obstaclesSy = -1;
+  private lastScroll = 0;
   private snap: SwarmSnapshot = EMPTY;
 
   // ---- React store API ---------------------------------------------------
@@ -333,6 +348,8 @@ class SwarmEngine {
       owner: opts.owner,
       readySince: 0,
       ghost: opts.ghost ?? ghostFor(opts.kind, !!opts.priority),
+      pack: !!opts.pack,
+      heading: el.tagName === "H2",
       state: "pending",
       inView: false,
       visible: false,
@@ -662,6 +679,15 @@ class SwarmEngine {
     if (this.listening) return;
     this.listening = true;
     window.addEventListener("scroll", this.wake, { passive: true });
+    window.addEventListener(
+      "scroll",
+      () => {
+        this.lastScroll = now();
+        // Reading back up during the finale: go straight to the end.
+        if (this.phase === "finishing" && this.finaleLive) this.endFinale();
+      },
+      { passive: true }
+    );
     window.addEventListener("resize", this.wake, { passive: true });
     // Time spent in another tab doesn't count towards catch-up or pacing.
     let hiddenAt = 0;
@@ -706,6 +732,19 @@ class SwarmEngine {
     this.loop();
   };
 
+  private finaleLive = false;
+
+  private endFinale() {
+    this.finaleLive = false;
+    this.gen++;
+    this.revealed = true;
+    this.burst = null;
+    this.scrimTarget = 0;
+    for (const a of this.agents) a.targetOpacity = 0;
+    this.complete(this.gen, 300);
+    this.emit(true);
+  }
+
   private finish(natural: boolean) {
     if (this.phase !== "running") return;
     this.phase = "finishing";
@@ -723,6 +762,8 @@ class SwarmEngine {
     const top = Math.max(0, nav?.getBoundingClientRect().bottom ?? 0);
     const phone = vw < 640;
     const R = Math.min(vw, vh - top) * (phone ? 0.42 : 0.36);
+    // The ring is pinned to the viewport (the overlay draws ring cursors as
+    // fixed), so its points need no scroll offset beyond the page origin.
     const cx = vw / 2;
     const cy = top + (vh - top) / 2;
     let rScale = 1;
@@ -740,6 +781,9 @@ class SwarmEngine {
         return;
       }
       try {
+        // Let a scroll settle before the show starts.
+        while (now() - this.lastScroll < 150) await this.step(gen, null);
+        this.finaleLive = true;
         // Phones: the rest of the cast flies in, small, for the finale.
         if (this.agents.length < AGENTS.length) {
           const extra = AGENTS.slice(this.agents.length).map((def, k) => {
@@ -769,9 +813,9 @@ class SwarmEngine {
           const per = Math.ceil(minis.length / full.length) + 1;
           a.ringAngle = gap * step - Math.PI / 2 + (step * slot) / per;
         });
-        // The page dims and the whole swarm gathers in a ring that is
-        // already turning, so the gather never sits still...
-        this.scrimTarget = 1;
+        // The page dims (not on phones) and the whole swarm gathers in a
+        // ring that is already turning, so the gather never sits still...
+        this.scrimTarget = phone ? 0 : 1;
         let spin = 1.05;
         let gathering = true;
         const arrived = new Set<Agent>();
@@ -810,6 +854,25 @@ class SwarmEngine {
         );
         gathering = false;
         await spinner;
+        // Ease any straggler onto its slot before the wind-up.
+        {
+          const t0 = now();
+          let last = t0;
+          for (;;) {
+            await this.step(gen, null);
+            const t = now();
+            const dt = (t - last) / 1000;
+            last = t;
+            const k = Math.min(1, (t - t0) / 350);
+            for (const a of this.agents) {
+              a.ringAngle = (a.ringAngle ?? 0) + spin * dt;
+              const p = ringPoint(a);
+              a.x += (p.x - a.x) * Math.max(0.25, k);
+              a.y += (p.y - a.y) * Math.max(0.25, k);
+            }
+            if (k >= 1) break;
+          }
+        }
         // ...winds up: the ring tightens and speeds up...
         const follow = async (ms: number, at: (k: number) => void) => {
           const t0 = now();
@@ -874,8 +937,9 @@ class SwarmEngine {
           spin = Math.PI - (Math.PI - 0.7) * Math.min(1, e / 700);
           const fade = ease(Math.min(1, Math.max(0, (e - 900) / 500)));
           for (const a of this.agents) a.opacity = a.targetOpacity = 1 - fade;
-          this.scrim = this.scrimTarget = 1 - fade;
+          this.scrim = this.scrimTarget = phone ? 0 : 1 - fade;
         });
+        this.finaleLive = false;
         this.complete(gen, 0);
       } catch {
         // Skipped mid-finale.
@@ -931,6 +995,20 @@ class SwarmEngine {
     };
     for (const task of this.taskList()) {
       if (task.typing && task.state !== "done") task.typing.prime();
+    }
+    if (t - this.obstaclesAt > 100 || this.vp.sy !== this.obstaclesSy) {
+      this.obstaclesAt = t;
+      this.obstaclesSy = this.vp.sy;
+      const out: Rect[] = [];
+      for (const task of this.taskList()) {
+        if (task.removed || !task.visible) continue;
+        if (task.kind !== "text" && task.kind !== "pop") continue;
+        const r = task.el.getBoundingClientRect();
+        if (r.width && r.height) {
+          out.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+        }
+      }
+      this.obstacles = out;
     }
     const waiters = this.waiters;
     this.waiters = [];
@@ -1022,6 +1100,17 @@ class SwarmEngine {
       return true;
     }
     if (this.hasEligible || this.burst) return false;
+    for (const t of this.taskList()) {
+      if (
+        t.state === "pending" &&
+        t.visible &&
+        !t.optional &&
+        !t.removed &&
+        this.isReady(t)
+      ) {
+        return false;
+      }
+    }
     return this.agents.every(
       (a) =>
         a.active &&
@@ -1089,14 +1178,21 @@ class SwarmEngine {
     let onScreen = 0;
     for (const t of this.taskList()) {
       if (t.removed) continue;
+      if (t.state === "pending" && t.pack && this.vp.vw < 640 && this.isReady(t)) {
+        this.setAttr(t, "building");
+        this.reveal(t, "fade");
+        this.finishTask(t);
+        continue;
+      }
       if (t.state === "pending" && t.inView && this.isReady(t)) {
         // Text waits until it's on screen, so the typing is seen; on phones
         // until it's 40% of the way up, so it happens in view.
         if (t.kind === "text" && !t.visible) continue;
         if (
           t.kind === "text" &&
-          this.vp.vh < 900 &&
-          window.innerWidth < 640 &&
+          !this.vp.atEnd &&
+          this.vp.vw < 640 &&
+          t.top < document.documentElement.scrollHeight - this.vp.vh * 0.45 &&
           t.el.getBoundingClientRect().top > this.vp.vh * 0.6
         ) {
           continue;
@@ -1150,6 +1246,7 @@ class SwarmEngine {
       (a, b) =>
         Number(b.priority) - Number(a.priority) ||
         Number(b.visible) - Number(a.visible) ||
+        Number(b.heading) - Number(a.heading) ||
         a.top - b.top ||
         (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING
           ? -1
@@ -1212,10 +1309,12 @@ class SwarmEngine {
     if (gutter >= 60) {
       // Waiting cursors are quiet arrows in the gutters, clear of content.
       const span = Math.min(28, gutter - 40);
+      const k = ((a.index * 61) % 13) / 13;
       const x = side
         ? vw - gutter + 12 + j * span
         : gutter - 34 - j * span;
-      const y = vh * (0.18 + 0.66 * ((row + 0.5) / rows)) + (j - 0.5) * 50;
+      // Loosely scattered, not a ladder.
+      const y = vh * (0.16 + 0.7 * ((row + k) / rows));
       return { quiet: true, right: !!side, x, y };
     }
     // Phones: tucked half off the edge.
@@ -1232,6 +1331,32 @@ class SwarmEngine {
    * and never over its text), then wait quietly in the gutters. Waiting
    * cursors come back to watch every few seconds while work is on screen.
    */
+  /** A spot beside a block being typed: in its margin or just below it. */
+  private spectateSpot(a: Agent, working: Agent[]) {
+    const vw = this.vp.vw;
+    const vh = this.vp.vh;
+    const host = working[a.index % working.length];
+    const r = host.task ? pageRect(host.task.el) : null;
+    const sx = window.scrollX;
+    const sy = window.scrollY;
+    const cy = host.caret?.y ?? r?.y ?? host.y;
+    const options = r
+      ? [
+          { x: r.x - 70 - rand(0, 40), y: cy + rand(-20, 30) },
+          { x: r.x + r.w + 30 + rand(0, 40), y: cy + rand(-20, 30) },
+          { x: r.x + rand(0, r.w), y: r.y + r.h + 28 },
+        ]
+      : [{ x: host.x + 80, y: host.y + 60 }];
+    const fits = options.filter(
+      (p) =>
+        p.x - sx > 24 &&
+        p.x - sx < vw - 120 &&
+        p.y - sy > 70 &&
+        p.y - sy < vh - 40
+    );
+    return fits.length ? fits[a.index % fits.length] : null;
+  }
+
   private dock(t: number) {
     const vw = document.documentElement.clientWidth;
     const vh = window.innerHeight;
@@ -1244,8 +1369,13 @@ class SwarmEngine {
     for (const a of this.agents) {
       if (!a.active || a.task || a.leaving || a.moving) continue;
       if (a.docked) {
-        // Rested a while and there's typing to watch: go and look.
+        // Rested a while and there's typing to watch: go and look, but only
+        // if there's a free spot beside it (otherwise rest a while longer).
         if (working.length && t - a.dockedAt > 1800 + ((a.index * 523) % 1200)) {
+          if (!this.spectateSpot(a, working)) {
+            a.dockedAt = t;
+            continue;
+          }
           a.docked = false;
           a.spectated = false;
           a.targetOpacity = 1;
@@ -1255,31 +1385,9 @@ class SwarmEngine {
       }
       if (!a.spectated && working.length) {
         a.spectated = true;
+        const spot = this.spectateSpot(a, working);
+        if (!spot) continue;
         a.moving = true;
-        const host = working[a.index % working.length];
-        const r = host.task ? pageRect(host.task.el) : null;
-        const sx = window.scrollX;
-        const sy = window.scrollY;
-        // Beside the block being typed: in its margin, or just below it.
-        const options = r
-          ? [
-              { x: r.x - 70 - rand(0, 40), y: (host.caret?.y ?? r.y) + rand(-20, 30) },
-              { x: r.x + r.w + 30 + rand(0, 40), y: (host.caret?.y ?? r.y) + rand(-20, 30) },
-              { x: r.x + rand(0, r.w), y: r.y + r.h + 28 },
-            ]
-          : [{ x: host.x + 80, y: host.y + 60 }];
-        const fits = (p: { x: number; y: number }) =>
-          p.x - sx > 24 &&
-          p.x - sx < vw - 120 &&
-          p.y - sy > 70 &&
-          p.y - sy < vh - 40;
-        const spot =
-          options.filter(fits)[a.index % Math.max(1, options.filter(fits).length)] ??
-          null;
-        if (!spot) {
-          a.moving = false;
-          continue;
-        }
         this.moveTo(a, () => spot, this.gen, null, 0.9)
           .catch(() => {})
           .finally(() => {
@@ -1309,7 +1417,7 @@ class SwarmEngine {
             a.dockedAt = now();
             a.quiet = true;
             a.parkRight = spot.right;
-            a.targetOpacity = desktop ? 0.45 : 0.35;
+            a.targetOpacity = desktop ? 0.3 + ((a.index * 7) % 5) * 0.05 : 0.35;
           }
         })
         .catch(() => {})

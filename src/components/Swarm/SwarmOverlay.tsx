@@ -56,9 +56,12 @@ interface Extra {
   lx?: number;
   ly?: number;
   movedAt?: number;
-  /** Last label placement, kept while it stays clear (no hopping). */
-  place?: [boolean, number];
+  /** Last label spot (viewport offset from default), kept while clear. */
+  place?: [number, number];
+  /** When placement last failed; the label hides only after a short grace. */
+  failedAt?: number;
   fixed?: boolean;
+  tags?: HTMLElement | null;
   ripples: WeakSet<object>;
 }
 const extras = new WeakMap<Agent, Extra>();
@@ -209,7 +212,9 @@ function useDocHeight(active: boolean) {
   const [h, setH] = useState(0);
   useEffect(() => {
     if (!active) return;
-    const measure = () => setH(document.documentElement.scrollHeight);
+    // body's own height, which the absolutely positioned layer doesn't add
+    // to, so the page can still get shorter (rotation, resize).
+    const measure = () => setH(document.body.offsetHeight);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(document.body);
@@ -236,20 +241,15 @@ const SwarmOverlay = () => {
         const phone = vw < 640;
         const taken: Box[] = [];
         let statuses = 0;
-        // Paragraphs being typed right now stay readable: labels avoid them.
-        const blocks = new Set<Agent["task"]>();
-        for (const a of swarm.agents) if (a.caret && a.task) blocks.add(a.task);
-        blocks.forEach((task) => {
-          const r = task?.typing?.box();
-          if (r) {
-            taken.push({
-              l: r.x - sx - 4,
-              t: r.y - sy - 2,
-              r: r.x - sx + r.w + 4,
-              b: r.y - sy + r.h + 2,
-            });
-          }
-        });
+        // Text and buttons on screen: labels keep off them (rects read by
+        // the engine at the start of the frame).
+        const copy: Box[] = swarm.obstacles.map((r) => ({
+          l: r.x - 3,
+          t: r.y - 2,
+          r: r.x + r.w + 3,
+          b: r.y + r.h + 2,
+        }));
+        const firstFlight = t - swarm.handoffAt < 1200;
 
         for (const a of swarm.agents) {
           const d = a.dom;
@@ -259,12 +259,14 @@ const SwarmOverlay = () => {
           const vy = a.y - sy;
           const docked = a.docked && !a.task;
           // Moving cursors live in page coordinates, so the browser scrolls
-          // them with the content; waiting ones are pinned to the viewport.
-          if (x && x.fixed !== docked) {
-            x.fixed = docked;
-            d.root.style.position = docked ? "fixed" : "absolute";
+          // them with the content; waiting ones and the finale ring are
+          // pinned to the viewport.
+          const pinned = docked || a.ringAngle !== null;
+          if (x && x.fixed !== pinned) {
+            x.fixed = pinned;
+            d.root.style.position = pinned ? "fixed" : "absolute";
           }
-          d.root.style.transform = docked
+          d.root.style.transform = pinned
             ? `translate3d(${vx}px, ${vy}px, 0)`
             : `translate3d(${a.x}px, ${a.y}px, 0)`;
           d.root.style.opacity = a.opacity.toFixed(3);
@@ -287,10 +289,12 @@ const SwarmOverlay = () => {
             x.lx = a.x;
             x.ly = a.y;
           }
-          const moving = t - (x?.movedAt ?? 0) < 250;
+          const moving = t - (x?.movedAt ?? 0) < 600;
           const quiet =
             a.mini ||
-            (phone ? !a.caret && !a.chip : !a.task && !moving) ||
+            (phone
+              ? !a.caret && !a.chip && !(firstFlight && moving)
+              : !a.task && !moving) ||
             (docked && a.quiet);
 
           // Status only while it's fresh and its target is on screen.
@@ -323,11 +327,12 @@ const SwarmOverlay = () => {
             }
           }
 
-          // Place the label clear of other labels and of paragraphs being
-          // typed, fully on screen. Keep last frame's spot while it's still
-          // clear, so labels don't hop about.
-          let flip = false;
-          let dy = 0;
+          // Place the label clear of other labels and of copy on screen,
+          // fully inside the viewport. A cursor that is typing gets its name
+          // in the margin on its caret's line. The last good spot is kept
+          // while it stays clear, so labels don't hop about.
+          let lx = 0;
+          let ly = 0;
           let hide = quiet;
           const onScreen =
             !quiet && vx > -40 && vx < vw + 40 && vy > -40 && vy < vh + 40;
@@ -338,63 +343,85 @@ const SwarmOverlay = () => {
               a.chip ? a.chip.label.length * 6.1 + 52 : 0
             );
             const h = 20 + (status ? 22 : 0) + (a.chip ? 44 : 0);
+            const baseL = vx + 16;
+            const baseT = vy + 20;
             const ring = a.ringAngle;
-            const preferLeft =
-              ring !== null ? Math.cos(ring) < -0.2 : vx > vw - 140;
-            const up = -h - 26;
-            const preferUp = ring !== null && Math.sin(ring) < -0.35;
-            const options: [boolean, number][] = [];
-            if (x?.place && ring === null) options.push(x.place);
-            options.push(
-              ...((preferUp
-                ? [
-                    [preferLeft, up],
-                    [!preferLeft, up],
-                    [preferLeft, 0],
-                    [!preferLeft, 0],
-                  ]
-                : [
-                    [preferLeft, 0],
-                    [!preferLeft, 0],
-                    [preferLeft, 22],
-                    [!preferLeft, 22],
-                    [preferLeft, up],
-                    [!preferLeft, up],
-                  ]) as [boolean, number][])
-            );
+            const left = ring !== null ? Math.cos(ring) < -0.2 : vx > vw - 140;
+            const up = ring !== null && Math.sin(ring) < -0.35;
+            const spots: [number, number][] = [];
+            const typingBox = a.caret && a.task?.typing ? a.task.typing.box() : null;
+            if (typingBox && a.caret) {
+              const lineT = a.caret.y - sy + a.caret.h / 2 - 10;
+              spots.push([typingBox.x - sx - w - 12, lineT]);
+              spots.push([typingBox.x - sx + typingBox.w + 12, lineT]);
+            }
+            if (x?.place && ring === null && !typingBox) {
+              spots.push([baseL + x.place[0], baseT + x.place[1]]);
+            }
+            const flipL = vx + 4 - w;
+            const order: [number, number][] = up
+              ? [
+                  [left ? flipL : baseL, baseT - h - 26],
+                  [left ? baseL : flipL, baseT - h - 26],
+                  [left ? flipL : baseL, baseT],
+                ]
+              : [
+                  [left ? flipL : baseL, baseT],
+                  [left ? baseL : flipL, baseT],
+                  [left ? flipL : baseL, baseT + 22],
+                  [left ? baseL : flipL, baseT + 22],
+                  [left ? flipL : baseL, baseT - h - 26],
+                  [left ? baseL : flipL, baseT - h - 26],
+                ];
+            spots.push(...order);
             const fits = (box: Box) =>
               box.l >= 8 && box.r <= vw - 8 && box.t >= 8 && box.b <= vh - 8;
             let chosen: Box | null = null;
-            for (const [f, off] of options) {
-              const l = f ? vx + 4 - w : vx + 16;
-              const box = { l, t: vy + 20 + off, r: l + w, b: vy + 20 + off + h };
-              if (!fits(box) || taken.some((o) => hits(o, box))) continue;
-              flip = f;
-              dy = off;
+            for (const [l, top] of spots) {
+              const box = { l, t: top, r: l + w, b: top + h };
+              if (!fits(box)) continue;
+              if (taken.some((o) => hits(o, box))) continue;
+              // The finale ring sits over the page; everywhere else labels
+              // keep off the copy.
+              if (ring === null && copy.some((o) => hits(o, box))) continue;
               chosen = box;
               break;
             }
             if (chosen) {
               taken.push(chosen);
-              if (x) x.place = [flip, dy];
+              lx = chosen.l - baseL;
+              ly = chosen.t - baseT;
+              if (x) {
+                x.place = [lx, ly];
+                x.failedAt = undefined;
+              }
+            } else if (x) {
+              // Nowhere clean: keep the last spot for a moment, then hide.
+              x.failedAt ??= t;
+              if (x.place && t - x.failedAt < 400) {
+                lx = x.place[0];
+                ly = x.place[1];
+              } else {
+                hide = true;
+              }
             } else {
-              // Nowhere clean and fully on screen: hide rather than clip.
               hide = true;
             }
-          }
-          if (d.root.hasAttribute("data-flip") !== flip) {
-            d.root.toggleAttribute("data-flip", flip);
           }
           if (d.root.hasAttribute("data-quiet") !== hide) {
             d.root.toggleAttribute("data-quiet", hide);
           }
-          const tags = d.root.querySelector<HTMLElement>(".swarm-tags");
-          const shift = dy ? `translateY(${dy}px)` : "";
+          if (x && x.tags === undefined) {
+            x.tags = d.root.querySelector<HTMLElement>(".swarm-tags");
+          }
+          const tags = x?.tags;
+          const shift = lx || ly ? `translate(${lx}px, ${ly}px)` : "";
           if (tags && tags.style.transform !== shift) tags.style.transform = shift;
 
           if (!x) continue;
           // Selection box while dragging out a block.
-          const sel = a.sel && a.sel.w > 0 && a.sel.h > 0 ? a.sel : null;
+          // Only once it's big enough to read (no "0 × 0" badges).
+          const sel = a.sel && a.sel.w >= 40 && a.sel.h >= 16 ? a.sel : null;
           x.sel.style.display = sel ? "block" : "none";
           if (sel) {
             x.sel.style.transform = `translate3d(${sel.x}px, ${sel.y}px, 0)`;
@@ -417,7 +444,9 @@ const SwarmOverlay = () => {
             x.ripples.add(rp);
             const el = document.createElement("div");
             el.className = "swarm-ripple";
-            el.style.transform = `translate3d(${rp.x}px, ${rp.y}px, 0)`;
+            // `translate`, not `transform`: the ripple's `scale` animation
+            // would otherwise scale its position too.
+            el.style.translate = `${rp.x}px ${rp.y}px`;
             el.style.borderColor = a.color;
             el.addEventListener("animationend", () => el.remove());
             layer.appendChild(el);
@@ -508,10 +537,10 @@ const SwarmOverlay = () => {
           className="swarm-layer"
           style={{ height: docH || undefined }}>
           {snap.agents.map((a) => (
-            <Marks key={`m${snap.roster}-${a.index}`} agent={a} />
+            <Marks key={`m${a.index}`} agent={a} />
           ))}
           {snap.agents.map((a) => (
-            <Cursor key={`${snap.roster}-${a.index}`} agent={a} />
+            <Cursor key={`c${a.index}`} agent={a} />
           ))}
         </div>
       )}

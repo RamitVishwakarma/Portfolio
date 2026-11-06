@@ -118,7 +118,8 @@ html.swarm-on [data-swarm="claimed"] {
 }
 /* unbuilt images, and light cards, wait in greyscale, so building them
    reads as colour arriving */
-html.swarm-on [data-swarm-kind="image"]:is([data-swarm="pending"], [data-swarm="claimed"]) {
+html.swarm-on [data-swarm-kind="image"]:is([data-swarm="pending"], [data-swarm="claimed"]),
+html.swarm-on [data-swarm-surface="light"][data-swarm-kind="block"]:is([data-swarm="pending"], [data-swarm="claimed"]) {
   filter: grayscale(1);
 }
 /* the cursor layer spans the document, so moving cursors scroll natively */
@@ -236,12 +237,7 @@ html.swarm-on [data-swarm="claimed"] {
   align-items: flex-start;
   gap: 4px;
 }
-/* near the right edge the labels sit to the left of the arrow */
-.swarm-cursor[data-flip] .swarm-tags {
-  left: auto;
-  right: calc(100% - 4px);
-  align-items: flex-end;
-}
+
 /* idle cursors wait in a row along the bottom edge: arrows only, bobbing */
 @keyframes swarm-bob {
   0%,
@@ -360,10 +356,15 @@ html[data-splash="out"] .swarm-splash li {
     opacity: 1;
   }
 }
+/* the leaving slide starts from wherever it was (a click mid-slide) */
 @keyframes carousel-exit {
+  from {
+    opacity: var(--from-opacity, 1);
+    transform: var(--from-transform, none);
+  }
   to {
     opacity: 0;
-    transform: scale(0.8);
+    transform: var(--from-transform, none) scale(0.8);
   }
 }
 .carousel-in-right {
