@@ -62,6 +62,10 @@ interface Extra {
   failedAt?: number;
   fixed?: boolean;
   tags?: HTMLElement | null;
+  /** Had a label last frame (keeps the capped slots from changing hands). */
+  shown?: boolean;
+  /** Last applied label offset, kept while the label fades out. */
+  shift?: string;
   ripples: WeakSet<object>;
 }
 const extras = new WeakMap<Agent, Extra>();
@@ -260,10 +264,11 @@ const SwarmOverlay = () => {
         const copy = copyCache.boxes;
         const firstFlight = t - swarm.handoffAt < 1200;
         let labels = 0;
-        // Typists get first pick of label spots.
-        const order = swarm.agents
-          .slice()
-          .sort((p, q) => Number(!!q.caret) - Number(!!p.caret));
+        // Typists get first pick of label spots, then whoever had a label
+        // last frame, so the capped slots don't change hands every frame.
+        const rank = (a: Agent) =>
+          (a.caret || a.lastCaret ? 2 : 0) + (extras.get(a)?.shown ? 1 : 0);
+        const order = swarm.agents.slice().sort((p, q) => rank(q) - rank(p));
 
         for (const a of order) {
           const d = a.dom;
@@ -305,19 +310,22 @@ const SwarmOverlay = () => {
           }
           const moving = t - (x?.movedAt ?? 0) < 600;
           const ringing = a.ringAngle !== null;
+          const typing = !!a.task?.typing && !!(a.caret || a.lastCaret);
           const quiet =
             a.mini ||
             (!ringing &&
               (phone
-                ? !a.caret && !a.chip && !(firstFlight && moving)
+                ? !typing && !a.chip && !a.sel && !(firstFlight && moving)
                 : !a.task && !moving)) ||
             (docked && a.quiet) ||
-            (!phone && !ringing && !a.caret && labels >= LABEL_MAX);
+            (!phone && !ringing && labels >= LABEL_MAX);
 
           // Status only while it's fresh and its target is on screen.
           const age = t - a.statusAt;
+          const onLight = !!a.task?.el.closest('[data-swarm-surface="light"]');
           const status =
             !phone &&
+            !onLight &&
             !quiet &&
             !a.chip &&
             a.status &&
@@ -367,14 +375,22 @@ const SwarmOverlay = () => {
             const up = ring !== null && Math.sin(ring) < -0.35;
             // Candidate spots: [left, top, own block allowed, default index].
             const spots: [number, number, boolean, number][] = [];
-            const typingBox = a.caret && a.task?.typing ? a.task.typing.box() : null;
-            if (typingBox && a.caret) {
-              // A typist's name rides just after its caret, over the ghost
-              // text it's about to type; the margin is the fallback.
-              const lineT = a.caret.y - sy + a.caret.h / 2 - 10;
-              spots.push([a.caret.x - sx + 14, lineT, true, -1]);
+            const caret = a.caret ?? (typing ? a.lastCaret : null);
+            const typingBox = caret && a.task?.typing ? a.task.typing.box() : null;
+            if (typingBox && caret) {
+              // A typist's name rides just after its caret (or just before
+              // it near the line's end), over the ghost text it's about to
+              // type; the margin is the fallback.
+              const lineT = caret.y - sy + caret.h / 2 - 10;
+              spots.push([caret.x - sx + 14, lineT, true, -1]);
+              spots.push([caret.x - sx - 14 - w, lineT, true, -1]);
               spots.push([typingBox.x - sx - w - 12, lineT, false, -1]);
               spots.push([typingBox.x - sx + typingBox.w + 12, lineT, false, -1]);
+            }
+            if (a.sel) {
+              // A block builder's name sits inside the box it's drawing.
+              spots.push([vx - w - 6, vy - 26, true, -1]);
+              spots.push([vx + 16, vy + 20, true, -1]);
             }
             const flipL = vx + 4 - w;
             const defaults: [number, number][] = up
@@ -396,12 +412,13 @@ const SwarmOverlay = () => {
               spots.push([l0, t0, false, x.place]);
             }
             defaults.forEach(([l0, t0], i) => spots.push([l0, t0, false, i]));
-            const ownBox = typingBox
+            const own = typingBox ?? (a.sel && a.task ? a.sel : null);
+            const ownBox = own
               ? {
-                  l: typingBox.x - sx - 4,
-                  t: typingBox.y - sy - 2,
-                  r: typingBox.x - sx + typingBox.w + 4,
-                  b: typingBox.y - sy + typingBox.h + 2,
+                  l: own.x - sx - 4,
+                  t: own.y - sy - 2,
+                  r: own.x - sx + own.w + 4,
+                  b: own.y - sy + own.h + 2,
                 }
               : null;
             const fits = (box: Box) =>
@@ -446,12 +463,18 @@ const SwarmOverlay = () => {
           if (d.root.hasAttribute("data-quiet") !== hide) {
             d.root.toggleAttribute("data-quiet", hide);
           }
+          if (x) x.shown = !hide;
           if (x && x.tags === undefined) {
             x.tags = d.root.querySelector<HTMLElement>(".swarm-tags");
           }
+          // While hiding, the label keeps its last spot as it fades (it never
+          // snaps back over the line below).
           const tags = x?.tags;
-          const shift = lx || ly ? `translate(${lx}px, ${ly}px)` : "";
-          if (tags && tags.style.transform !== shift) tags.style.transform = shift;
+          if (tags && !hide) {
+            const shift = lx || ly ? `translate(${lx}px, ${ly}px)` : "";
+            if (x) x.shift = shift;
+            if (tags.style.transform !== shift) tags.style.transform = shift;
+          }
 
           if (!x) continue;
           // Selection box while dragging out a block.
@@ -507,7 +530,17 @@ const SwarmOverlay = () => {
         }
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, vw, vh);
-        if (scrim < 0.01 && !b) return;
+        const ring = swarm.ring;
+        if (scrim < 0.01 && !b && !ring) return;
+        if (ring && ring.alpha > 0.01) {
+          ctx.globalAlpha = ring.alpha * 0.35;
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
         const nav = document
           .querySelector('a[href="/"]')
           ?.closest(".sticky")

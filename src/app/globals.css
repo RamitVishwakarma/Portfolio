@@ -35,6 +35,14 @@ body {
   background-color: black;
 }
 
+/* the hero's rotating rainbow glow pokes past the screen edge on phones as
+   it turns, which made mobile browsers zoom the page out and let it wobble
+   sideways; clip at the screen edge only (sticky navbar still works) */
+html,
+body {
+  overflow-x: clip;
+}
+
 /*? the rotating thing behind profile image */
 @keyframes rotate {
   from {
@@ -281,22 +289,22 @@ html.swarm-on [data-swarm="claimed"] {
   background: #000;
   transition: opacity 450ms ease;
 }
-html.swarm-on:not([data-splash="done"]) .swarm-splash {
+html.swarm-on .swarm-splash:not([data-state="done"]) {
   display: flex;
 }
 /* the hand-off runs in steps set by the engine: words, then out, then done */
-html[data-splash="out"] .swarm-splash {
+.swarm-splash[data-state="out"] {
   opacity: 0;
   pointer-events: none;
 }
 /* the words leave first so they never sit over the page's own heading */
-html[data-splash="words"] .swarm-splash-text,
-html[data-splash="out"] .swarm-splash-text {
+.swarm-splash[data-state="words"] .swarm-splash-text,
+.swarm-splash[data-state="out"] .swarm-splash-text {
   opacity: 0;
   transition: opacity 150ms ease;
 }
 /* the pills are now the real cursors, in the same spots */
-html[data-splash="out"] .swarm-splash li {
+.swarm-splash[data-state="out"] li {
   visibility: hidden;
 }
 @keyframes swarm-splash-in {

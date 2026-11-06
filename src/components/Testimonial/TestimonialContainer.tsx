@@ -9,6 +9,7 @@ const TestimonialContainer = ({ data }: { data: testimonialDataInterface }) => {
       <Build
         kind="pop"
         optional
+        pack
         caption={`adding ${data.name}`}
         className={`relative border-4 ${data.bordercolor} p-2 rounded-2xl z-10 ${data.hoverbordercolor} hover:scale-110 hover:rotate-3 hover:cursor-pointer transition-transform duration-200 ease-in-out ${data.shadowcolor} shadow-lg`}>
         <div className="relative bg-black min-w-[22rem] min-h-80 max-md:min-w-[18rem] max-md:min-h-[30rem] text-white p-4 text-balance rounded-xl overflow-hidden ">
