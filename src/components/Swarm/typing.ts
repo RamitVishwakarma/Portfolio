@@ -17,6 +17,8 @@ export interface Typing {
   segments: Segment[];
   /** Measure every caret position, so typing never forces a reflow. */
   measure(): void;
+  /** Read the element's position for this frame (batched before writes). */
+  prime(): void;
   /** Fade the untyped text to the ghost level (when typing starts). */
   ghostOn(): void;
   /** Show the first `n` characters of segment `i`. */
@@ -160,10 +162,18 @@ export function prepareTyping(
     h: r.height,
   });
 
-  return {
+  // Re-measure carets when the element resizes or a web font swaps in.
+  let ro: ResizeObserver | null = null;
+  const remeasure = () => api.measure();
+
+  const api: Typing = {
     total,
     segments,
+    prime() {
+      origin();
+    },
     measure() {
+      if (finished) return;
       cache.frame = -1;
       const o = origin();
       const out: Rect[] = [];
@@ -229,6 +239,8 @@ export function prepareTyping(
     finish() {
       if (finished) return;
       finished = true;
+      ro?.disconnect();
+      document.fonts?.removeEventListener("loadingdone", remeasure);
       for (const p of pieces) {
         for (const u of p.units) {
           u.ghost.remove();
@@ -239,4 +251,18 @@ export function prepareTyping(
       }
     },
   };
+  if (typeof ResizeObserver !== "undefined") {
+    let first = true;
+    ro = new ResizeObserver(() => {
+      // The initial callback fires on observe; carets are measured by the caller.
+      if (first) {
+        first = false;
+        return;
+      }
+      remeasure();
+    });
+    ro.observe(root);
+  }
+  document.fonts?.addEventListener("loadingdone", remeasure);
+  return api;
 }

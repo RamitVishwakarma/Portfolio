@@ -10,7 +10,7 @@ import {
   type ForwardRefExoticComponent,
   type ReactNode,
 } from "react";
-import { swarm, type BuildKind } from "./engine";
+import { ghostFor, swarm, type BuildKind } from "./engine";
 
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -63,7 +63,12 @@ const Build = ({
       ref,
       "data-swarm": "pending",
       "data-swarm-id": id,
-      "data-swarm-priority": priority ? "" : undefined,
+      // How faint it waits before it's built (set here so the first paint
+      // already matches what the engine animates from).
+      style: {
+        ...(rest.style as object),
+        "--swarm-ghost": ghostFor(kind, !!priority),
+      },
     },
     children
   );

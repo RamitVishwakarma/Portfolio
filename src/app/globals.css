@@ -109,19 +109,11 @@ body {
 }
 
 /*? cursor swarm: content waits as a faint ghost until a cursor builds it.
-   It stays readable, findable and in the accessibility tree throughout. */
+   It stays readable, findable and in the accessibility tree throughout. The
+   level per element comes from Build.tsx (--swarm-ghost). */
 html.swarm-on [data-swarm="pending"],
 html.swarm-on [data-swarm="claimed"] {
-  opacity: 0.25;
-}
-html.swarm-on [data-swarm="pending"][data-swarm-priority],
-html.swarm-on [data-swarm="claimed"][data-swarm-priority] {
-  opacity: 0.45;
-}
-/* inside a faint ancestor the ancestor's level already applies */
-html.swarm-on :is([data-swarm="pending"], [data-swarm="claimed"])
-  :is([data-swarm="pending"], [data-swarm="claimed"]) {
-  opacity: 1;
+  opacity: var(--swarm-ghost, 0.3);
 }
 .swarm-cursor {
   will-change: transform, opacity;
@@ -149,32 +141,56 @@ html.swarm-on :is([data-swarm="pending"], [data-swarm="claimed"])
   right: calc(100% - 4px);
   align-items: flex-end;
 }
-.swarm-hint {
-  transition: opacity 300ms ease;
-}
-@keyframes swarm-bounce {
+/* idle cursors wait in a row along the bottom edge: arrows only, bobbing */
+@keyframes swarm-bob {
   0%,
   100% {
-    transform: translateY(-1px);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(3px);
+    transform: translateY(-5px);
   }
 }
-.swarm-bounce {
-  animation: swarm-bounce 1.2s ease-in-out infinite;
+.swarm-cursor[data-docked] .swarm-body {
+  animation: swarm-bob 1.6s ease-in-out infinite;
 }
-.swarm-progress {
-  background: linear-gradient(
-    90deg,
-    #ff8885,
-    #ffc67e,
-    #fafe8e,
-    #a8fe96,
-    #77effd,
-    #7caafd,
-    #9e8bfd,
-    #ff9dfb
-  );
-  transition: width 300ms ease;
+.swarm-cursor[data-docked] .swarm-tags,
+.swarm-mini .swarm-tags {
+  display: none;
+}
+.swarm-mini .swarm-arrow {
+  transform: scale(0.7);
+}
+
+/*? splash: only when the build is about to run */
+.swarm-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  transition: opacity 450ms ease;
+}
+html.swarm-on:not([data-splash="done"]) .swarm-splash {
+  display: flex;
+}
+html[data-splash="out"] .swarm-splash {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes swarm-splash-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.swarm-splash-in {
+  animation: swarm-splash-in 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }

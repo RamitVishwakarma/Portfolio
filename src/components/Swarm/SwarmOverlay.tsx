@@ -1,17 +1,15 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { swarm, type Agent, type SwarmSnapshot } from "./engine";
+import { swarm, type Agent } from "./engine";
 
-/** How long a cursor's status chip stays up after it picks up a job. */
+/** A cursor's status chip shows once it has stayed on a job this long... */
+const STATUS_DELAY = 600;
+/** ...stays up this long... */
 const STATUS_MS = 1200;
+/** ...and only this many show at once. */
+const STATUS_MAX = 3;
 const RAINBOW = [
   "#ff8885",
   "#ffc67e",
@@ -81,8 +79,9 @@ const Cursor = ({ agent }: { agent: Agent }) => {
   return (
     <div
       ref={ref}
-      className="swarm-cursor absolute left-0 top-0"
+      className={`swarm-cursor absolute left-0 top-0 ${agent.mini ? "swarm-mini" : ""}`}
       style={{ opacity: 0 }}>
+      <div className="swarm-body">
       <svg
         className="swarm-arrow"
         width="22"
@@ -122,252 +121,8 @@ const Cursor = ({ agent }: { agent: Agent }) => {
           />
         </span>
       </div>
-    </div>
-  );
-};
-
-const Avatars = ({ agents }: { agents: Agent[] }) => {
-  const shown = agents.slice(0, 4);
-  return (
-    <span className="flex items-center" aria-hidden>
-      {shown.map((a, i) => (
-        <span
-          key={a.index}
-          className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-black text-[10px] font-bold ${
-            a.dark ? "text-white" : "text-black"
-          }`}
-          style={{ background: a.color, marginLeft: i ? -8 : 0 }}>
-          {a.name[0]}
-        </span>
-      ))}
-      {agents.length > shown.length && (
-        <span className="-ml-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-black bg-grey-900 px-1 text-[10px] font-bold text-white">
-          +{agents.length - shown.length}
-        </span>
-      )}
-    </span>
-  );
-};
-
-interface Placement {
-  /** Below 800px the HUD lives just under the navbar. */
-  mobile: boolean;
-  /** Desktop: the empty stretch of navbar after the "RV" logo. */
-  left: number;
-  room: number;
-  navTop: number;
-  navBottom: number;
-}
-
-/** Where the HUD fits inside (desktop) or just under (mobile) the navbar. */
-function usePlacement(): Placement {
-  const [p, setP] = useState<Placement>({
-    mobile: false,
-    left: 180,
-    room: 600,
-    navTop: 0,
-    navBottom: 56,
-  });
-  useEffect(() => {
-    const logo = document.querySelector('a[href="/"]');
-    const nav = logo?.closest(".sticky");
-    const measure = () => {
-      const links = nav?.querySelector("ul");
-      const lr = logo?.getBoundingClientRect();
-      const nr = nav?.getBoundingClientRect();
-      const ur = links?.getBoundingClientRect();
-      const left = (lr?.right ?? 150) + 28;
-      const next: Placement = {
-        mobile: window.innerWidth < 800,
-        left,
-        room: Math.max(0, (ur?.left ?? window.innerWidth) - left - 24),
-        navTop: Math.max(0, nr?.top ?? 0),
-        navBottom: Math.max(0, nr?.bottom ?? 56),
-      };
-      setP((old) =>
-        old.mobile === next.mobile &&
-        old.left === next.left &&
-        old.room === next.room &&
-        old.navTop === next.navTop &&
-        old.navBottom === next.navBottom
-          ? old
-          : next
-      );
-    };
-    measure();
-    // The navbar is sticky, so only its size matters (late font swaps too).
-    const ro = new ResizeObserver(measure);
-    if (nav) ro.observe(nav);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-  return p;
-}
-
-/** Phones: whether the visitor is at the top, and heading down the page. */
-function useScrollState(enabled: boolean) {
-  const [state, setState] = useState({ atTop: true, down: false });
-  useEffect(() => {
-    if (!enabled) return;
-    let lastY = window.scrollY;
-    let down = false;
-    const check = () => {
-      const y = window.scrollY;
-      if (y > lastY + 2) down = true;
-      else if (y < lastY - 2) down = false;
-      lastY = y;
-      const atTop = y < 40;
-      setState((old) =>
-        old.atTop === atTop && old.down === down ? old : { atTop, down }
-      );
-    };
-    check();
-    window.addEventListener("scroll", check, { passive: true });
-    return () => window.removeEventListener("scroll", check);
-  }, [enabled]);
-  return state;
-}
-
-const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
-  const settled = snap.phase === "complete" || snap.phase === "idle";
-  const [collapsed, setCollapsed] = useState(settled);
-  const [settledIn, setSettledIn] = useState(false);
-  const place = usePlacement();
-  const { mobile } = place;
-  const scroll = useScrollState(mobile);
-
-  useEffect(() => {
-    if (snap.phase === "idle") return setCollapsed(true);
-    if (!snap.revealed) return setCollapsed(false);
-    // Always show the payoff line for a few seconds before tucking away.
-    setCollapsed(false);
-    const id = window.setTimeout(() => setCollapsed(true), 3800);
-    return () => window.clearTimeout(id);
-  }, [snap.phase, snap.revealed]);
-
-  // Phones: after 5 s of building the bar slims down to a progress line.
-  useEffect(() => {
-    if (snap.phase !== "running") return setSettledIn(false);
-    const id = window.setTimeout(() => setSettledIn(true), 5000);
-    return () => window.clearTimeout(id);
-  }, [snap.phase, snap.roster]);
-
-  const building = snap.phase === "running" || (snap.phase === "finishing" && !snap.revealed);
-  const pct = Math.round(snap.progress * 100);
-  const count = snap.agents.length;
-  const tier = place.room >= 680 ? 2 : place.room >= 430 ? 1 : 0;
-  // Phones, while building: full bar at first and whenever scrolling back up;
-  // otherwise just a progress line and a small Skip chip.
-  const slim = mobile && building && (scroll.down || settledIn);
-  // Phones, once done: the Replay chip only shows at the very top.
-  const hidden = mobile && collapsed && !scroll.atTop;
-
-  const progress = (
-    <span
-      className={
-        mobile
-          ? "pointer-events-none fixed left-0 h-[2px] w-full bg-white/10"
-          : "h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-white/15"
-      }
-      style={mobile ? { top: place.navBottom } : undefined}
-      aria-hidden>
-      <span
-        className="swarm-progress block h-full rounded-full"
-        style={{ width: `${pct}%` }}
-      />
-    </span>
-  );
-
-  const hint = (
-    <span
-      className="swarm-hint shrink-0 whitespace-nowrap text-white/70"
-      style={{ opacity: snap.waiting ? 1 : 0 }}
-      aria-hidden>
-      {tier === 2 && !mobile ? "keep scrolling " : ""}
-      <span className="swarm-bounce inline-block">↓</span>
-    </span>
-  );
-
-  // Desktop: inside the navbar's empty middle, so it never covers content.
-  // Mobile: a slim bar under the navbar, then small chips in its corner.
-  const style: React.CSSProperties = mobile
-    ? collapsed || slim
-      ? { top: place.navBottom + 8, right: 12 }
-      : { top: place.navBottom, left: 0, right: 0 }
-    : { top: place.navTop + 12, left: place.left, maxWidth: place.room };
-  const shell = mobile
-    ? collapsed || slim
-      ? "rounded-full border border-white/15 p-1 text-xs"
-      : "h-9 justify-between gap-2 border-b border-white/10 px-3 text-xs"
-    : `h-8 gap-2.5 rounded-full border border-white/15 text-[13px] ${
-        collapsed ? "p-1" : "pl-1.5 pr-1"
-      }`;
-
-  const buildingCopy = mobile
-    ? "Built live by my stack"
-    : tier === 2
-    ? `${count} cursors named after my stack are building this page`
-    : tier === 1
-    ? `${count} cursors named after my stack`
-    : "Building live";
-  const doneCopy = snap.skipped
-    ? "Full page shown"
-    : mobile
-    ? `Built by ${count} cursors named after my stack`
-    : tier === 2
-    ? `Built by ${count} cursors, each named after a tool I use`
-    : tier === 1
-    ? `Built by ${count} cursors named after my stack`
-    : "Built by my stack";
-
-  // One wrapper and one button in every state, so keyboard focus survives
-  // Skip → Replay → collapsed.
-  return (
-    <>
-      {mobile && building && progress}
-      <div
-        data-swarm-ui
-        data-swarm-hud
-        style={style}
-        className={`pointer-events-auto fixed z-[61] flex items-center bg-black/85 text-white shadow-2xl backdrop-blur-xl transition-opacity duration-300 ${shell} ${
-          hidden ? "pointer-events-none opacity-0" : ""
-        }`}>
-        {!collapsed &&
-          !slim &&
-          (building ? (
-            <>
-              {tier === 2 && !mobile && <Avatars agents={snap.agents} />}
-              <span className="min-w-0 truncate whitespace-nowrap pl-1">
-                {buildingCopy}
-              </span>
-              {hint}
-              {!mobile && progress}
-            </>
-          ) : (
-            <span className="min-w-0 truncate whitespace-nowrap pl-1.5">
-              <span className="text-green" aria-hidden>
-                ✓{" "}
-              </span>
-              {doneCopy}
-            </span>
-          ))}
-        <button
-          key="action"
-          tabIndex={hidden ? -1 : undefined}
-          onClick={building ? swarm.skip : swarm.rebuild}
-          aria-label={building ? "Skip the animation" : "Replay the live build"}
-          className={`shrink-0 whitespace-nowrap rounded-full font-bold hover:text-green ${
-            collapsed || slim
-              ? "px-2.5 py-1"
-              : "bg-white/10 px-2.5 py-0.5 hover:bg-white/20"
-          }`}>
-          {building ? "Skip" : "↻ Replay"}
-        </button>
       </div>
-    </>
+    </div>
   );
 };
 
@@ -407,12 +162,8 @@ const SwarmOverlay = () => {
         const sx = window.scrollX;
         const sy = window.scrollY;
         const wide = vw >= 640;
-        const hud = document
-          .querySelector("[data-swarm-hud]")
-          ?.getBoundingClientRect();
-        const taken: Box[] = hud
-          ? [{ l: hud.left - 8, t: hud.top - 8, r: hud.right + 8, b: hud.bottom + 8 }]
-          : [];
+        const taken: Box[] = [];
+        let statuses = 0;
         // Lines being typed right now stay readable: labels avoid them.
         for (const a of swarm.agents) {
           if (!a.caret) continue;
@@ -432,15 +183,24 @@ const SwarmOverlay = () => {
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
+          // Waiting in the bottom row: arrows only, bobbing.
+          const docked = a.docked && !a.task;
+          if (d.root.hasAttribute("data-docked") !== docked) {
+            d.root.toggleAttribute("data-docked", docked);
+          }
           // Status only while it's fresh and its target is actually on screen.
+          const age = t - a.statusAt;
           const status =
             wide &&
             !a.chip &&
             a.status &&
-            t - a.statusAt < STATUS_MS &&
+            age > STATUS_DELAY &&
+            age < STATUS_DELAY + STATUS_MS &&
+            statuses < STATUS_MAX &&
             (!a.task || a.task.visible)
               ? a.status
               : "";
+          if (status) statuses++;
           if (d.status.dataset.text !== status) {
             d.status.dataset.text = status;
             d.status.textContent = status;
@@ -457,10 +217,16 @@ const SwarmOverlay = () => {
             }
           }
 
-          // Keep labels clear of each other and of the HUD: try the default
-          // spot, then nudges and the other side of the arrow.
+          // Keep labels clear of each other: try the default spot, then nudges
+          // and the other side of the arrow.
           const onScreen =
-            a.opacity > 0.05 && vx > -40 && vx < vw + 40 && vy > -40 && vy < vh + 40;
+            !docked &&
+            !a.mini &&
+            a.opacity > 0.05 &&
+            vx > -40 &&
+            vx < vw + 40 &&
+            vy > -40 &&
+            vy < vh + 40;
           const w = Math.max(
             a.name.length * 6.6 + 18,
             status ? status.length * 6.1 + 14 : 0,
@@ -538,10 +304,16 @@ const SwarmOverlay = () => {
         if (!ctx) return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, vw, vh);
-        // Finale backdrop: the page dims behind the ring of cursors.
+        // Finale backdrop: the page dims behind the ring of cursors, but
+        // not the navbar (Resume stays readable).
         if (swarm.scrim > 0.01) {
-          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.45).toFixed(3)})`;
-          ctx.fillRect(0, 0, vw, vh);
+          const nav = document
+            .querySelector('a[href="/"]')
+            ?.closest(".sticky")
+            ?.getBoundingClientRect();
+          const top = Math.max(0, nav?.bottom ?? 0);
+          ctx.fillStyle = `rgba(0, 0, 0, ${(swarm.scrim * 0.65).toFixed(3)})`;
+          ctx.fillRect(0, top, vw, vh - top);
         }
 
         // Wireframe around what is still to be built; claimed jobs march in
@@ -642,25 +414,22 @@ const SwarmOverlay = () => {
             ctx.arc(bx, by, 24 + p * reach, 0, Math.PI * 2);
             ctx.stroke();
           });
-          const raw = Math.min(1, Math.max(0, (t - b.t0) / 1000));
-          const p = 1 - Math.pow(1 - raw, 2);
-          ctx.lineCap = "round";
-          ctx.lineWidth = 3;
-          for (const s of b.sparks) {
-            const d = 30 + p * s.speed;
-            const x1 = bx + Math.cos(s.angle) * d;
-            const y1 = by + Math.sin(s.angle) * d + raw * raw * 60;
-            ctx.globalAlpha = 1 - raw * raw;
-            ctx.strokeStyle = s.color;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(
-              x1 - Math.cos(s.angle) * s.len,
-              y1 - Math.sin(s.angle) * s.len
-            );
-            ctx.stroke();
+          // Confetti: spinning paper that bursts out, then falls.
+          const e = Math.max(0, t - b.t0) / 1000;
+          const fade = Math.max(0, 1 - Math.max(0, e - 0.9) / 0.6);
+          for (const c of b.confetti) {
+            const travel = c.speed * (1 - Math.exp(-e * 3.2));
+            const x = bx + Math.cos(c.angle) * travel;
+            const y = by + Math.sin(c.angle) * travel + 260 * e * e;
+            ctx.save();
+            ctx.globalAlpha = fade;
+            ctx.translate(x, y);
+            ctx.rotate(c.spin * e);
+            ctx.scale(1, Math.cos(c.spin * e * 1.7));
+            ctx.fillStyle = c.color;
+            ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+            ctx.restore();
           }
-          ctx.lineCap = "butt";
           ctx.globalAlpha = 1;
         }
       }),
@@ -669,8 +438,6 @@ const SwarmOverlay = () => {
 
   const live =
     onHome && (snap.phase === "running" || snap.phase === "finishing");
-  const showHud =
-    onHome && snap.total > 0 && (snap.phase !== "idle" || snap.seen);
   const announcement = !onHome
     ? ""
     : snap.phase === "running"
@@ -694,7 +461,6 @@ const SwarmOverlay = () => {
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
-      {showHud && <Hud snap={snap} />}
     </>
   );
 };
