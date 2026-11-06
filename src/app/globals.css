@@ -107,3 +107,34 @@ body {
   width: 500%;
   animation: slide 4s linear infinite;
 }
+
+/*? cursor swarm: elements wait hidden until a cursor builds them */
+html.swarm-on [data-swarm="pending"],
+html.swarm-on [data-swarm="claimed"] {
+  visibility: hidden;
+}
+.swarm-cursor {
+  will-change: transform, opacity;
+}
+.swarm-arrow {
+  transform-origin: 3px 2px;
+  transition: transform 120ms ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+.swarm-cursor[data-pressed] .swarm-arrow {
+  transform: scale(0.8);
+}
+.swarm-progress {
+  background: linear-gradient(
+    90deg,
+    #ff8885,
+    #ffc67e,
+    #fafe8e,
+    #a8fe96,
+    #77effd,
+    #7caafd,
+    #9e8bfd,
+    #ff9dfb
+  );
+  transition: width 300ms ease;
+}

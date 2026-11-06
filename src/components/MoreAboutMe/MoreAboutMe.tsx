@@ -2,6 +2,7 @@
 
 import React from "react";
 import ImageCarousel from "./ImageCarousel";
+import Build from "../Swarm/Build";
 
 const MoreAboutMe = () => {
   const images = [
@@ -21,16 +22,25 @@ const MoreAboutMe = () => {
   return (
     <>
       <div className="py-20 ABOUTSECTION">
-        <h2 className="text-6xl font-Anton text-white text-center pb-4 ">
+        <Build
+          as="h2"
+          kind="text"
+          className="text-6xl font-Anton text-white text-center pb-4 ">
           More About Me
-        </h2>
+        </Build>
         <div className="flex flex-col gap-20 pt-20">
           <div className=" gap-10 items-center lg:flex max-md:flex-col">
             <div className="flex flex-col gap-4 min-w-[50%]">
-              <h3 className="text-5xl max-md:text-4xl font-light tracking-wide text-white py-4 font-Anton">
+              <Build
+                as="h3"
+                kind="text"
+                className="text-5xl max-md:text-4xl font-light tracking-wide text-white py-4 font-Anton">
                 The Techie Inside Me
-              </h3>
-              <p className="text-lg font-light text-white/80 leading-9 tracking-wider">
+              </Build>
+              <Build
+                as="p"
+                kind="text"
+                className="text-lg font-light text-white/80 leading-9 tracking-wider">
                 I thrive on solving impactful problems, diving into open-source
                 projects, and contributing to codebases. Competitive programming
                 excites me; with 2 stars on CodeChef. Recently, I&apos;ve been
@@ -44,16 +54,22 @@ const MoreAboutMe = () => {
                 <span className="flex py-2"></span> If you&apos;re looking for
                 someone passionate and dedicated, let&apos;s build something
                 amazing together.
-              </p>
+              </Build>
             </div>
             <ImageCarousel images={images} />
           </div>
           <div className="gap-10 items-center  lg:flex max-md:flex-col">
             <div className="flex flex-col gap-4 min-w-[50%]">
-              <h3 className="text-5xl max-md:text-4xl font-light tracking-wide font-Anton text-white py-4">
+              <Build
+                as="h3"
+                kind="text"
+                className="text-5xl max-md:text-4xl font-light tracking-wide font-Anton text-white py-4">
                 Casual Me
-              </h3>
-              <p className="text-lg font-thin text-balance text-white/75 leading-9 tracking-wider pr-4 ">
+              </Build>
+              <Build
+                as="p"
+                kind="text"
+                className="text-lg font-thin text-balance text-white/75 leading-9 tracking-wider pr-4 ">
                 In my free time, I love playing competitive FPS games to
                 challenge my reaction time and strategic thinking. Growing up, I
                 enjoyed playing football and loved scoring goals and winning
@@ -64,7 +80,7 @@ const MoreAboutMe = () => {
                 <span className="flex py-2"></span> To keep a balance, I make
                 sure to get outside and &quot;touch some grass&quot; once a
                 week, preventing myself from becoming a complete nerd.
-              </p>
+              </Build>
             </div>
             <ImageCarousel images={casualImages} />
           </div>

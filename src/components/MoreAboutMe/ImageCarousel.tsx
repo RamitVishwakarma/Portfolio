@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import Build from "../Swarm/Build";
 
 const ImageCarousel = ({ images }: { images: string[] }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -72,7 +73,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
   };
 
   return (
-    <div className="flex flex-col items-center mt-20">
+    <Build kind="image" className="flex flex-col items-center mt-20">
       <div className="relative w-[36rem] h-[27rem] max-five:w-[25rem] max-five:h-[20rem] max-sm:w-[20rem] max-sm:h-[18rem] overflow-hidden rounded-lg">
         <AnimatePresence>
           <motion.div
@@ -132,7 +133,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
             variants={dotsVariants}></motion.div>
         ))}
       </div>
-    </div>
+    </Build>
   );
 };
 

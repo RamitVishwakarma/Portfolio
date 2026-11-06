@@ -6,6 +6,7 @@ import { testimonialData } from "./data";
 import { animate, motion, useMotionValue } from "framer-motion";
 import { useEffect, useState } from "react";
 import useMeasure from "react-use-measure";
+import Build from "../Swarm/Build";
 
 const Testimonials = () => {
   const FAST_DURATION = 30;
@@ -46,10 +47,15 @@ const Testimonials = () => {
   return (
     <>
       <div className="py-20">
-        <h2 className="text-white pb-10 text-6xl font-Anton text-center">
+        <Build
+          as="h2"
+          kind="text"
+          className="text-white pb-10 text-6xl font-Anton text-center">
           Kind Words
-        </h2>
-        <div className=" relative gap-12 flex w-full min-h-[36rem] max-md:min-h-[48rem] py-12 overflow-hidden">
+        </Build>
+        <Build
+          label="drawing marquee"
+          className=" relative gap-12 flex w-full min-h-[36rem] max-md:min-h-[48rem] py-12 overflow-hidden">
           <div
             className="max-sm:invisible absolute right-0 top-0 w-[12%] h-full z-[2]"
             style={{
@@ -79,7 +85,7 @@ const Testimonials = () => {
               <TestimonialContainer data={data} key={idx} />
             ))}
           </motion.div>
-        </div>
+        </Build>
       </div>
     </>
   );

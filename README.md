@@ -20,6 +20,20 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
+## Cursor swarm
+
+On the home page a swarm of 16 multiplayer-style cursors (8 on mobile) builds
+the site live: they type the text, drag out the cards, drop in the images and
+pop in the tags, one screen at a time as you scroll.
+
+- Wrap any element in `<Build>` from `src/components/Swarm/Build.tsx` to hand it
+  to the swarm. Pass `as` for the tag and `kind` for how it is built: `text`,
+  `block`, `image` or `pop`. The markup stays exactly the same.
+- The engine is `src/components/Swarm/engine.ts`; the cursors, wireframe and
+  progress pill are drawn by `SwarmOverlay.tsx`.
+- Visitors who prefer reduced motion, crawlers and every page except `/` get
+  the normal site. `?swarm=0` turns the swarm off and `?swarm=1` forces it on.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

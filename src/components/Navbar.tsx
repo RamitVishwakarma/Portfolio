@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Build from "./Swarm/Build";
 
 const Navbar = () => {
   const router = useRouter();
@@ -19,36 +20,49 @@ const Navbar = () => {
     aboutSection.scrollIntoView({ behavior: "smooth" });
   };
   return (
-    <div className="max-w-[90rem] lg:px-[7.5rem] md:px-20 px-10 mx-auto sticky top-0 z-20 backdrop-blur-xl m-auto bg-black/60">
+    <Build
+      kind="block"
+      label="drawing <nav>"
+      className="max-w-[90rem] lg:px-[7.5rem] md:px-20 px-10 mx-auto sticky top-0 z-20 backdrop-blur-xl m-auto bg-black/60">
       <div className="w-full py-4 text-white text-md content-center flex items-center justify-between">
         <Link
           href="/"
           className=" w-fit cursor-pointer leading-5 hover:text-green font-ProductSans font-bold">
-          <div className="font-ProductSans text-xl">RV</div>
+          <Build kind="text" className="font-ProductSans text-xl">
+            RV
+          </Build>
         </Link>
         <ul className="flex gap-6 font-medium">
-          <li
+          <Build
+            as="li"
+            kind="text"
             onClick={scrollToContact}
             className="hover:text-green cursor-pointer">
             Contact
-          </li>
-          <li
+          </Build>
+          <Build
+            as="li"
+            kind="text"
             onClick={scrollToAbout}
             className="hover:text-green cursor-pointer">
             About
-          </li>
+          </Build>
           <Link href="/blog" className="hover:text-green cursor-pointer">
-            Blog
+            <Build as="span" kind="text">
+              Blog
+            </Build>
           </Link>
-          <a
+          <Build
+            as="a"
+            kind="text"
             target="_blank"
             href="https://drive.google.com/file/d/1sY-s29YtqxV-ZEI2bRugIjY_wEE4e4HY/view?usp=sharing"
             className="hover:text-green cursor-pointer">
             Resume
-          </a>
+          </Build>
         </ul>
       </div>
-    </div>
+    </Build>
   );
 };
 
