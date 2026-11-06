@@ -9,18 +9,21 @@ const Introduction = () => {
     <>
       <div className="text-white pt-24 pb-40 m-auto flex items-center justify-between max-md:flex-col">
         <div className="md:w-[60%] max-md:w-full flex flex-col gap-2">
-          <div className="text-sm flex gap-4 items-center">
+          <div className="text-sm flex flex-wrap gap-x-4 items-center">
             <Build
               as="span"
               kind="text"
-              className="text-green/70 font-medium tracking-wide py-4">
+              className="text-green/70 font-medium tracking-wide py-4 whitespace-nowrap">
               {" "}
               OPEN TO WORK{" "}
             </Build>
             <Build as="span" kind="pop">
               |
             </Build>
-            <Build as="span" kind="text" className="text-grey-300/80">
+            <Build
+              as="span"
+              kind="text"
+              className="text-grey-300/80 whitespace-nowrap">
               Full Stack Web Developer
             </Build>
           </div>
@@ -74,6 +77,8 @@ const Introduction = () => {
               className="z-10 shadow-2xl border-4 border-blue/20 rounded-full md:w-10/12"
               src={Ramit}
               alt="ProfilePic"
+              priority
+              sizes="(max-width: 800px) 80vw, 520px"
             />
           </Build>
         </div>

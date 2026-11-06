@@ -118,6 +118,8 @@ export interface Agent {
   spectated: boolean;
   /** Just left the splash: its first trip is quick, so the hero clears. */
   fresh: boolean;
+  /** When it last settled into its waiting spot. */
+  dockedAt: number;
   dom: AgentDom | null;
 }
 
@@ -166,7 +168,7 @@ const CATCH_UP_MS = 1500;
 /** The splash stays up at least this long after navigation starts. */
 const SPLASH_MS = 1900;
 /** ...and at least this long after it first paints, but never past SPLASH_MAX. */
-const SPLASH_AFTER_PAINT = 2000;
+const SPLASH_AFTER_PAINT = 1800;
 const SPLASH_MAX = 3000;
 /** The splash words fade this long before the cursors take over. */
 const WORDS_MS = 170;
@@ -178,10 +180,11 @@ const WORDS_MS = 170;
  * `--swarm-ghost` so the first paint matches.
  */
 export function ghostFor(kind: BuildKind, priority: boolean, light = false) {
+  // On light cards opacity eats contrast fast: the card waits as a bright
+  // grey (globals.css adds greyscale) and its text multiplies to about 0.7.
+  if (light) return kind === "block" ? 0.85 : kind === "text" ? 0.82 : 0.8;
   if (priority || kind === "block") return 0.6;
-  // On light cards opacity eats contrast fast, so text stays stronger there.
-  if (kind === "text") return light ? 0.7 : 0.5;
-  return 0.3;
+  return kind === "text" ? 0.5 : 0.3;
 }
 
 const now = () => performance.now();
@@ -287,7 +290,12 @@ class SwarmEngine {
   private lastCheck = 0;
   private hasEligible = false;
   /** Viewport, read once per frame before any cursor writes to the page. */
-  private vp = { sy: 0, vh: 0, atEnd: false };
+  private vp = { sx: 0, sy: 0, vw: 0, vh: 0, atEnd: false };
+
+  /** This frame's scroll and viewport size, for drawing without re-reading. */
+  get viewport() {
+    return this.vp;
+  }
   private snap: SwarmSnapshot = EMPTY;
 
   // ---- React store API ---------------------------------------------------
@@ -478,7 +486,8 @@ class SwarmEngine {
     const sy = window.scrollY;
     const mobile = vw < 640;
     this.base = mobile ? 1.5 : 1;
-    this.segTarget = mobile ? 70 : 120;
+    // Short sentences, so many cursors can share one paragraph.
+    this.segTarget = mobile ? 50 : 80;
     const count = mobile ? MOBILE_AGENTS : AGENTS.length;
 
     this.agents = AGENTS.slice(0, count).map((def, i) => {
@@ -547,6 +556,7 @@ class SwarmEngine {
       parkRight: false,
       spectated: false,
       fresh: false,
+      dockedAt: 0,
       dom: null,
     };
   }
@@ -610,17 +620,24 @@ class SwarmEngine {
     d.dataset.splash = "words";
     window.setTimeout(() => {
       if (gen !== this.gen || d.dataset.splash === "done") return;
+      if (document.hidden) {
+        d.dataset.splash = "";
+        delete d.dataset.splash;
+        this.liftSplash(gen);
+        return;
+      }
       this.fromSplash();
       d.dataset.splash = "out";
       for (const a of this.agents) {
         a.opacity = 1;
         a.targetOpacity = 1;
-        // Fly to the first job or spot without labels; they return on landing.
-        a.quiet = true;
       }
       this.heroLine = window.scrollY + window.innerHeight;
       this.startedAt = Math.min(this.startedAt, now());
-      this.stagger();
+      // The whole cast leaves on the same beat, with a little jitter.
+      const t0 = now();
+      for (const a of this.agents) a.activateAt = t0 + rand(0, 80);
+      this.lastSchedule = 0;
       this.wake();
       window.setTimeout(() => {
         d.dataset.splash = "done";
@@ -646,6 +663,24 @@ class SwarmEngine {
     this.listening = true;
     window.addEventListener("scroll", this.wake, { passive: true });
     window.addEventListener("resize", this.wake, { passive: true });
+    // Time spent in another tab doesn't count towards catch-up or pacing.
+    let hiddenAt = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        hiddenAt = now();
+        return;
+      }
+      if (!hiddenAt) return;
+      const away = now() - hiddenAt;
+      hiddenAt = 0;
+      if (this.phase !== "running") return;
+      if (this.startedAt < 1e8) this.startedAt += away;
+      for (const t of this.taskList()) {
+        if (t.visibleSince) t.visibleSince += away;
+        if (t.readySince) t.readySince += away;
+      }
+      this.wake();
+    });
     // Keyboard users get the full page as soon as they start tabbing into it,
     // and find-in-page gets everything at full strength.
     document.addEventListener("keydown", (e) => {
@@ -739,6 +774,7 @@ class SwarmEngine {
         this.scrimTarget = 1;
         let spin = 1.05;
         let gathering = true;
+        const arrived = new Set<Agent>();
         const spinner = (async () => {
           let last = now();
           while (gathering) {
@@ -748,9 +784,15 @@ class SwarmEngine {
             last = t;
             for (const a of this.agents) {
               a.ringAngle = (a.ringAngle ?? 0) + spin * dt;
+              // Cursors that have landed ride the turning ring.
+              if (arrived.has(a)) {
+                const p = ringPoint(a);
+                a.x = p.x;
+                a.y = p.y;
+              }
             }
           }
-        })();
+        })().catch(() => {});
         await Promise.all(
           this.agents.map((a) => {
             a.docked = false;
@@ -759,7 +801,11 @@ class SwarmEngine {
             a.active = true;
             a.targetOpacity = 1;
             a.status = "";
-            return this.moveTo(a, () => ringPoint(a), gen, null, 0.9);
+            return this.moveTo(a, () => ringPoint(a), gen, null, 0.9, false, true).then(
+              () => {
+                arrived.add(a);
+              }
+            );
           })
         );
         gathering = false;
@@ -785,8 +831,8 @@ class SwarmEngine {
           }
         };
         await follow(150, () => {});
-        await follow(300, (k) => {
-          rScale = 1 - 0.08 * ease(k);
+        await follow(320, (k) => {
+          rScale = 1 - 0.15 * ease(k);
           spin = 1.05 + (Math.PI - 1.05) * k;
         });
         // ...clicks together: the burst, confetti thrown up off the ring...
@@ -803,6 +849,7 @@ class SwarmEngine {
             return {
               x: Math.cos(ang) * R * rScale,
               y: Math.sin(ang) * R * rScale,
+
               vx: Math.cos(ang) * v * 0.45 + rand(-60, 60),
               vy: -v * rand(0.55, 1),
               color: this.agents[i % this.agents.length].color,
@@ -815,12 +862,15 @@ class SwarmEngine {
         this.revealed = true;
         this.emit(true);
         // ...springs back out, settles and fades away with the dimming.
-        await follow(160, (k) => {
-          rScale = 0.92 + 0.08 * ease(k);
+        await follow(220, (k) => {
+          // Spring back out just past the ring...
+          rScale = 0.85 + 0.18 * Math.sin((Math.PI / 2) * k);
           if (k >= 1) for (const a of this.agents) a.pressed = false;
         });
         await follow(1400, (k) => {
           const e = k * 1400;
+          // ...and settle back onto it.
+          rScale = 1.03 - 0.03 * ease(Math.min(1, e / 260));
           spin = Math.PI - (Math.PI - 0.7) * Math.min(1, e / 700);
           const fade = ease(Math.min(1, Math.max(0, (e - 900) / 500)));
           for (const a of this.agents) a.opacity = a.targetOpacity = 1 - fade;
@@ -871,11 +921,13 @@ class SwarmEngine {
     nextTypingFrame();
     // All reads for this frame happen here, before any cursor writes text.
     const vh = window.innerHeight;
+    const root = document.documentElement;
     this.vp = {
+      sx: window.scrollX,
       sy: window.scrollY,
+      vw: root.clientWidth,
       vh,
-      atEnd:
-        window.scrollY + vh >= document.documentElement.scrollHeight - 2,
+      atEnd: window.scrollY + vh >= root.scrollHeight - 2,
     };
     for (const task of this.taskList()) {
       if (task.typing && task.state !== "done") task.typing.prime();
@@ -885,13 +937,23 @@ class SwarmEngine {
     for (const w of waiters) w();
 
     const running = this.phase === "running";
+    const splash = document.documentElement.dataset.splash;
+    const splashUp = splash === undefined || splash === "words";
     for (const a of this.agents) {
-      if (!a.active && running && a.activateAt && t >= a.activateAt) {
+      if (
+        !a.active &&
+        running &&
+        !splashUp &&
+        a.activateAt &&
+        t >= a.activateAt
+      ) {
         a.active = true;
         a.targetOpacity = 1;
         a.idleSince = t - 2000;
         a.spectated = true;
         a.fresh = true;
+        // Hand out jobs this frame, before anyone heads for a gutter.
+        this.lastSchedule = 0;
       }
       // Waiting cursors stay put on screen as the page scrolls.
       if (a.docked && !a.task) {
@@ -912,12 +974,12 @@ class SwarmEngine {
     if (this.burst && t - this.burst.t0 > 2200) this.burst = null;
 
     if (running && t >= this.startedAt) {
-      if (t - this.lastSchedule > 100) {
+      if (t - this.lastSchedule > 150) {
         this.lastSchedule = t;
         this.schedule();
       }
       this.dock(t);
-      if (t - this.lastCheck > 300) {
+      if (t - this.lastCheck > 600) {
         this.lastCheck = t;
         this.checkComplete();
         this.emit();
@@ -1028,8 +1090,17 @@ class SwarmEngine {
     for (const t of this.taskList()) {
       if (t.removed) continue;
       if (t.state === "pending" && t.inView && this.isReady(t)) {
-        // Text waits until it's on screen, so the typing is seen.
+        // Text waits until it's on screen, so the typing is seen; on phones
+        // until it's 40% of the way up, so it happens in view.
         if (t.kind === "text" && !t.visible) continue;
+        if (
+          t.kind === "text" &&
+          this.vp.vh < 900 &&
+          window.innerWidth < 640 &&
+          t.el.getBoundingClientRect().top > this.vp.vh * 0.6
+        ) {
+          continue;
+        }
         // The hero photo and logo strip are its closing beats.
         if (
           !t.priority &&
@@ -1127,7 +1198,8 @@ class SwarmEngine {
    * bottom corners, arrows only, so no copy is covered.
    */
   private parkSpot(a: Agent) {
-    const vw = window.innerWidth;
+    // clientWidth leaves out a classic scrollbar.
+    const vw = document.documentElement.clientWidth;
     const vh = window.innerHeight;
     const pad = vw >= 1200 ? 120 : vw >= 800 ? 80 : 40;
     const gutter = Math.max(0, (vw - 1440) / 2) + pad;
@@ -1137,19 +1209,16 @@ class SwarmEngine {
     const rows = Math.ceil(resting / 2);
     // A stable offset per cursor, so the gutters don't read as a ladder.
     const j = ((a.index * 37) % 11) / 11;
-    const label = a.name.length * 6.6 + 18;
-    const y = vh * (0.2 + 0.62 * ((row + 0.5) / rows)) + (j - 0.5) * 70;
-    if (gutter >= 100) {
-      // Labels always sit on the outer side of the arrow, inside the gutter;
-      // a label that doesn't fit is hidden rather than laid over content.
-      if (side) {
-        const x = vw - gutter + 8 + j * 8;
-        return { quiet: x + 16 + label > vw - 6, right: true, x, y };
-      }
-      const x = Math.max(8, gutter - 28 - label - j * 16);
-      return { quiet: x + 16 + label > gutter - 6, right: false, x, y };
+    if (gutter >= 60) {
+      // Waiting cursors are quiet arrows in the gutters, clear of content.
+      const span = Math.min(28, gutter - 40);
+      const x = side
+        ? vw - gutter + 12 + j * span
+        : gutter - 34 - j * span;
+      const y = vh * (0.18 + 0.66 * ((row + 0.5) / rows)) + (j - 0.5) * 50;
+      return { quiet: true, right: !!side, x, y };
     }
-    // Narrow screens: tucked half off the edge, arrows only.
+    // Phones: tucked half off the edge.
     return {
       quiet: true,
       right: !!side,
@@ -1159,26 +1228,59 @@ class SwarmEngine {
   }
 
   /**
-   * Idle cursors hover near someone else's work for a moment, then drift to
-   * their waiting spot instead of loitering on copy.
+   * Idle cursors hover beside someone else's work for a beat (desktop only,
+   * and never over its text), then wait quietly in the gutters. Waiting
+   * cursors come back to watch every few seconds while work is on screen.
    */
   private dock(t: number) {
-    const working = this.agents.filter(
-      (x) => x.task && x.caret && this.caretOnScreen(x.caret)
-    );
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    const desktop = vw >= 800;
+    const working = desktop
+      ? this.agents.filter(
+          (x) => x.task && x.caret && this.caretOnScreen(x.caret)
+        )
+      : [];
     for (const a of this.agents) {
-      if (!a.active || a.task || a.leaving || a.moving || a.docked) continue;
+      if (!a.active || a.task || a.leaving || a.moving) continue;
+      if (a.docked) {
+        // Rested a while and there's typing to watch: go and look.
+        if (working.length && t - a.dockedAt > 1800 + ((a.index * 523) % 1200)) {
+          a.docked = false;
+          a.spectated = false;
+          a.targetOpacity = 1;
+        } else {
+          continue;
+        }
+      }
       if (!a.spectated && working.length) {
-        // Spectate: drift in beside an active line for a beat.
         a.spectated = true;
-        a.quiet = false;
         a.moving = true;
         const host = working[a.index % working.length];
-        const ox = (a.index % 2 ? 1 : -1) * rand(60, 140);
-        const oy = (a.index % 3) - 1 === 0 ? 46 : -40;
-        const hx = host.x + ox;
-        const hy = host.y + oy;
-        this.moveTo(a, () => ({ x: hx, y: hy }), this.gen, null, 0.8)
+        const r = host.task ? pageRect(host.task.el) : null;
+        const sx = window.scrollX;
+        const sy = window.scrollY;
+        // Beside the block being typed: in its margin, or just below it.
+        const options = r
+          ? [
+              { x: r.x - 70 - rand(0, 40), y: (host.caret?.y ?? r.y) + rand(-20, 30) },
+              { x: r.x + r.w + 30 + rand(0, 40), y: (host.caret?.y ?? r.y) + rand(-20, 30) },
+              { x: r.x + rand(0, r.w), y: r.y + r.h + 28 },
+            ]
+          : [{ x: host.x + 80, y: host.y + 60 }];
+        const fits = (p: { x: number; y: number }) =>
+          p.x - sx > 24 &&
+          p.x - sx < vw - 120 &&
+          p.y - sy > 70 &&
+          p.y - sy < vh - 40;
+        const spot =
+          options.filter(fits)[a.index % Math.max(1, options.filter(fits).length)] ??
+          null;
+        if (!spot) {
+          a.moving = false;
+          continue;
+        }
+        this.moveTo(a, () => spot, this.gen, null, 0.9)
           .catch(() => {})
           .finally(() => {
             a.moving = false;
@@ -1188,7 +1290,6 @@ class SwarmEngine {
       }
       if (t < a.idleSince + 1300) continue;
       a.moving = true;
-      a.quiet = true;
       const speed = a.fresh ? 2.2 : 0.8;
       a.fresh = false;
       this.moveTo(
@@ -1205,9 +1306,10 @@ class SwarmEngine {
           if (arrived && !a.task) {
             const spot = this.parkSpot(a);
             a.docked = true;
-            a.quiet = spot.quiet;
+            a.dockedAt = now();
+            a.quiet = true;
             a.parkRight = spot.right;
-            a.targetOpacity = spot.quiet ? 0.35 : 0.9;
+            a.targetOpacity = desktop ? 0.45 : 0.35;
           }
         })
         .catch(() => {})
@@ -1268,6 +1370,7 @@ class SwarmEngine {
     a.quiet = false;
     a.spectated = false;
     a.targetOpacity = 1;
+    task.el.style.setProperty("--swarm-claim", a.color);
     this.setAttr(task, "claimed");
     const overshoot = !a.landed;
     a.landed = true;
@@ -1346,7 +1449,8 @@ class SwarmEngine {
     gen: number,
     task: Task | null,
     speed = 1,
-    overshoot = false
+    overshoot = false,
+    live = false
   ) {
     const token = ++a.moveToken;
     const fx = a.x;
@@ -1362,7 +1466,7 @@ class SwarmEngine {
       if (token !== a.moveToken) return false;
       const p = Math.min(1, (now() - start) / dur);
       // Re-aim every few frames (targets can drift, e.g. the marquee).
-      if (++frames % 5 === 0 || p >= 1) tp = target();
+      if (live || ++frames % 5 === 0 || p >= 1) tp = target();
       const e = overshoot ? easeOutBack(p) : easeInOut(p);
       const dx = tp.x - fx;
       const dy = tp.y - fy;

@@ -10,7 +10,7 @@ const TechStack = () => {
         <Build as="h2" kind="text" className="text-6xl text-white pb-10 font-Anton text-center">
           Tech Stack I Use Daily
         </Build>
-        <div className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-8 justify-center p-2 ">
+        <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-8 justify-center p-2 ">
           <Container data={data} />
         </div>
       </div>

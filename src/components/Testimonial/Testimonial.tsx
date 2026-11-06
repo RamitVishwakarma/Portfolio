@@ -3,47 +3,55 @@
 import React from "react";
 import TestimonialContainer from "./TestimonialContainer";
 import { testimonialData } from "./data";
-import { animate, motion, useMotionValue } from "framer-motion";
-import { useEffect, useState } from "react";
-import useMeasure from "react-use-measure";
+import { useEffect, useRef } from "react";
 import Build from "../Swarm/Build";
 
 const Testimonials = () => {
   const FAST_DURATION = 30;
   const SLOW_DURATION = 100;
 
-  const [duration, setDuration] = useState(FAST_DURATION);
-  let [ref, { width }] = useMeasure();
-
-  const xTranslation = useMotionValue(0);
-
-  const [mustFinish, setMustFinish] = useState(false);
-  const [rerender, setRerender] = useState(false);
+  // The marquee runs as a compositor animation (no per-frame JavaScript),
+  // and hovering eases it to the slow speed without jumping.
+  const trackRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef<Animation | null>(null);
 
   useEffect(() => {
-    let controls;
-    let finalPosition = -width / 2 - 8;
-    if (mustFinish) {
-      controls = animate(xTranslation, [xTranslation.get(), finalPosition], {
-        ease: "linear",
-        duration: duration * (1 - xTranslation.get() / finalPosition),
-        onComplete: () => {
-          setMustFinish(false);
-          setRerender(!rerender);
-        },
-      });
-    } else {
-      controls = animate(xTranslation, [0, finalPosition], {
-        ease: "linear",
-        duration: duration,
-        repeat: Infinity,
-        repeatType: "loop",
-        repeatDelay: 0,
-      });
-    }
+    const el = trackRef.current;
+    if (!el || typeof el.animate !== "function") return;
+    let anim: Animation | null = null;
+    const start = () => {
+      const rate = anim?.playbackRate ?? 1;
+      anim?.cancel();
+      const finalPosition = -el.scrollWidth / 2 - 8;
+      anim = el.animate(
+        [
+          { transform: "translateX(0px)" },
+          { transform: `translateX(${finalPosition}px)` },
+        ],
+        { duration: FAST_DURATION * 1000, iterations: Infinity, easing: "linear" }
+      );
+      anim.playbackRate = rate;
+      animRef.current = anim;
+    };
+    start();
+    let first = true;
+    const ro = new ResizeObserver(() => {
+      if (first) {
+        first = false;
+        return;
+      }
+      start();
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      anim?.cancel();
+    };
+  }, []);
 
-    return controls?.stop;
-  }, [rerender, xTranslation, duration, width, mustFinish]);
+  const setSpeed = (duration: number) =>
+    animRef.current?.updatePlaybackRate(FAST_DURATION / duration);
+
   return (
     <>
       <div className="py-20">
@@ -68,23 +76,16 @@ const Testimonials = () => {
               background:
                 "linear-gradient(to left, rgba(255, 255, 255, 0), black)",
             }}></div>
-          {/* the motion div */}
-          <motion.div
+          {/* the marquee track */}
+          <div
             className="absolute left-0 flex gap-12"
-            style={{ x: xTranslation }}
-            ref={ref}
-            onHoverStart={() => {
-              setMustFinish(true);
-              setDuration(SLOW_DURATION);
-            }}
-            onHoverEnd={() => {
-              setMustFinish(true);
-              setDuration(FAST_DURATION);
-            }}>
+            ref={trackRef}
+            onMouseEnter={() => setSpeed(SLOW_DURATION)}
+            onMouseLeave={() => setSpeed(FAST_DURATION)}>
             {testimonialData.concat(testimonialData).map((data, idx) => (
               <TestimonialContainer data={data} key={idx} />
             ))}
-          </motion.div>
+          </div>
         </Build>
       </div>
     </>

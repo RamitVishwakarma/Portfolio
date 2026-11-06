@@ -19,6 +19,8 @@ export interface Typing {
   measure(): void;
   /** Read the element's position for this frame (batched before writes). */
   prime(): void;
+  /** The element's box in page coordinates, as of the last prime. */
+  box(): Rect;
   /** Fade the untyped text to the ghost level (when typing starts). */
   ghostOn(): void;
   /** Show the first `n` characters of segment `i`. */
@@ -147,7 +149,7 @@ export function prepareTyping(
   let positions: Rect[] = [];
   let finished = false;
   // The element's top-left in page coordinates, read once per frame.
-  let cache = { frame: -1, x: 0, y: 0 };
+  let cache = { frame: -1, x: 0, y: 0, w: 0, h: 0 };
   const origin = () => {
     if (cache.frame !== frameNo) {
       const r = root.getBoundingClientRect();
@@ -155,6 +157,8 @@ export function prepareTyping(
         frame: frameNo,
         x: r.left + window.scrollX,
         y: r.top + window.scrollY,
+        w: r.width,
+        h: r.height,
       };
     }
     return cache;
@@ -176,6 +180,9 @@ export function prepareTyping(
     segments,
     prime() {
       origin();
+    },
+    box() {
+      return { x: cache.x, y: cache.y, w: cache.w, h: cache.h };
     },
     measure() {
       if (finished) return;

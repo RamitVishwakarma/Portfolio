@@ -24,7 +24,7 @@ const ProjectContainer = () => {
       <div>
         <div className="flex flex-col gap-10 items-center w-full">
           {/* P1 */}
-          <Build caption="drawing Recruitment-Platform" className="rounded-xl w-full relative flex overflow-hidden z-10 border border-grey-900">
+          <Build caption="drawing Recruitment-Platform" surface="light" className="rounded-xl w-full relative flex overflow-hidden z-10 border border-grey-900">
             <Image
               src="/images/backgrounds/bgCreme.png"
               width={1920}
@@ -157,7 +157,7 @@ const ProjectContainer = () => {
             </div>
           </Build>
           {/* P3 */}
-          <Build caption="drawing IndustrialAI Landing" className=" backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
+          <Build caption="drawing IndustrialAI Landing" surface="light" className=" backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
               src="/images/backgrounds/bgCreme.png"
               width={1920}

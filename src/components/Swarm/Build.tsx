@@ -73,6 +73,7 @@ const Build = ({
       "data-swarm": "pending",
       "data-swarm-id": id,
       "data-swarm-kind": kind,
+      "data-swarm-surface": surface,
       // How faint it waits before it's built (set here so the first paint
       // already matches what the engine animates from).
       style: {
