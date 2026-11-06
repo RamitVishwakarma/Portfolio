@@ -27,6 +27,7 @@ const Introduction = () => {
           <Build
             as="h1"
             kind="text"
+            priority
             className="tracking-wide font-Anton text-5xl py-3">
             Ramit Vishwakarma
           </Build>
@@ -56,14 +57,14 @@ const Introduction = () => {
           <Build kind="text" className="text-grey-300/70 ">
             I have worked with...
           </Build>
-          <Build kind="block" label="drawing carousel" className="max-w-96 -mt-4">
+          <Build kind="block" caption="drawing carousel" className="max-w-96 -mt-4">
             <InfiniteCarousel logos={logos as string[]} />
           </Build>
         </div>
         <div className="md:w-[50%] sm:w-[80%] w-full">
           <Build
             kind="image"
-            label="Ramit.jpg"
+            caption="Ramit.jpg"
             className="relative flex justify-center items-center overflow-visible p-6">
             <div className="rainbow-shadow w-full h-full left-1/2 top-1/2 rounded-full blur-3xl absolute opacity-30"></div>
             <Image

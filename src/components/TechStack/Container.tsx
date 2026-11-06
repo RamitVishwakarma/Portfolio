@@ -8,7 +8,7 @@ const Container = ({ data }: { data: dataInterface[] }) => {
       {data.map((data, index) => (
         <Build
           key={index}
-          label={`drawing ${data.title}`}
+          caption={`drawing ${data.title}`}
           className="group bg-black p-4 relative rounded-xl overflow-hidden border border-purple/25 hover:border-purple/45 hover:scale-110 ">
           <div className="absolute top-0 -inset-3/4 h-full w-1/2 z-1 block transform -skew-x-12 bg-gradient-to-r from-black to-white opacity-40 group-hover:animate-shine" />
           <div className="flex gap-4 items-center">

@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { usePathname } from "next/navigation";
 import { swarm, type Agent, type SwarmSnapshot } from "./engine";
+
+/** How long a cursor's status chip stays up after it picks up a job. */
+const STATUS_MS = 1200;
+const RAINBOW = ["#ff8885", "#fafe8e", "#77effd", "#9e8bfd", "#ff9dfb"];
 
 function rgba(hex: string, alpha: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -19,10 +29,18 @@ function roundRect(
 ) {
   ctx.beginPath();
   if (typeof ctx.roundRect === "function") {
-    ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2));
+    ctx.roundRect(x, y, w, h, Math.max(0, Math.min(r, w / 2, h / 2)));
   } else {
     ctx.rect(x, y, w, h);
   }
+}
+
+function useSwarm() {
+  return useSyncExternalStore(
+    swarm.subscribe,
+    swarm.getSnapshot,
+    swarm.getServerSnapshot
+  );
 }
 
 const Cursor = ({ agent }: { agent: Agent }) => {
@@ -44,7 +62,10 @@ const Cursor = ({ agent }: { agent: Agent }) => {
   );
 
   return (
-    <div ref={ref} className="swarm-cursor absolute left-0 top-0" style={{ opacity: 0 }}>
+    <div
+      ref={ref}
+      className="swarm-cursor absolute left-0 top-0"
+      style={{ opacity: 0 }}>
       <svg
         className="swarm-arrow"
         width="22"
@@ -59,16 +80,16 @@ const Cursor = ({ agent }: { agent: Agent }) => {
           strokeLinejoin="round"
         />
       </svg>
-      <div className="absolute left-4 top-5 flex flex-col items-start gap-1">
+      <div className="swarm-tags">
         <span
-          className="whitespace-nowrap rounded-full px-2 py-[3px] font-ProductSans text-[11px] font-bold leading-none text-black shadow-lg"
+          className="whitespace-nowrap rounded-full px-2 py-[3px] font-ProductSans text-[11px] font-bold leading-none text-black shadow-lg ring-1 ring-black/60"
           style={{ background: agent.color }}>
           {agent.name}
         </span>
         <span
           data-status
-          className="whitespace-nowrap rounded-md border bg-black/80 px-1.5 py-[3px] font-mono text-[10px] leading-none text-white/80"
-          style={{ display: "none", borderColor: rgba(agent.color, 0.35) }}
+          className="whitespace-nowrap rounded-md border bg-black/85 px-1.5 py-[3px] font-mono text-[10px] leading-none text-white/85"
+          style={{ display: "none", borderColor: rgba(agent.color, 0.45) }}
         />
         <span
           data-chip
@@ -86,10 +107,10 @@ const Cursor = ({ agent }: { agent: Agent }) => {
   );
 };
 
-const Avatars = ({ count }: { count: number }) => {
-  const shown = swarm.agents.slice(0, 4);
+const Avatars = ({ agents }: { agents: Agent[] }) => {
+  const shown = agents.slice(0, 4);
   return (
-    <div className="flex items-center max-five:hidden">
+    <span className="flex items-center max-five:hidden" aria-hidden>
       {shown.map((a, i) => (
         <span
           key={a.index}
@@ -98,94 +119,156 @@ const Avatars = ({ count }: { count: number }) => {
           {a.name[0]}
         </span>
       ))}
-      {count > shown.length && (
+      {agents.length > shown.length && (
         <span className="-ml-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-black bg-grey-900 px-1 text-[10px] font-bold text-white">
-          +{count - shown.length}
+          +{agents.length - shown.length}
         </span>
       )}
+    </span>
+  );
+};
+
+/** Whether the page is scrolled down to the footer, and the screen is narrow. */
+function useViewport() {
+  const [view, setView] = useState({ atBottom: false, narrow: false });
+  useEffect(() => {
+    const check = () => {
+      const atBottom =
+        window.scrollY + window.innerHeight >
+        document.documentElement.scrollHeight - 110;
+      const narrow = window.innerWidth < 800;
+      setView((v) =>
+        v.atBottom === atBottom && v.narrow === narrow ? v : { atBottom, narrow }
+      );
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, []);
+  return view;
+}
+
+const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
+  const settled = snap.phase === "complete" || snap.phase === "idle";
+  const [userCollapsed, setCollapsed] = useState(settled);
+  const { atBottom, narrow } = useViewport();
+  // At the footer, keep clear of the centred footer content: on wide screens
+  // the pill moves to the empty corner, on narrow ones it shrinks to a button.
+  const collapsed = userCollapsed || (atBottom && narrow && snap.phase !== "running");
+  const corner = collapsed || atBottom;
+
+  useEffect(() => {
+    if (snap.phase === "idle") return setCollapsed(true);
+    if (snap.phase !== "complete") return setCollapsed(false);
+    const id = window.setTimeout(() => setCollapsed(true), 3500);
+    return () => window.clearTimeout(id);
+  }, [snap.phase]);
+
+  const building = snap.phase === "running";
+  const pct = snap.total ? Math.round((snap.done / snap.total) * 100) : 0;
+  const count = snap.agents.length;
+
+  // One wrapper and one button in every state, so keyboard focus survives
+  // Skip → Rebuild → collapsed.
+  return (
+    <div
+      data-swarm-ui
+      className={`pointer-events-auto fixed bottom-4 z-[61] flex items-center gap-3 rounded-full border border-white/15 bg-black/85 text-sm text-white shadow-2xl backdrop-blur-xl ${
+        corner
+          ? "right-4"
+          : "left-1/2 max-w-[calc(100vw-2rem)] -translate-x-1/2"
+      } ${collapsed ? "p-1" : "py-1.5 pl-2 pr-1.5"}`}>
+      {!collapsed &&
+        (building ? (
+          <>
+            <Avatars agents={snap.agents} />
+            <span className="whitespace-nowrap pl-1">
+              Watch my stack build this page
+              {snap.waiting && (
+                <span className="swarm-bounce ml-1.5 inline-block" aria-hidden>
+                  ↓
+                </span>
+              )}
+            </span>
+            <span
+              className="h-1.5 w-16 overflow-hidden rounded-full bg-white/15 max-five:hidden"
+              aria-hidden>
+              <span
+                className="swarm-progress block h-full rounded-full"
+                style={{ width: `${pct}%` }}
+              />
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="pl-2 text-green" aria-hidden>
+              ✓
+            </span>
+            <span className="whitespace-nowrap">
+              {snap.skipped ? (
+                "Full page shown"
+              ) : (
+                <>
+                  Built by {count} cursors
+                  <span className="max-md:hidden">
+                    , each named after a tool I use
+                  </span>
+                </>
+              )}
+            </span>
+          </>
+        ))}
+      <button
+        key="action"
+        onClick={building ? swarm.skip : swarm.rebuild}
+        aria-label={
+          building
+            ? "Skip the animation and show the full page"
+            : "Rebuild the page live"
+        }
+        className={`whitespace-nowrap rounded-full font-bold hover:text-green ${
+          collapsed
+            ? "px-3 py-1.5 max-five:px-2.5"
+            : "bg-white/10 px-3 py-1 hover:bg-white/20"
+        }`}>
+        {building ? (
+          "Skip"
+        ) : (
+          <>
+            <span aria-hidden>↻</span>
+            <span className={collapsed ? "max-five:hidden" : ""}>
+              {collapsed ? " Rebuild live" : " Rebuild"}
+            </span>
+          </>
+        )}
+      </button>
     </div>
   );
 };
 
-const Hud = ({ snap }: { snap: SwarmSnapshot }) => {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (snap.phase !== "complete") {
-      setCollapsed(false);
-      return;
-    }
-    const id = window.setTimeout(() => setCollapsed(true), 5000);
-    return () => window.clearTimeout(id);
-  }, [snap.phase]);
-
-  const shell =
-    "pointer-events-auto fixed z-[61] flex items-center gap-3 rounded-full border border-grey-900 bg-black/70 text-sm text-white shadow-2xl backdrop-blur-xl";
-  const button =
-    "whitespace-nowrap rounded-full bg-white/10 px-3 py-1 font-bold hover:bg-white/20 hover:text-green";
-
-  if (collapsed) {
-    return (
-      <button
-        onClick={swarm.rebuild}
-        className={`${shell} bottom-5 right-5 px-4 py-2 font-bold hover:text-green`}>
-        ↻ Rebuild live
-      </button>
-    );
-  }
-
-  const building = snap.phase === "running";
-  const pct = snap.total ? Math.round((snap.done / snap.total) * 100) : 0;
-
+/** The first thing keyboard users can reach: show the page without waiting. */
+export const SwarmSkipLink = () => {
+  const snap = useSwarm();
+  const onHome = usePathname() === "/";
+  if (!onHome || snap.phase !== "running") return null;
   return (
-    <div
-      role="status"
-      className={`${shell} bottom-5 left-1/2 max-w-[calc(100vw-2rem)] -translate-x-1/2 py-1.5 pl-2 pr-1.5`}>
-      {building ? (
-        <>
-          <Avatars count={snap.agents} />
-          <span className="whitespace-nowrap pl-1">
-            {snap.waiting
-              ? "Scroll to keep building ↓"
-              : `${snap.agents} cursors building live`}
-          </span>
-          <span className="h-1.5 w-20 overflow-hidden rounded-full bg-grey-900 max-five:hidden">
-            <span
-              className="swarm-progress block h-full rounded-full"
-              style={{ width: `${pct}%` }}
-            />
-          </span>
-          <span className="w-9 text-right tabular-nums text-grey-300">
-            {pct}%
-          </span>
-          <button onClick={swarm.skip} className={button}>
-            Skip
-          </button>
-        </>
-      ) : (
-        <>
-          <span className="pl-2 text-green">✓</span>
-          <span className="whitespace-nowrap">
-            {snap.skipped
-              ? "Skipped the live build"
-              : `Built live by ${snap.agents} cursors in ${snap.seconds.toFixed(1)}s`}
-          </span>
-          <button onClick={swarm.rebuild} className={button}>
-            ↻ Rebuild
-          </button>
-        </>
-      )}
-    </div>
+    <button
+      data-swarm-ui
+      onClick={swarm.skip}
+      className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:font-bold focus:text-black">
+      Skip the animation and show the full page
+    </button>
   );
 };
 
 const SwarmOverlay = () => {
-  const snap = useSyncExternalStore(
-    swarm.subscribe,
-    swarm.getSnapshot,
-    swarm.getServerSnapshot
-  );
+  const snap = useSwarm();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const onHome = usePathname() === "/";
 
   useEffect(
     () =>
@@ -194,25 +277,36 @@ const SwarmOverlay = () => {
         const vh = window.innerHeight;
         const sx = window.scrollX;
         const sy = window.scrollY;
+        const showStatus = vw >= 640;
 
         // Cursors are plain DOM, moved without re-rendering React.
         for (const a of swarm.agents) {
           const d = a.dom;
           if (!d) continue;
-          d.root.style.transform = `translate3d(${a.x - sx}px, ${a.y - sy}px, 0)`;
+          const vx = a.x - sx;
+          d.root.style.transform = `translate3d(${vx}px, ${a.y - sy}px, 0)`;
           d.root.style.opacity = a.opacity.toFixed(3);
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
-          if (d.status.textContent !== a.status) {
-            d.status.textContent = a.status;
-            d.status.style.display = a.status && !a.chip ? "block" : "none";
+          // Labels flip to the left near the right edge so they stay readable.
+          const flip = vx > vw - 140;
+          if (d.root.hasAttribute("data-flip") !== flip) {
+            d.root.toggleAttribute("data-flip", flip);
+          }
+          const status =
+            showStatus && !a.chip && a.status && t - a.statusAt < STATUS_MS
+              ? a.status
+              : "";
+          if (d.status.dataset.text !== status) {
+            d.status.dataset.text = status;
+            d.status.textContent = status;
+            d.status.style.display = status ? "block" : "none";
           }
           const chipKey = a.chip ? `${a.chip.label}|${a.chip.src ?? ""}` : "";
           if (d.chip.dataset.key !== chipKey) {
             d.chip.dataset.key = chipKey;
             d.chip.style.display = a.chip ? "flex" : "none";
-            d.status.style.display = a.status && !a.chip ? "block" : "none";
             if (a.chip) {
               d.chipLabel.textContent = a.chip.label;
               d.chipImg.style.display = a.chip.src ? "block" : "none";
@@ -243,21 +337,27 @@ const SwarmOverlay = () => {
           if (task.state !== "pending" && task.state !== "claimed") continue;
           if (!swarm.isReady(task)) continue;
           const r = task.el.getBoundingClientRect();
-          if (r.width < 1 || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) {
+          if (
+            r.width < 1 ||
+            r.bottom < 0 ||
+            r.top > vh ||
+            r.right < 0 ||
+            r.left > vw
+          ) {
             continue;
           }
           const owner = task.agent;
           ctx.setLineDash([4, 4]);
           ctx.lineDashOffset = owner ? -t / 40 : 0;
           ctx.strokeStyle = owner
-            ? rgba(owner.color, 0.85)
-            : "rgba(255, 255, 255, 0.14)";
+            ? rgba(owner.color, 0.9)
+            : "rgba(255, 255, 255, 0.28)";
+          ctx.fillStyle = owner
+            ? rgba(owner.color, 0.06)
+            : "rgba(255, 255, 255, 0.03)";
           roundRect(ctx, r.left + 0.5, r.top + 0.5, r.width - 1, r.height - 1, 8);
+          ctx.fill();
           ctx.stroke();
-          if (owner) {
-            ctx.fillStyle = rgba(owner.color, 0.05);
-            ctx.fill();
-          }
         }
         ctx.setLineDash([]);
 
@@ -309,14 +409,39 @@ const SwarmOverlay = () => {
             ctx.globalAlpha = 1;
           }
         }
+
+        // The shared "done" click: rainbow rings from the middle.
+        const b = swarm.burst;
+        if (b) {
+          RAINBOW.forEach((color, i) => {
+            const p = Math.max(0, Math.min(1, (t - b.t0 - i * 70) / 650));
+            if (p <= 0 || p >= 1) return;
+            ctx.globalAlpha = 1 - p;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(b.x - sx, b.y - sy, 20 + p * 160, 0, Math.PI * 2);
+            ctx.stroke();
+          });
+          ctx.globalAlpha = 1;
+        }
       }),
     []
   );
 
-  const pathname = usePathname();
-  // The swarm only builds the home page.
-  const onHome = pathname === "/";
-  const live = onHome && (snap.phase === "running" || snap.phase === "finishing");
+  const live =
+    onHome && (snap.phase === "running" || snap.phase === "finishing");
+  const showHud =
+    onHome &&
+    snap.total > 0 &&
+    (snap.phase !== "idle" || snap.seen);
+  const announcement = !onHome
+    ? ""
+    : snap.phase === "running"
+    ? "This page is being built by an animation. Press Skip to show everything now."
+    : snap.phase === "complete" || snap.phase === "finishing"
+    ? "The full page is now shown."
+    : "";
 
   return (
     <>
@@ -325,12 +450,15 @@ const SwarmOverlay = () => {
           aria-hidden
           className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
           <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-          {swarm.agents.map((a) => (
+          {snap.agents.map((a) => (
             <Cursor key={`${snap.roster}-${a.index}`} agent={a} />
           ))}
         </div>
       )}
-      {onHome && snap.phase !== "idle" && snap.total > 0 && <Hud snap={snap} />}
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
+      {showHud && <Hud snap={snap} />}
     </>
   );
 };

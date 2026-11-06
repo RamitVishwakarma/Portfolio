@@ -7,6 +7,7 @@ import {
   useLayoutEffect,
   useRef,
   type AllHTMLAttributes,
+  type ElementType,
   type ReactNode,
 } from "react";
 import { swarm, type BuildKind } from "./engine";
@@ -14,13 +15,14 @@ import { swarm, type BuildKind } from "./engine";
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-type BuildProps = AllHTMLAttributes<HTMLElement> & {
-  /** Element to render in place of a plain tag; markup stays identical. */
-  as?: keyof JSX.IntrinsicElements;
+type BuildProps = Omit<AllHTMLAttributes<HTMLElement>, "as"> & {
+  /** Tag or component to render (e.g. "h1", Link); the markup is unchanged. */
+  as?: ElementType;
   kind?: BuildKind;
   /** Status under the cursor (or the file name, for `kind="image"`). */
-  label?: string;
+  caption?: string;
   optional?: boolean;
+  priority?: boolean;
   children?: ReactNode;
 };
 
@@ -32,8 +34,9 @@ type BuildProps = AllHTMLAttributes<HTMLElement> & {
 const Build = ({
   as = "div",
   kind = "block",
-  label,
+  caption,
   optional,
+  priority,
   children,
   ...rest
 }: BuildProps) => {
@@ -42,8 +45,13 @@ const Build = ({
 
   useIsoLayoutEffect(() => {
     if (!ref.current) return;
-    return swarm.register(id, ref.current, { kind, label, optional });
-  }, [id, kind, label, optional]);
+    return swarm.register(id, ref.current, {
+      kind,
+      caption,
+      optional,
+      priority,
+    });
+  }, [id, kind, caption, optional, priority]);
 
   return createElement(
     as,

@@ -124,6 +124,33 @@ html.swarm-on [data-swarm="claimed"] {
 .swarm-cursor[data-pressed] .swarm-arrow {
   transform: scale(0.8);
 }
+.swarm-tags {
+  position: absolute;
+  left: 16px;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+/* near the right edge the labels sit to the left of the arrow */
+.swarm-cursor[data-flip] .swarm-tags {
+  left: auto;
+  right: calc(100% - 4px);
+  align-items: flex-end;
+}
+@keyframes swarm-bounce {
+  0%,
+  100% {
+    transform: translateY(-1px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+.swarm-bounce {
+  animation: swarm-bounce 1.2s ease-in-out infinite;
+}
 .swarm-progress {
   background: linear-gradient(
     90deg,

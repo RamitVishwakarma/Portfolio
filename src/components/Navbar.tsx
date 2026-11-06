@@ -22,7 +22,7 @@ const Navbar = () => {
   return (
     <Build
       kind="block"
-      label="drawing <nav>"
+      caption="drawing <nav>"
       className="max-w-[90rem] lg:px-[7.5rem] md:px-20 px-10 mx-auto sticky top-0 z-20 backdrop-blur-xl m-auto bg-black/60">
       <div className="w-full py-4 text-white text-md content-center flex items-center justify-between">
         <Link
@@ -47,11 +47,13 @@ const Navbar = () => {
             className="hover:text-green cursor-pointer">
             About
           </Build>
-          <Link href="/blog" className="hover:text-green cursor-pointer">
-            <Build as="span" kind="text">
-              Blog
-            </Build>
-          </Link>
+          <Build
+            as={Link}
+            kind="text"
+            href="/blog"
+            className="hover:text-green cursor-pointer">
+            Blog
+          </Build>
           <Build
             as="a"
             kind="text"

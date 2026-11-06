@@ -8,6 +8,8 @@ export interface Rect {
 export interface Typing {
   /** Number of characters to type. */
   total: number;
+  /** Measure every caret position once, so typing never forces a reflow. */
+  measure(): void;
   /** Show the first `n` characters. */
   set(n: number): void;
   /** Where the caret is, in page coordinates. */
@@ -22,6 +24,13 @@ interface Piece {
   ghost: HTMLSpanElement;
   wrap: HTMLSpanElement | null;
 }
+
+const toPage = (r: DOMRect, x: number): Rect => ({
+  x: x + window.scrollX,
+  y: r.top + window.scrollY,
+  w: 0,
+  h: r.height,
+});
 
 /**
  * Lets a cursor "type" an element's existing text in place.
@@ -63,9 +72,58 @@ export function prepareTyping(root: HTMLElement): Typing {
   const total = pieces.reduce((sum, p) => sum + p.full.length, 0);
   let typed = 0;
   let finished = false;
+  // Caret rect before each character, plus one after the last.
+  let positions: Rect[] | null = null;
+
+  const liveCaret = (): Rect | null => {
+    let offset = 0;
+    for (const p of pieces) {
+      if (typed < offset + p.full.length) {
+        const r = p.ghost.getClientRects()[0];
+        return r ? toPage(r, r.left) : null;
+      }
+      offset += p.full.length;
+    }
+    const last = pieces[pieces.length - 1];
+    if (!last) return null;
+    const range = document.createRange();
+    range.selectNodeContents(last.node);
+    const rects = range.getClientRects();
+    const r = rects[rects.length - 1];
+    return r ? toPage(r, r.right) : null;
+  };
 
   return {
     total,
+    measure() {
+      if (typed !== 0) return;
+      const out: Rect[] = [];
+      const range = document.createRange();
+      let prev: Rect | null = null;
+      for (const p of pieces) {
+        const node = p.ghost.firstChild;
+        for (let i = 0; i < p.full.length; i++) {
+          let rect: Rect | null = prev;
+          if (node) {
+            range.setStart(node, i);
+            range.setEnd(node, i + 1);
+            const r = range.getClientRects()[0];
+            if (r && r.height > 0) rect = toPage(r, r.left);
+          }
+          prev = rect;
+          out.push(rect ?? { x: 0, y: 0, w: 0, h: 0 });
+        }
+      }
+      const end = pieces[pieces.length - 1];
+      const endNode = end?.ghost.firstChild;
+      if (endNode && end.full.length) {
+        range.setStart(endNode, end.full.length - 1);
+        range.setEnd(endNode, end.full.length);
+        const r = range.getClientRects()[0];
+        out.push(r ? toPage(r, r.right) : out[out.length - 1]);
+      }
+      positions = out.length === total + 1 ? out : null;
+    },
     set(n) {
       typed = n;
       let offset = 0;
@@ -79,36 +137,8 @@ export function prepareTyping(root: HTMLElement): Typing {
       }
     },
     caret() {
-      let offset = 0;
-      for (const p of pieces) {
-        if (typed < offset + p.full.length) {
-          const r = p.ghost.getClientRects()[0];
-          if (r) {
-            return {
-              x: r.left + window.scrollX,
-              y: r.top + window.scrollY,
-              w: 0,
-              h: r.height,
-            };
-          }
-          break;
-        }
-        offset += p.full.length;
-      }
-      const last = pieces[pieces.length - 1];
-      if (!last) return null;
-      const range = document.createRange();
-      range.selectNodeContents(last.node);
-      const rects = range.getClientRects();
-      const r = rects[rects.length - 1];
-      return r
-        ? {
-            x: r.right + window.scrollX,
-            y: r.top + window.scrollY,
-            w: 0,
-            h: r.height,
-          }
-        : null;
+      if (positions) return positions[Math.min(typed, total)];
+      return liveCaret();
     },
     finish() {
       if (finished) return;

@@ -15,9 +15,11 @@ export type BuildKind = "text" | "block" | "image" | "pop";
 export interface BuildOptions {
   kind: BuildKind;
   /** Status shown under the cursor, or the file name for an image. */
-  label?: string;
+  caption?: string;
   /** Doesn't hold up "build complete" (e.g. marquee cards scrolled out of view). */
   optional?: boolean;
+  /** Built before anything else on screen (the name in the hero). */
+  priority?: boolean;
 }
 
 type TaskState = "pending" | "claimed" | "building" | "done";
@@ -27,10 +29,17 @@ export interface Task {
   id: string;
   el: HTMLElement;
   kind: BuildKind;
-  label?: string;
+  caption?: string;
   optional: boolean;
+  priority: boolean;
   state: TaskState;
+  /** Within a screen of the viewport: cursors may start on it. */
   inView: boolean;
+  /** Actually on screen. */
+  visible: boolean;
+  visibleSince: number;
+  /** Scrolled past: finish it now. */
+  rush: boolean;
   top: number;
   agent: Agent | null;
   removed: boolean;
@@ -57,13 +66,16 @@ export interface Agent {
   targetOpacity: number;
   activateAt: number;
   active: boolean;
+  landed: boolean;
+  docked: boolean;
+  moving: boolean;
   leaving: boolean;
+  idleSince: number;
   task: Task | null;
   status: string;
+  statusAt: number;
   pressed: boolean;
   moveToken: number;
-  wandering: boolean;
-  nextWander: number;
   sel: (Rect & { alpha: number }) | null;
   caret: Rect | null;
   chip: { label: string; src?: string } | null;
@@ -75,26 +87,28 @@ export interface SwarmSnapshot {
   phase: Phase;
   done: number;
   total: number;
-  agents: number;
+  agents: Agent[];
   roster: number;
   waiting: boolean;
   skipped: boolean;
-  seconds: number;
+  /** Visitor has already watched a build in this browser. */
+  seen: boolean;
 }
 
 const EMPTY: SwarmSnapshot = {
   phase: "idle",
   done: 0,
   total: 0,
-  agents: 0,
+  agents: [],
   roster: 0,
   waiting: false,
   skipped: false,
-  seconds: 0,
+  seen: false,
 };
 
-/** Global speed knob for the whole build. */
-const SPEED = 1;
+const SEEN_KEY = "swarm-seen";
+/** An element left unclaimed on screen this long is shown without a cursor. */
+const CATCH_UP_MS = 1800;
 
 const now = () => performance.now();
 const clamp = (v: number, lo: number, hi: number) =>
@@ -102,6 +116,11 @@ const clamp = (v: number, lo: number, hi: number) =>
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutBack = (t: number) => {
+  const c1 = 0.9;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
 
 export function pageRect(el: Element): Rect {
   const r = el.getBoundingClientRect();
@@ -140,23 +159,34 @@ function once(fn: () => void) {
   };
 }
 
+/** The build was skipped or restarted: drop everything. */
 class Aborted extends Error {}
+/** The visitor scrolled past this element: finish it now. */
+class Rush extends Error {}
 
 class SwarmEngine {
   tasks = new Map<string, Task>();
   agents: Agent[] = [];
+  /** Shared ripple when the build completes, in page coordinates. */
+  burst: { x: number; y: number; t0: number } | null = null;
 
   private byEl = new WeakMap<Element, Task>();
   private phase: Phase = "idle";
   private settled = false;
   private skipped = false;
+  private rebuilding = false;
   private gen = 0;
   private roster = 0;
+  private base = 1;
+  private boost = 1;
   private startedAt = 0;
-  private finishedAt = 0;
   private raf = 0;
+  private sleeping = false;
+  private keyboard = false;
+  private listening = false;
   private waiters: Array<() => void> = [];
-  private io: IntersectionObserver | null = null;
+  private ahead: IntersectionObserver | null = null;
+  private seenIO: IntersectionObserver | null = null;
   private listeners = new Set<() => void>();
   private drawers = new Set<(t: number) => void>();
   private lastSchedule = 0;
@@ -193,24 +223,32 @@ class SwarmEngine {
       id,
       el,
       kind: opts.kind,
-      label: opts.label,
+      caption: opts.caption,
       optional: !!opts.optional,
+      priority: !!opts.priority,
       state: "pending",
       inView: false,
+      visible: false,
+      visibleSince: 0,
+      rush: false,
       top: 0,
       agent: null,
       removed: false,
     };
     this.tasks.set(id, task);
     this.byEl.set(el, task);
-    this.getIO().observe(el);
 
-    if (this.isOn()) this.start();
-    else this.finishTask(task);
+    if (this.isOn()) {
+      this.observe(task);
+      this.start();
+    } else {
+      this.finishTask(task);
+    }
     this.emit();
 
     return () => {
-      this.io?.unobserve(el);
+      this.ahead?.unobserve(el);
+      this.seenIO?.unobserve(el);
       if (this.tasks.get(id) === task) this.tasks.delete(id);
       if (this.byEl.get(el) === task) this.byEl.delete(el);
       task.removed = true;
@@ -243,32 +281,48 @@ class SwarmEngine {
       }
     }
     for (const a of this.agents) this.resetAgent(a);
-    this.finish();
+    this.finish(false);
   };
 
   rebuild = () => {
+    if (this.rebuilding) return;
+    this.rebuilding = true;
     this.gen++;
-    this.settled = false;
-    this.skipped = false;
-    this.phase = "idle";
-    document.documentElement.classList.add("swarm-on");
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-    const io = this.getIO();
-    for (const t of this.taskList()) {
-      if (t.removed) continue;
-      t.cleanup?.();
-      t.cleanup = undefined;
-      t.anim?.cancel();
-      t.el.style.clipPath = "";
-      t.state = "pending";
-      t.agent = null;
-      t.inView = false;
-      this.setAttr(t, "pending");
-      // Re-observing makes the observer report fresh positions after the jump.
-      io.unobserve(t.el);
-      io.observe(t.el);
-    }
-    this.start();
+    const reset = () => {
+      this.rebuilding = false;
+      this.settled = false;
+      this.skipped = false;
+      this.phase = "idle";
+      document.documentElement.classList.add("swarm-on");
+      for (const t of this.taskList()) {
+        if (t.removed) continue;
+        t.cleanup?.();
+        t.cleanup = undefined;
+        t.anim?.cancel();
+        t.el.style.clipPath = "";
+        t.state = "pending";
+        t.agent = null;
+        t.rush = false;
+        t.inView = false;
+        t.visible = false;
+        t.visibleSince = 0;
+        this.setAttr(t, "pending");
+        // Re-observing makes the observers report fresh positions.
+        this.ahead?.unobserve(t.el);
+        this.seenIO?.unobserve(t.el);
+        this.observe(t);
+      }
+      this.start();
+    };
+    // Glide back to the top first, then build from there.
+    if (window.scrollY < 2) return reset();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const t0 = now();
+    const wait = () => {
+      if (window.scrollY < 2 || now() - t0 > 2500) reset();
+      else requestAnimationFrame(wait);
+    };
+    requestAnimationFrame(wait);
   };
 
   // ---- Internals ---------------------------------------------------------
@@ -280,9 +334,11 @@ class SwarmEngine {
     );
   }
 
-  private getIO() {
-    if (!this.io) {
-      this.io = new IntersectionObserver(
+  private observe(task: Task) {
+    if (!this.ahead) {
+      // Cursors start on anything within a screen below the fold, so the next
+      // section is already under way when it scrolls in.
+      this.ahead = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
             const t = this.byEl.get(e.target);
@@ -290,11 +346,36 @@ class SwarmEngine {
             t.inView = e.isIntersecting;
             t.top = e.boundingClientRect.top + window.scrollY;
           }
+          this.wake();
         },
-        { rootMargin: "0px" }
+        { rootMargin: "0px 0px 60% 0px" }
       );
+      this.seenIO = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          const t = this.byEl.get(e.target);
+          if (!t) continue;
+          t.visible = e.isIntersecting;
+          t.visibleSince = e.isIntersecting ? t.visibleSince || now() : 0;
+          // Scrolled past it: don't keep the visitor's content hidden above.
+          if (
+            !e.isIntersecting &&
+            e.boundingClientRect.bottom <= 0 &&
+            this.phase === "running"
+          ) {
+            this.pass(t);
+          }
+        }
+        this.wake();
+      });
     }
-    return this.io;
+    this.ahead.observe(task.el);
+    this.seenIO?.observe(task.el);
+  }
+
+  private pass(t: Task) {
+    if (t.removed || t.state === "done") return;
+    if (t.state === "pending") this.finishTask(t);
+    else t.rush = true;
   }
 
   private start() {
@@ -303,14 +384,17 @@ class SwarmEngine {
     this.gen++;
     this.roster++;
     this.startedAt = now();
-    this.finishedAt = 0;
+    this.burst = null;
     (window as unknown as { __swarmReady?: boolean }).__swarmReady = true;
+    this.listen();
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const sx = window.scrollX;
     const sy = window.scrollY;
-    const count = vw < 800 ? MOBILE_AGENTS : AGENTS.length;
+    const mobile = vw < 640;
+    this.base = mobile ? 1.5 : 1;
+    const count = mobile ? MOBILE_AGENTS : AGENTS.length;
     const t = now();
 
     this.agents = AGENTS.slice(0, count).map((def, i) => {
@@ -332,15 +416,19 @@ class SwarmEngine {
         y: p.y + sy,
         opacity: 0,
         targetOpacity: 0,
-        activateAt: t + 120 + i * 60,
+        // Hold the empty wireframe for a beat, then the swarm streams in.
+        activateAt: t + 350 + i * (mobile ? 150 : 110),
         active: false,
+        landed: false,
+        docked: false,
+        moving: false,
         leaving: false,
+        idleSince: 0,
         task: null,
         status: "",
+        statusAt: 0,
         pressed: false,
         moveToken: 0,
-        wandering: false,
-        nextWander: 0,
         sel: null,
         caret: null,
         chip: null,
@@ -349,52 +437,127 @@ class SwarmEngine {
       };
     });
     this.emit(true);
+    this.wake();
     this.loop();
   }
 
-  private finish() {
+  private listen() {
+    if (this.listening) return;
+    this.listening = true;
+    window.addEventListener("scroll", this.wake, { passive: true });
+    // Keyboard users get the full page as soon as they start tabbing into it,
+    // and find-in-page gets everything to search.
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") this.keyboard = true;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") this.skip();
+    });
+    document.addEventListener("pointerdown", () => {
+      this.keyboard = false;
+    });
+    document.addEventListener("focusin", (e) => {
+      const el = e.target as Element | null;
+      if (!this.keyboard || el?.closest?.("[data-swarm-ui]")) return;
+      this.skip();
+    });
+  }
+
+  private wake = () => {
+    // Hand out new work on the very next frame.
+    this.lastSchedule = 0;
+    if (!this.sleeping) return;
+    this.sleeping = false;
+    this.loop();
+  };
+
+  private finish(natural: boolean) {
     if (this.phase !== "running") return;
     this.phase = "finishing";
     this.settled = true;
-    this.finishedAt = now();
+    try {
+      window.localStorage.setItem(SEEN_KEY, "1");
+    } catch {
+      // Storage blocked: the build just plays again next time.
+    }
     const gen = this.gen;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    const exits = this.agents.map((a) => {
-      a.leaving = true;
-      a.targetOpacity = 1;
-      // Leave through the nearest side edge or the bottom.
-      const vx = a.x - window.scrollX;
-      const vy = a.y - window.scrollY;
-      const toLeft = vx;
-      const toRight = vw - vx;
-      const toBottom = vh - vy;
-      const m = Math.min(toLeft, toRight, toBottom);
-      const tx = m === toLeft ? -80 : m === toRight ? vw + 80 : vx;
-      const ty = m === toBottom ? vh + 80 : vy;
-      return this.moveTo(
-        a,
-        () => ({ x: window.scrollX + tx, y: window.scrollY + ty }),
-        gen,
-        null,
-        0.8
-      )
-        .catch(() => {})
-        .then(() => {
-          a.targetOpacity = 0;
-        });
-    });
+    this.sleeping = false;
     this.emit(true);
     this.loop();
 
-    Promise.all(exits).then(() => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const n = this.agents.length;
+    const cx = vw / 2;
+    const cy = vh * 0.45;
+
+    const outro = async () => {
+      try {
+        if (natural) {
+          // Everyone gathers in the middle of the screen...
+          await Promise.all(
+            this.agents.map((a, i) => {
+              a.docked = false;
+              a.leaving = true;
+              a.active = true;
+              a.targetOpacity = 1;
+              a.status = "";
+              const ang = (i / n) * Math.PI * 2;
+              return this.moveTo(
+                a,
+                () => ({
+                  x: window.scrollX + cx + Math.cos(ang) * 64,
+                  y: window.scrollY + cy + Math.sin(ang) * 40,
+                }),
+                gen,
+                null,
+                0.9
+              );
+            })
+          );
+          // ...clicks together...
+          for (const a of this.agents) a.pressed = true;
+          this.burst = {
+            x: window.scrollX + cx,
+            y: window.scrollY + cy,
+            t0: now(),
+          };
+          await this.sleep(160, gen, null);
+          for (const a of this.agents) a.pressed = false;
+          await this.sleep(260, gen, null);
+        }
+        // ...and scatters off screen.
+        await Promise.all(
+          this.agents.map((a) => {
+            a.leaving = true;
+            const vx = a.x - window.scrollX;
+            const vy = a.y - window.scrollY;
+            const dx = vx - cx || rand(-1, 1);
+            const dy = vy - cy || rand(-1, 1);
+            const len = Math.hypot(dx, dy) || 1;
+            const reach = Math.max(vw, vh);
+            const tx = cx + (dx / len) * reach;
+            const ty = cy + (dy / len) * reach;
+            return this.moveTo(
+              a,
+              () => ({ x: window.scrollX + tx, y: window.scrollY + ty }),
+              gen,
+              null,
+              0.8
+            ).then(() => {
+              a.targetOpacity = 0;
+            });
+          })
+        );
+      } catch {
+        // A rebuild took over.
+      }
       window.setTimeout(() => {
         if (gen !== this.gen) return;
         this.phase = "complete";
+        this.burst = null;
         this.emit(true);
       }, 300);
-    });
+    };
+    void outro();
   }
 
   private loop() {
@@ -408,18 +571,26 @@ class SwarmEngine {
     });
   }
 
-  private tick = (t: number) => {
+  private rate() {
+    return this.base * this.boost;
+  }
+
+  private tick = async (t: number) => {
     this.raf = 0;
     const waiters = this.waiters;
     this.waiters = [];
     for (const w of waiters) w();
 
     const running = this.phase === "running";
+    const vh = window.innerHeight;
     for (const a of this.agents) {
       if (!a.active && running && t >= a.activateAt) {
         a.active = true;
         a.targetOpacity = 1;
+        a.idleSince = t;
       }
+      // Parked cursors wait just below the screen, ready to fly back up.
+      if (a.docked && !a.task) a.y = window.scrollY + vh + 80;
       a.opacity += (a.targetOpacity - a.opacity) * 0.14;
       if (a.sel && !a.pressed) {
         a.sel.alpha -= 0.05;
@@ -427,13 +598,14 @@ class SwarmEngine {
       }
       if (a.ripples.length) a.ripples = a.ripples.filter((r) => t - r.t0 < 520);
     }
+    if (this.burst && t - this.burst.t0 > 900) this.burst = null;
 
     if (running) {
       if (t - this.lastSchedule > 100) {
         this.lastSchedule = t;
         this.schedule();
       }
-      this.wander(t);
+      this.dock(t);
       if (t - this.lastCheck > 300) {
         this.lastCheck = t;
         this.checkComplete();
@@ -441,27 +613,64 @@ class SwarmEngine {
       }
     }
 
+    // Let this frame's cursor work (promise continuations) land before
+    // drawing, so selection boxes and clips stay in lockstep.
+    for (let i = 0; i < 8; i++) await Promise.resolve();
     for (const draw of Array.from(this.drawers)) draw(t);
 
-    if (running || this.phase === "finishing" || this.waiters.length) {
+    if (this.phase === "running" && this.isQuiet()) {
+      // Re-check with fresh eligibility (an observer may have reported new
+      // work since the last schedule) before letting the frame loop rest.
+      this.schedule();
+      if (this.isQuiet()) {
+        this.sleeping = true;
+        this.emit();
+        return;
+      }
+    }
+    if (
+      this.phase === "running" ||
+      this.phase === "finishing" ||
+      this.waiters.length
+    ) {
       this.loop();
     }
   };
 
-  /** Hand the next elements on screen to idle cursors, top of the page first. */
+  private isQuiet() {
+    if (this.hasEligible || this.waiters.length || this.burst) return false;
+    return this.agents.every(
+      (a) =>
+        a.active &&
+        a.docked &&
+        !a.task &&
+        !a.moving &&
+        !a.sel &&
+        !a.ripples.length
+    );
+  }
+
+  /** Hand the next elements to idle cursors: on screen first, top first. */
   private schedule() {
     const eligible: Task[] = [];
+    let onScreen = 0;
     for (const t of this.taskList()) {
       if (t.state === "pending" && !t.removed && t.inView && this.isReady(t)) {
         eligible.push(t);
+        if (t.visible) onScreen++;
       }
     }
     this.hasEligible = eligible.length > 0;
+    // A backlog on screen speeds the whole swarm up.
+    this.boost = clamp(1 + onScreen / 6, 1, 2.6);
+
     const idle = this.agents.filter((a) => a.active && !a.task && !a.leaving);
     if (!idle.length || !eligible.length) return;
 
     eligible.sort(
       (a, b) =>
+        Number(b.priority) - Number(a.priority) ||
+        Number(b.visible) - Number(a.visible) ||
         a.top - b.top ||
         (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING
           ? -1
@@ -471,7 +680,7 @@ class SwarmEngine {
     for (const a of idle) {
       if (!eligible.length) break;
       // Of the next few jobs in reading order, take the one closest by.
-      const pool = Math.min(eligible.length, 4);
+      const pool = eligible[0].priority ? 1 : Math.min(eligible.length, 4);
       let best = 0;
       let bestScore = Infinity;
       for (let i = 0; i < pool; i++) {
@@ -487,29 +696,30 @@ class SwarmEngine {
     }
   }
 
-  /** Idle cursors hang around the bottom of the screen, waiting for work. */
-  private wander(t: number) {
+  /** Idle cursors slip off the bottom of the screen instead of loitering. */
+  private dock(t: number) {
     const vw = window.innerWidth;
-    const vh = window.innerHeight;
     for (const a of this.agents) {
-      if (!a.active || a.task || a.leaving || a.wandering || t < a.nextWander) {
-        continue;
-      }
-      a.wandering = true;
-      a.targetOpacity = 0.4;
-      const fx = rand(0.08, 0.92) * vw;
-      const fy = rand(0.8, 0.95) * vh;
+      if (!a.active || a.task || a.leaving || a.moving || a.docked) continue;
+      if (t < a.idleSince + 450) continue;
+      a.moving = true;
+      const fx = clamp(a.x - window.scrollX, 24, vw - 24);
       this.moveTo(
         a,
-        () => ({ x: window.scrollX + fx, y: window.scrollY + fy }),
+        () => ({
+          x: window.scrollX + fx,
+          y: window.scrollY + window.innerHeight + 80,
+        }),
         this.gen,
         null,
-        0.35
+        0.7
       )
+        .then((arrived) => {
+          if (arrived && !a.task) a.docked = true;
+        })
         .catch(() => {})
         .finally(() => {
-          a.wandering = false;
-          a.nextWander = now() + rand(400, 1800);
+          a.moving = false;
         });
     }
   }
@@ -517,6 +727,7 @@ class SwarmEngine {
   private checkComplete() {
     let live = 0;
     let required = 0;
+    const t0 = now();
     for (const t of this.taskList()) {
       if (t.removed) continue;
       live++;
@@ -528,6 +739,14 @@ class SwarmEngine {
           this.finishTask(t);
           continue;
         }
+        // Every cursor is busy and this has sat empty on screen: show it.
+        const since = Math.max(t.visibleSince, this.startedAt + 2200);
+        if (t.visible && t.visibleSince && t0 - since > CATCH_UP_MS) {
+          this.setAttr(t, "building");
+          this.reveal(t, "fade");
+          this.finishTask(t);
+          continue;
+        }
       }
       if (!t.optional) required++;
     }
@@ -535,7 +754,7 @@ class SwarmEngine {
     for (const t of this.taskList()) {
       if (!t.removed && t.state !== "done") this.finishTask(t);
     }
-    this.finish();
+    this.finish(true);
   }
 
   private async run(a: Agent, task: Task) {
@@ -543,24 +762,30 @@ class SwarmEngine {
     task.state = "claimed";
     task.agent = a;
     a.task = task;
+    a.docked = false;
     a.targetOpacity = 1;
     this.setAttr(task, "claimed");
+    const overshoot = !a.landed;
+    a.landed = true;
     const tag = task.el.tagName.toLowerCase();
     try {
-      if (task.kind === "text") await this.doText(a, task, gen, tag);
-      else if (task.kind === "block") await this.doBlock(a, task, gen, tag);
-      else if (task.kind === "image") await this.doImage(a, task, gen);
-      else await this.doPop(a, task, gen, tag);
+      if (task.kind === "text") await this.doText(a, task, gen, tag, overshoot);
+      else if (task.kind === "block")
+        await this.doBlock(a, task, gen, tag, overshoot);
+      else if (task.kind === "image") await this.doImage(a, task, gen, overshoot);
+      else await this.doPop(a, task, gen, tag, overshoot);
       if (gen === this.gen && !task.removed) this.finishTask(task);
     } catch (err) {
-      if (!(err instanceof Aborted)) {
+      if (err instanceof Rush) {
+        if (!task.removed) this.finishTask(task);
+      } else if (!(err instanceof Aborted)) {
         console.error(err);
         if (gen === this.gen && !task.removed) this.finishTask(task);
       }
     } finally {
       if (task.agent === a) task.agent = null;
       if (a.task === task) this.resetAgent(a);
-      a.nextWander = now() + 250;
+      a.idleSince = now();
     }
   }
 
@@ -572,13 +797,19 @@ class SwarmEngine {
     a.chip = null;
   }
 
+  private setStatus(a: Agent, status: string) {
+    a.status = status;
+    a.statusAt = now();
+  }
+
   private async step(gen: number, task: Task | null) {
     await this.frame();
     if (gen !== this.gen || task?.removed) throw new Aborted();
+    if (task?.rush) throw new Rush();
   }
 
-  private async sleep(ms: number, gen: number, task: Task) {
-    const end = now() + ms / SPEED;
+  private async sleep(ms: number, gen: number, task: Task | null) {
+    const end = now() + ms / this.rate();
     while (now() < end) await this.step(gen, task);
   }
 
@@ -591,22 +822,25 @@ class SwarmEngine {
     target: () => { x: number; y: number },
     gen: number,
     task: Task | null,
-    speed = 1
+    speed = 1,
+    overshoot = false
   ) {
     const token = ++a.moveToken;
     const fx = a.x;
     const fy = a.y;
-    const first = target();
-    const dist = Math.hypot(first.x - fx, first.y - fy);
-    const dur = clamp(160 + dist * 0.55, 220, 950) / (SPEED * speed);
+    let tp = target();
+    const dist = Math.hypot(tp.x - fx, tp.y - fy);
+    const dur = clamp(180 + dist * 0.55, 240, 1000) / (this.rate() * speed);
     const bend = (Math.random() - 0.5) * Math.min(dist * 0.35, 160);
     const start = now();
+    let frames = 0;
     for (;;) {
       await this.step(gen, task);
       if (token !== a.moveToken) return false;
       const p = Math.min(1, (now() - start) / dur);
-      const e = easeInOut(p);
-      const tp = target();
+      // Re-aim every few frames (targets can drift, e.g. the marquee).
+      if (++frames % 5 === 0 || p >= 1) tp = target();
+      const e = overshoot ? easeOutBack(p) : easeInOut(p);
       const dx = tp.x - fx;
       const dy = tp.y - fy;
       const len = Math.hypot(dx, dy) || 1;
@@ -615,7 +849,11 @@ class SwarmEngine {
       const u = 1 - e;
       a.x = u * u * fx + 2 * u * e * cx + e * e * tp.x;
       a.y = u * u * fy + 2 * u * e * cy + e * e * tp.y;
-      if (p >= 1) return true;
+      if (p >= 1) {
+        a.x = tp.x;
+        a.y = tp.y;
+        return true;
+      }
     }
   }
 
@@ -626,16 +864,30 @@ class SwarmEngine {
     return { x: r.x, y: r.y };
   }
 
-  private async doText(a: Agent, task: Task, gen: number, tag: string) {
+  private async doText(
+    a: Agent,
+    task: Task,
+    gen: number,
+    tag: string,
+    overshoot: boolean
+  ) {
     const typing = prepareTyping(task.el);
     const cleanup = once(() => typing.finish());
     task.cleanup = cleanup;
     try {
-      a.status = task.label ?? `typing <${tag}>`;
-      await this.moveTo(a, () => this.caretPoint(typing, task.el), gen, task);
+      this.setStatus(a, task.caption ?? `typing <${tag}>`);
+      await this.moveTo(
+        a,
+        () => this.caretPoint(typing, task.el),
+        gen,
+        task,
+        1,
+        overshoot
+      );
       this.setState(task, "building");
+      typing.measure();
       const total = typing.total;
-      const dur = clamp(240 + total * 16, 380, 2600) / SPEED;
+      const dur = clamp(200 + total * 20, 420, 2400) / this.rate();
       const t0 = now();
       for (;;) {
         await this.step(gen, task);
@@ -656,9 +908,15 @@ class SwarmEngine {
     }
   }
 
-  private async doBlock(a: Agent, task: Task, gen: number, tag: string) {
+  private async doBlock(
+    a: Agent,
+    task: Task,
+    gen: number,
+    tag: string,
+    overshoot: boolean
+  ) {
     const el = task.el;
-    a.status = task.label ?? `drawing <${tag}>`;
+    this.setStatus(a, task.caption ?? `drawing <${tag}>`);
     await this.moveTo(
       a,
       () => {
@@ -666,7 +924,9 @@ class SwarmEngine {
         return { x: r.x, y: r.y };
       },
       gen,
-      task
+      task,
+      1,
+      overshoot
     );
     const cleanup = once(() => {
       el.style.clipPath = "";
@@ -676,13 +936,15 @@ class SwarmEngine {
       a.pressed = true;
       el.style.clipPath = "inset(0 100% 100% 0)";
       this.setState(task, "building");
-      const r0 = pageRect(el);
-      const dur = clamp(300 + Math.sqrt(r0.w * r0.h) * 0.9, 420, 1150) / SPEED;
+      // One measurement drives both the selection box and the clip, so the
+      // element is revealed exactly inside the box being dragged.
+      const r = pageRect(el);
+      const dur =
+        clamp(300 + Math.sqrt(r.w * r.h) * 0.9, 420, 1150) / this.rate();
       const t0 = now();
       for (;;) {
         await this.step(gen, task);
         const p = easeInOut(Math.min(1, (now() - t0) / dur));
-        const r = pageRect(el);
         a.x = r.x + r.w * p;
         a.y = r.y + r.h * p;
         a.sel = { x: r.x, y: r.y, w: r.w * p, h: r.h * p, alpha: 1 };
@@ -697,19 +959,19 @@ class SwarmEngine {
     }
   }
 
-  private async doImage(a: Agent, task: Task, gen: number) {
+  private async doImage(a: Agent, task: Task, gen: number, overshoot: boolean) {
     const media = task.el.querySelector("img, video");
     const src =
       media instanceof HTMLImageElement
         ? media.currentSrc || media.src
         : undefined;
     const label =
-      task.label ??
+      task.caption ??
       fileName(src ?? (media as HTMLVideoElement | null)?.src) ??
       "asset";
     a.chip = { label, src };
-    a.status = `placing ${label}`;
-    await this.moveTo(a, () => center(task.el), gen, task);
+    this.setStatus(a, `placing ${label}`);
+    await this.moveTo(a, () => center(task.el), gen, task, 1, overshoot);
     a.pressed = true;
     await this.sleep(90, gen, task);
     a.chip = null;
@@ -720,8 +982,14 @@ class SwarmEngine {
     await this.sleep(140, gen, task);
   }
 
-  private async doPop(a: Agent, task: Task, gen: number, tag: string) {
-    a.status = task.label ?? `adding <${tag}>`;
+  private async doPop(
+    a: Agent,
+    task: Task,
+    gen: number,
+    tag: string,
+    overshoot: boolean
+  ) {
+    this.setStatus(a, task.caption ?? `adding <${tag}>`);
     const jx = rand(-0.2, 0.2);
     const jy = rand(-0.15, 0.15);
     await this.moveTo(
@@ -731,7 +999,9 @@ class SwarmEngine {
         return { x: r.x + r.w * (0.5 + jx), y: r.y + r.h * (0.5 + jy) };
       },
       gen,
-      task
+      task,
+      1,
+      overshoot
     );
     a.pressed = true;
     await this.sleep(70, gen, task);
@@ -742,26 +1012,29 @@ class SwarmEngine {
     await this.sleep(80, gen, task);
   }
 
-  private reveal(task: Task, style: "image" | "pop") {
+  private reveal(task: Task, style: "image" | "pop" | "fade") {
     const el = task.el;
     if (typeof el.animate !== "function") return;
     const opacity = getComputedStyle(el).opacity || "1";
-    task.anim =
+    const frames: Keyframe[] =
       style === "pop"
-        ? el.animate(
-            [
-              { opacity: 0, scale: "0.6" },
-              { opacity, scale: "1" },
-            ],
-            { duration: 380, easing: "cubic-bezier(.34,1.56,.64,1)" }
-          )
-        : el.animate(
-            [
-              { opacity: 0, scale: "0.94", filter: "blur(10px)" },
-              { opacity, scale: "1", filter: "blur(0px)" },
-            ],
-            { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" }
-          );
+        ? [
+            { opacity: 0, scale: "0.6" },
+            { opacity, scale: "1" },
+          ]
+        : style === "image"
+        ? [
+            { opacity: 0, scale: "0.94", filter: "blur(10px)" },
+            { opacity, scale: "1", filter: "blur(0px)" },
+          ]
+        : [{ opacity: 0 }, { opacity }];
+    task.anim = el.animate(frames, {
+      duration: style === "pop" ? 380 : style === "image" ? 520 : 320,
+      easing:
+        style === "pop"
+          ? "cubic-bezier(.34,1.56,.64,1)"
+          : "cubic-bezier(.2,.8,.2,1)",
+    });
   }
 
   private setState(task: Task, state: TaskState) {
@@ -795,9 +1068,9 @@ class SwarmEngine {
       !busy &&
       !this.hasEligible &&
       done < total;
-    const seconds = this.finishedAt
-      ? (this.finishedAt - this.startedAt) / 1000
-      : 0;
+    const seen =
+      typeof document !== "undefined" &&
+      document.documentElement.dataset.swarmSeen === "1";
     const s = this.snap;
     if (
       !force &&
@@ -805,7 +1078,8 @@ class SwarmEngine {
       s.done === done &&
       s.total === total &&
       s.waiting === waiting &&
-      s.roster === this.roster
+      s.roster === this.roster &&
+      s.seen === seen
     ) {
       return;
     }
@@ -813,11 +1087,11 @@ class SwarmEngine {
       phase: this.phase,
       done,
       total,
-      agents: this.agents.length,
+      agents: this.agents,
       roster: this.roster,
       waiting,
       skipped: this.skipped,
-      seconds,
+      seen,
     };
     this.listeners.forEach((fn) => fn());
   }

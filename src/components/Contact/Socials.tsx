@@ -43,7 +43,7 @@ const Socials = () => {
           <Build
             as="a"
             kind="pop"
-            label={`adding ${item.image.split("/").pop()}`}
+            caption={`adding ${item.image.split("/").pop()}`}
             target="_blank"
             href={item.link}
             key={index}>

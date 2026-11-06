@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import SwarmOverlay from "@/components/Swarm/SwarmOverlay";
+import SwarmOverlay, { SwarmSkipLink } from "@/components/Swarm/SwarmOverlay";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
@@ -10,17 +10,23 @@ export const metadata: Metadata = {
 };
 
 // Runs before first paint. On the home page it hides everything wrapped in
-// <Build> so the cursor swarm can build it live. Skipped for reduced motion
-// and crawlers; ?swarm=0 turns it off and ?swarm=1 forces it on. If the app
-// never boots, the page is shown as normal after a few seconds.
+// <Build> so the cursor swarm can build it live. The build plays once per
+// browser; later visits (and back/forward) get the finished page with a
+// "Rebuild live" button. Skipped for reduced motion and crawlers; ?swarm=0
+// turns it off and ?swarm=1 forces it on. If the app hasn't booted within 3 s
+// the page is shown as normal.
 const swarmBoot = `(function(){try{
 var d=document.documentElement,q=new URLSearchParams(location.search).get("swarm");
 if(q==="0"||location.pathname!=="/")return;
 var bot=/bot|crawl|spider|slurp|lighthouse|headless/i.test(navigator.userAgent)||navigator.webdriver;
 var calm=matchMedia("(prefers-reduced-motion: reduce)").matches;
 if(q!=="1"&&(bot||calm))return;
+var seen=false;try{seen=localStorage.getItem("swarm-seen")==="1"}catch(e){}
+var nav=performance.getEntriesByType&&performance.getEntriesByType("navigation")[0];
+if(nav&&nav.type==="back_forward")seen=true;
+if(q!=="1"&&seen){d.setAttribute("data-swarm-seen","1");return}
 d.classList.add("swarm-on");
-setTimeout(function(){if(!window.__swarmReady)d.classList.remove("swarm-on")},8000);
+setTimeout(function(){if(!window.__swarmReady)d.classList.remove("swarm-on")},3000);
 }catch(e){}})();`;
 
 export default function RootLayout({
@@ -34,6 +40,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: swarmBoot }} />
       </head>
       <body>
+        <SwarmSkipLink />
         <Navbar />
         {children}
         <SwarmOverlay />

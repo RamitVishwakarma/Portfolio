@@ -54,7 +54,7 @@ const Testimonials = () => {
           Kind Words
         </Build>
         <Build
-          label="drawing marquee"
+          caption="drawing marquee"
           className=" relative gap-12 flex w-full min-h-[36rem] max-md:min-h-[48rem] py-12 overflow-hidden">
           <div
             className="max-sm:invisible absolute right-0 top-0 w-[12%] h-full z-[2]"

@@ -24,7 +24,7 @@ const ProjectContainer = () => {
       <div>
         <div className="flex flex-col gap-10 items-center w-full">
           {/* P1 */}
-          <Build className="rounded-xl w-full relative flex overflow-hidden z-10 border border-grey-900">
+          <Build caption="drawing Recruitment-Platform" className="rounded-xl w-full relative flex overflow-hidden z-10 border border-grey-900">
             <Image
               src="/images/backgrounds/bgCreme.png"
               width={1920}
@@ -33,7 +33,7 @@ const ProjectContainer = () => {
               alt="bg"
             />
             <div className="z-10 lg:flex max-lg:flex-col ">
-              <Build kind="image" label="recruitment.mp4" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-[#ea546c]/20  z-10">
+              <Build kind="image" caption="recruitment.mp4" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-[#ea546c]/20  z-10">
                 <div className="relative">
                   <video
                     ref={videoRef}
@@ -87,7 +87,7 @@ const ProjectContainer = () => {
                     GDSC team.
                   </Build>
                 </div>
-                <Build kind="pop" label="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
+                <Build kind="pop" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/RecruitmentPlatformV2Frontend"
                     live="https://recruitments2025.ramitvishwakarma.in/"
@@ -99,7 +99,7 @@ const ProjectContainer = () => {
             </div>
           </Build>
           {/* P2 */}
-          <Build className="bg-purple/30 backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
+          <Build caption="drawing Course-21" className="bg-purple/30 backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
               src="/images/backgrounds/bgBlue.png"
               width={1920}
@@ -108,7 +108,7 @@ const ProjectContainer = () => {
               alt="bg"
             />
             <div className="z-10 lg:flex max-lg:flex-col ">
-              <Build kind="image" label="course21.png" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/30  z-10">
+              <Build kind="image" caption="course21.png" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/30  z-10">
                 <Image
                   src="/images/showcases/course21.png"
                   width={640}
@@ -145,7 +145,7 @@ const ProjectContainer = () => {
                     Moreover, it handles video processing and transcoding.
                   </Build>
                 </div>
-                <Build kind="pop" label="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
+                <Build kind="pop" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/Course21-Admin-Panel"
                     live="https://course21.ramitvishwakarma.in/"
@@ -157,7 +157,7 @@ const ProjectContainer = () => {
             </div>
           </Build>
           {/* P3 */}
-          <Build className=" backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
+          <Build caption="drawing IndustrialAI Landing" className=" backdrop-blur-3xl rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
               src="/images/backgrounds/bgCreme.png"
               width={1920}
@@ -166,7 +166,7 @@ const ProjectContainer = () => {
               alt="bg"
             />
             <div className="z-10 lg:flex max-lg:flex-col ">
-              <Build kind="image" label="endeavor.png" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/10  z-10">
+              <Build kind="image" caption="endeavor.png" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-black/10  z-10">
                 <Image
                   src="/images/showcases/endeavor.png"
                   width={640}
@@ -196,7 +196,7 @@ const ProjectContainer = () => {
                     presence that met all the client&apos;s specifications.
                   </Build>
                 </div>
-                <Build kind="pop" label="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
+                <Build kind="pop" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/IndustrialAI-Landing"
                     live="https://industrial-ai.ramitvishwakarma.in/"
@@ -208,7 +208,7 @@ const ProjectContainer = () => {
             </div>
           </Build>
           {/* P4 */}
-          <Build className="rounded-xl w-full relative flex overflow-hidden z-10">
+          <Build caption="drawing Echo-Talk" className="rounded-xl w-full relative flex overflow-hidden z-10">
             <Image
               src="/images/backgrounds/bgGreen.png"
               width={1920}
@@ -217,7 +217,7 @@ const ProjectContainer = () => {
               alt="bg"
             />
             <div className="z-10 lg:flex max-lg:flex-col ">
-              <Build kind="image" label="echoTalk.png" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-[#438e96]/10 z-10">
+              <Build kind="image" caption="echoTalk.png" className="lg:w-[60%] p-10 max-md:p-4 max-sm:p-2 bg-[#438e96]/10 z-10">
                 <Image
                   src="/images/showcases/echoTalk.png"
                   width={640}
@@ -255,7 +255,7 @@ const ProjectContainer = () => {
                     converting speech to text seamlessly.
                   </Build>
                 </div>
-                <Build kind="pop" label="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
+                <Build kind="pop" caption="adding links" className="flex gap-4 lg:text-2xl md:text-xl sm:text-lg text-base  mt-2 ">
                   <Buttons
                     github="https://github.com/RamitVishwakarma/EchoTalk"
                     live="https://echotalk.ramitvishwakarma.in/"

@@ -144,11 +144,11 @@ const ContactForm = () => {
     <>
       <Build
         as="form"
-        label="drawing <form>"
+        caption="drawing <form>"
         onSubmit={handleSubmit}
         className="flex flex-col gap-3 md:w-[60%] mx-auto">
         <div className="flex gap-4">
-          <Build kind="pop" label="adding name field" className="w-full">
+          <Build kind="pop" caption="adding name field" className="w-full">
             <input
               onChange={handleNameChange}
               value={name}
@@ -165,7 +165,7 @@ const ContactForm = () => {
               <p className="text-red text-sm mt-1">{errors.name}</p>
             )}
           </Build>
-          <Build kind="pop" label="adding email field" className="w-full">
+          <Build kind="pop" caption="adding email field" className="w-full">
             <input
               onChange={handleEmailChange}
               value={email}
@@ -182,7 +182,7 @@ const ContactForm = () => {
             )}
           </Build>
         </div>
-        <Build kind="pop" label="adding <textarea>">
+        <Build kind="pop" caption="adding <textarea>">
           <textarea
             onChange={handleMessageChange}
             value={message}

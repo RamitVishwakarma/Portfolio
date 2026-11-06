@@ -1,5 +1,6 @@
-// The swarm is named after the stack the site is built with, and coloured with
-// the same rainbow palette the rest of the site uses (see tailwind.config.ts).
+// The swarm is named after the stack the site is built with, and coloured from
+// the site's own palette (tailwind.config.ts): the rainbow for the first eight
+// and the deeper testimonial shades for the rest, so no two cursors look alike.
 export interface AgentDef {
   name: string;
   color: string;
@@ -14,15 +15,15 @@ export const AGENTS: AgentDef[] = [
   { name: "Figma", color: "#ff9dfb" },
   { name: "Framer", color: "#ffc67e" },
   { name: "Express", color: "#ff8885" },
-  { name: "Postgres", color: "#7caafd" },
-  { name: "Prisma", color: "#a8fe96" },
-  { name: "MongoDB", color: "#fafe8e" },
-  { name: "Docker", color: "#77effd" },
-  { name: "AWS", color: "#ffc67e" },
-  { name: "Git", color: "#ff8885" },
-  { name: "Vercel", color: "#9e8bfd" },
-  { name: "shadcn", color: "#ff9dfb" },
+  { name: "Postgres", color: "#4e74e3" },
+  { name: "Prisma", color: "#38af5c" },
+  { name: "MongoDB", color: "#f98207" },
+  { name: "Docker", color: "#9bacb9" },
+  { name: "AWS", color: "#ff6347" },
+  { name: "Git", color: "#f83c86" },
+  { name: "Vercel", color: "#ab49ff" },
+  { name: "shadcn", color: "#e450be" },
 ];
 
-// Fewer cursors on small screens so the page stays readable while it builds.
-export const MOBILE_AGENTS = 8;
+// Fewer, faster cursors on phones so the page stays readable while it builds.
+export const MOBILE_AGENTS = 5;
