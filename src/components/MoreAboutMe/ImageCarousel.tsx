@@ -28,7 +28,7 @@ const ImageCarousel = ({ images }: { images: string[] }) => {
     if (el) {
       const cs = getComputedStyle(el);
       setExitFrom({
-        ["--from-transform" as string]: cs.transform === "none" ? "none" : cs.transform,
+        ["--from-transform" as string]: cs.transform === "none" ? "scale(1)" : cs.transform,
         ["--from-opacity" as string]: cs.opacity,
       });
     }

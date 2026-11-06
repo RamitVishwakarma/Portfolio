@@ -256,6 +256,8 @@ html.swarm-on [data-swarm="claimed"] {
 }
 .swarm-cursor[data-quiet] .swarm-tags {
   opacity: 0;
+  /* leaving is quick, so a label never lingers over copy */
+  transition-duration: 80ms;
 }
 .swarm-mini .swarm-tags {
   display: none;
@@ -360,11 +362,11 @@ html[data-splash="out"] .swarm-splash li {
 @keyframes carousel-exit {
   from {
     opacity: var(--from-opacity, 1);
-    transform: var(--from-transform, none);
+    transform: var(--from-transform, scale(1));
   }
   to {
     opacity: 0;
-    transform: var(--from-transform, none) scale(0.8);
+    transform: var(--from-transform, scale(1)) scale(0.8);
   }
 }
 .carousel-in-right {

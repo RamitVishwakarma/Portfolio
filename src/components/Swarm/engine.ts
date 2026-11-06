@@ -58,6 +58,8 @@ export interface Task {
   ghost: number;
   pack: boolean;
   heading: boolean;
+  /** When it was first both on screen and ready to start (catch-up clock). */
+  readyAt: number;
   state: TaskState;
   /** Within the look-ahead band below the viewport. */
   inView: boolean;
@@ -124,6 +126,8 @@ export interface Agent {
   fresh: boolean;
   /** When it last settled into its waiting spot. */
   dockedAt: number;
+  /** Spot picked while docked, used for the next spectate move. */
+  nextSpot: { x: number; y: number } | null;
   dom: AgentDom | null;
 }
 
@@ -184,9 +188,9 @@ const WORDS_MS = 170;
  * `--swarm-ghost` so the first paint matches.
  */
 export function ghostFor(kind: BuildKind, priority: boolean, light = false) {
-  // On light cards opacity eats contrast fast: the card waits as a bright
-  // grey (globals.css adds greyscale) and its text multiplies to about 0.7.
-  if (light) return kind === "block" ? 0.85 : kind === "text" ? 0.82 : 0.8;
+  // On light cards the card waits as a dim grey (globals.css adds greyscale)
+  // and its text stays nearly solid, so the copy keeps its contrast.
+  if (light) return kind === "block" ? 0.6 : 0.9;
   if (priority || kind === "block") return 0.6;
   return kind === "text" ? 0.5 : 0.3;
 }
@@ -349,7 +353,8 @@ class SwarmEngine {
       readySince: 0,
       ghost: opts.ghost ?? ghostFor(opts.kind, !!opts.priority),
       pack: !!opts.pack,
-      heading: el.tagName === "H2",
+      heading: el.tagName === "H2" || el.tagName === "H3",
+      readyAt: 0,
       state: "pending",
       inView: false,
       visible: false,
@@ -405,6 +410,7 @@ class SwarmEngine {
       return;
     }
     if (this.phase !== "running") return;
+    this.finaleLive = false;
     this.gen++;
     this.skipped = true;
     document.documentElement.dataset.splash = "done";
@@ -574,6 +580,7 @@ class SwarmEngine {
       spectated: false,
       fresh: false,
       dockedAt: 0,
+      nextSpot: null,
       dom: null,
     };
   }
@@ -740,7 +747,11 @@ class SwarmEngine {
     this.revealed = true;
     this.burst = null;
     this.scrimTarget = 0;
-    for (const a of this.agents) a.targetOpacity = 0;
+    for (const a of this.agents) {
+      a.targetOpacity = 0;
+      // Back to page coordinates, so the fading cursors scroll natively.
+      a.ringAngle = null;
+    }
     this.complete(this.gen, 300);
     this.emit(true);
   }
@@ -761,7 +772,7 @@ class SwarmEngine {
     const nav = document.querySelector('a[href="/"]')?.closest(".sticky");
     const top = Math.max(0, nav?.getBoundingClientRect().bottom ?? 0);
     const phone = vw < 640;
-    const R = Math.min(vw, vh - top) * (phone ? 0.42 : 0.36);
+    const R = phone ? Math.min(vw, vh) * 0.38 : Math.min(vw, vh - top) * 0.36;
     // The ring is pinned to the viewport (the overlay draws ring cursors as
     // fixed), so its points need no scroll offset beyond the page origin.
     const cx = vw / 2;
@@ -893,7 +904,7 @@ class SwarmEngine {
             if (k >= 1) return;
           }
         };
-        await follow(150, () => {});
+        await follow(phone ? 300 : 150, () => {});
         await follow(320, (k) => {
           rScale = 1 - 0.15 * ease(k);
           spin = 1.05 + (Math.PI - 1.05) * k;
@@ -1185,11 +1196,13 @@ class SwarmEngine {
         continue;
       }
       if (t.state === "pending" && t.inView && this.isReady(t)) {
-        // Text waits until it's on screen, so the typing is seen; on phones
-        // until it's 40% of the way up, so it happens in view.
-        if (t.kind === "text" && !t.visible) continue;
+        // Work starts once it's on screen, so it's seen (and cursors don't
+        // queue at the edge for things below the fold); on phones text waits
+        // until it's 40% of the way up, headings excepted.
+        if (!t.visible) continue;
         if (
           t.kind === "text" &&
+          !t.heading &&
           !this.vp.atEnd &&
           this.vp.vw < 640 &&
           t.top < document.documentElement.scrollHeight - this.vp.vh * 0.45 &&
@@ -1224,10 +1237,16 @@ class SwarmEngine {
 
     const idle = this.agents.filter((a) => a.active && !a.task && !a.leaving);
     if (!idle.length || !this.hasEligible) return;
+    // Through the opening, at most five cursors type the hero at once; the
+    // rest take the navbar, the photo and the logo strip.
+    const opening = now() < this.startedAt + 3500;
+    let typists = this.agents.filter((a) => a.task?.kind === "text").length;
 
     // Join in on paragraphs already being typed first: many hands at once.
     for (const job of segJobs) {
       if (!idle.length) return;
+      if (opening && typists >= 5) break;
+      typists++;
       const c = job.task.typing?.caretAt(job.task.typing.segments[job.i].start);
       let best = 0;
       let bestD = Infinity;
@@ -1283,7 +1302,13 @@ class SwarmEngine {
           best = i;
         }
       }
-      const task = pickable[best];
+      let task = pickable[best];
+      if (opening && task.kind === "text" && typists >= 5) {
+        const other = pickable.find((t) => t.kind !== "text");
+        if (!other) continue;
+        task = other;
+      }
+      if (task.kind === "text") typists++;
       eligible.splice(eligible.indexOf(task), 1);
       void this.run(a, task);
     }
@@ -1302,35 +1327,27 @@ class SwarmEngine {
     const gutter = Math.max(0, (vw - 1440) / 2) + pad;
     const resting = this.agents.filter((x) => !x.mini).length;
     const side = a.index % 2;
-    const row = Math.floor(a.index / 2);
     const rows = Math.ceil(resting / 2);
-    // A stable offset per cursor, so the gutters don't read as a ladder.
+    // Rows shuffled per side and offsets fixed per cursor: a loose scatter
+    // rather than a ladder or a legend.
+    const row = (Math.floor(a.index / 2) * 5 + side * 3) % rows;
     const j = ((a.index * 37) % 11) / 11;
+    const k = ((a.index * 61) % 13) / 13;
     if (gutter >= 60) {
-      // Waiting cursors are quiet arrows in the gutters, clear of content.
-      const span = Math.min(28, gutter - 40);
-      const k = ((a.index * 61) % 13) / 13;
-      const x = side
-        ? vw - gutter + 12 + j * span
-        : gutter - 34 - j * span;
-      // Loosely scattered, not a ladder.
+      const span = gutter - 44;
+      const x = side ? vw - gutter + 10 + j * span : 8 + j * span;
       const y = vh * (0.16 + 0.7 * ((row + k) / rows));
       return { quiet: true, right: !!side, x, y };
     }
-    // Phones: tucked half off the edge.
+    // Phones: a soft group in the bottom corners, fully on screen.
     return {
       quiet: true,
       right: !!side,
-      x: side ? vw - 12 : -10,
-      y: vh - 48 - row * 20,
+      x: side ? vw - 34 - j * 22 : 10 + j * 22,
+      y: vh - 46 - k * 40,
     };
   }
 
-  /**
-   * Idle cursors hover beside someone else's work for a beat (desktop only,
-   * and never over its text), then wait quietly in the gutters. Waiting
-   * cursors come back to watch every few seconds while work is on screen.
-   */
   /** A spot beside a block being typed: in its margin or just below it. */
   private spectateSpot(a: Agent, working: Agent[]) {
     const vw = this.vp.vw;
@@ -1340,11 +1357,14 @@ class SwarmEngine {
     const sx = window.scrollX;
     const sy = window.scrollY;
     const cy = host.caret?.y ?? r?.y ?? host.y;
+    // Offsets fixed per cursor, so the same question gets the same answer.
+    const j = ((a.index * 37) % 11) / 11;
+    const k = ((a.index * 61) % 13) / 13;
     const options = r
       ? [
-          { x: r.x - 70 - rand(0, 40), y: cy + rand(-20, 30) },
-          { x: r.x + r.w + 30 + rand(0, 40), y: cy + rand(-20, 30) },
-          { x: r.x + rand(0, r.w), y: r.y + r.h + 28 },
+          { x: r.x - 70 - j * 40, y: cy - 20 + k * 50 },
+          { x: r.x + r.w + 30 + j * 40, y: cy - 20 + k * 50 },
+          { x: r.x + k * r.w, y: r.y + r.h + 28 },
         ]
       : [{ x: host.x + 80, y: host.y + 60 }];
     const fits = options.filter(
@@ -1372,10 +1392,12 @@ class SwarmEngine {
         // Rested a while and there's typing to watch: go and look, but only
         // if there's a free spot beside it (otherwise rest a while longer).
         if (working.length && t - a.dockedAt > 1800 + ((a.index * 523) % 1200)) {
-          if (!this.spectateSpot(a, working)) {
+          const spot = this.spectateSpot(a, working);
+          if (!spot) {
             a.dockedAt = t;
             continue;
           }
+          a.nextSpot = spot;
           a.docked = false;
           a.spectated = false;
           a.targetOpacity = 1;
@@ -1385,7 +1407,8 @@ class SwarmEngine {
       }
       if (!a.spectated && working.length) {
         a.spectated = true;
-        const spot = this.spectateSpot(a, working);
+        const spot = a.nextSpot ?? this.spectateSpot(a, working);
+        a.nextSpot = null;
         if (!spot) continue;
         a.moving = true;
         this.moveTo(a, () => spot, this.gen, null, 0.9)
@@ -1396,9 +1419,9 @@ class SwarmEngine {
           });
         continue;
       }
-      if (t < a.idleSince + 1300) continue;
+      if (t < a.idleSince + (desktop ? 1300 : 300)) continue;
       a.moving = true;
-      const speed = a.fresh ? 2.2 : 0.8;
+      const speed = a.fresh ? 2.2 : desktop ? 0.8 : 1.4;
       a.fresh = false;
       this.moveTo(
         a,
@@ -1417,7 +1440,14 @@ class SwarmEngine {
             a.dockedAt = now();
             a.quiet = true;
             a.parkRight = spot.right;
-            a.targetOpacity = desktop ? 0.3 + ((a.index * 7) % 5) * 0.05 : 0.35;
+            a.targetOpacity = desktop ? 0.3 + ((a.index * 7) % 5) * 0.04 : 0.35;
+            // Phones: settle, then fade away rather than sit at the edge.
+            if (!desktop) {
+              const at = a.dockedAt;
+              window.setTimeout(() => {
+                if (a.docked && a.dockedAt === at) a.targetOpacity = 0;
+              }, 1500);
+            }
           }
         })
         .catch(() => {})
@@ -1451,9 +1481,19 @@ class SwarmEngine {
           continue;
         }
         // Every cursor is busy and this has sat faint on screen: show it.
-        const since = Math.max(t.visibleSince, this.startedAt + 2500);
-        const limit = t.optional ? 500 : CATCH_UP_MS;
-        if (t.visible && t.visibleSince && t0 - since > limit) {
+        if (t.visible && !t.readyAt) t.readyAt = t0;
+        const since = Math.max(t.visibleSince, t.readyAt, this.startedAt + 2500);
+        const phone = this.vp.vw < 640;
+        const limit = t.optional ? 500 : phone ? 3000 : CATCH_UP_MS;
+        const someoneFree = this.agents.some(
+          (a) => a.active && !a.task && !a.leaving
+        );
+        if (
+          t.visible &&
+          t.visibleSince &&
+          t0 - since > limit &&
+          !(phone && someoneFree && !t.optional)
+        ) {
           this.setAttr(t, "building");
           this.reveal(t, "fade");
           this.finishTask(t);

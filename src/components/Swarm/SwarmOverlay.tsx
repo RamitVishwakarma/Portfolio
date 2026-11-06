@@ -56,8 +56,8 @@ interface Extra {
   lx?: number;
   ly?: number;
   movedAt?: number;
-  /** Last label spot (viewport offset from default), kept while clear. */
-  place?: [number, number];
+  /** Index of the default spot last used, kept while it stays clear. */
+  place?: number;
   /** When placement last failed; the label hides only after a short grace. */
   failedAt?: number;
   fixed?: boolean;
@@ -65,6 +65,9 @@ interface Extra {
   ripples: WeakSet<object>;
 }
 const extras = new WeakMap<Agent, Extra>();
+/** Desktop shows at most this many names at once (typists first). */
+const LABEL_MAX = 6;
+let copyCache: { src: unknown; boxes: Box[] } = { src: null, boxes: [] };
 
 const Cursor = ({ agent }: { agent: Agent }) => {
   const ref = useCallback(
@@ -243,15 +246,26 @@ const SwarmOverlay = () => {
         let statuses = 0;
         // Text and buttons on screen: labels keep off them (rects read by
         // the engine at the start of the frame).
-        const copy: Box[] = swarm.obstacles.map((r) => ({
-          l: r.x - 3,
-          t: r.y - 2,
-          r: r.x + r.w + 3,
-          b: r.y + r.h + 2,
-        }));
+        if (copyCache.src !== swarm.obstacles) {
+          copyCache = {
+            src: swarm.obstacles,
+            boxes: swarm.obstacles.map((r) => ({
+              l: r.x - 3,
+              t: r.y - 2,
+              r: r.x + r.w + 3,
+              b: r.y + r.h + 2,
+            })),
+          };
+        }
+        const copy = copyCache.boxes;
         const firstFlight = t - swarm.handoffAt < 1200;
+        let labels = 0;
+        // Typists get first pick of label spots.
+        const order = swarm.agents
+          .slice()
+          .sort((p, q) => Number(!!q.caret) - Number(!!p.caret));
 
-        for (const a of swarm.agents) {
+        for (const a of order) {
           const d = a.dom;
           if (!d) continue;
           const x = extras.get(a);
@@ -290,12 +304,15 @@ const SwarmOverlay = () => {
             x.ly = a.y;
           }
           const moving = t - (x?.movedAt ?? 0) < 600;
+          const ringing = a.ringAngle !== null;
           const quiet =
             a.mini ||
-            (phone
-              ? !a.caret && !a.chip && !(firstFlight && moving)
-              : !a.task && !moving) ||
-            (docked && a.quiet);
+            (!ringing &&
+              (phone
+                ? !a.caret && !a.chip && !(firstFlight && moving)
+                : !a.task && !moving)) ||
+            (docked && a.quiet) ||
+            (!phone && !ringing && !a.caret && labels >= LABEL_MAX);
 
           // Status only while it's fresh and its target is on screen.
           const age = t - a.statusAt;
@@ -348,18 +365,19 @@ const SwarmOverlay = () => {
             const ring = a.ringAngle;
             const left = ring !== null ? Math.cos(ring) < -0.2 : vx > vw - 140;
             const up = ring !== null && Math.sin(ring) < -0.35;
-            const spots: [number, number][] = [];
+            // Candidate spots: [left, top, own block allowed, default index].
+            const spots: [number, number, boolean, number][] = [];
             const typingBox = a.caret && a.task?.typing ? a.task.typing.box() : null;
             if (typingBox && a.caret) {
+              // A typist's name rides just after its caret, over the ghost
+              // text it's about to type; the margin is the fallback.
               const lineT = a.caret.y - sy + a.caret.h / 2 - 10;
-              spots.push([typingBox.x - sx - w - 12, lineT]);
-              spots.push([typingBox.x - sx + typingBox.w + 12, lineT]);
-            }
-            if (x?.place && ring === null && !typingBox) {
-              spots.push([baseL + x.place[0], baseT + x.place[1]]);
+              spots.push([a.caret.x - sx + 14, lineT, true, -1]);
+              spots.push([typingBox.x - sx - w - 12, lineT, false, -1]);
+              spots.push([typingBox.x - sx + typingBox.w + 12, lineT, false, -1]);
             }
             const flipL = vx + 4 - w;
-            const order: [number, number][] = up
+            const defaults: [number, number][] = up
               ? [
                   [left ? flipL : baseL, baseT - h - 26],
                   [left ? baseL : flipL, baseT - h - 26],
@@ -373,39 +391,56 @@ const SwarmOverlay = () => {
                   [left ? flipL : baseL, baseT - h - 26],
                   [left ? baseL : flipL, baseT - h - 26],
                 ];
-            spots.push(...order);
+            if (x?.place !== undefined && defaults[x.place] && ring === null) {
+              const [l0, t0] = defaults[x.place];
+              spots.push([l0, t0, false, x.place]);
+            }
+            defaults.forEach(([l0, t0], i) => spots.push([l0, t0, false, i]));
+            const ownBox = typingBox
+              ? {
+                  l: typingBox.x - sx - 4,
+                  t: typingBox.y - sy - 2,
+                  r: typingBox.x - sx + typingBox.w + 4,
+                  b: typingBox.y - sy + typingBox.h + 2,
+                }
+              : null;
             const fits = (box: Box) =>
               box.l >= 8 && box.r <= vw - 8 && box.t >= 8 && box.b <= vh - 8;
             let chosen: Box | null = null;
-            for (const [l, top] of spots) {
-              const box = { l, t: top, r: l + w, b: top + h };
-              if (!fits(box)) continue;
-              if (taken.some((o) => hits(o, box))) continue;
+            let chosenIdx = -1;
+            const clear = (box: Box, ownOk: boolean) =>
+              fits(box) &&
+              !taken.some((o) => hits(o, box)) &&
               // The finale ring sits over the page; everywhere else labels
-              // keep off the copy.
-              if (ring === null && copy.some((o) => hits(o, box))) continue;
+              // keep off the copy (a typist may cover its own ghost text).
+              (ring !== null ||
+                !copy.some(
+                  (o) =>
+                    hits(o, box) &&
+                    !(ownOk && ownBox && o.l >= ownBox.l - 6 && o.r <= ownBox.r + 6 && o.t >= ownBox.t - 6 && o.b <= ownBox.b + 6)
+                ));
+            for (const [l, top, ownOk, idx] of spots) {
+              const box = { l, t: top, r: l + w, b: top + h };
+              if (!clear(box, ownOk)) continue;
               chosen = box;
+              chosenIdx = idx;
               break;
             }
             if (chosen) {
               taken.push(chosen);
+              labels++;
               lx = chosen.l - baseL;
               ly = chosen.t - baseT;
               if (x) {
-                x.place = [lx, ly];
+                // Only default spots are remembered: caret and margin spots
+                // are relative to the line, not the cursor.
+                x.place = chosenIdx >= 0 ? chosenIdx : undefined;
                 x.failedAt = undefined;
               }
-            } else if (x) {
-              // Nowhere clean: keep the last spot for a moment, then hide.
-              x.failedAt ??= t;
-              if (x.place && t - x.failedAt < 400) {
-                lx = x.place[0];
-                ly = x.place[1];
-              } else {
-                hide = true;
-              }
             } else {
+              // Nowhere clean: hide straight away rather than drift onto copy.
               hide = true;
+              if (x) x.place = undefined;
             }
           }
           if (d.root.hasAttribute("data-quiet") !== hide) {
@@ -420,16 +455,18 @@ const SwarmOverlay = () => {
 
           if (!x) continue;
           // Selection box while dragging out a block.
-          // Only once it's big enough to read (no "0 × 0" badges).
-          const sel = a.sel && a.sel.w >= 40 && a.sel.h >= 16 ? a.sel : null;
+          const sel = a.sel && a.sel.w > 0 && a.sel.h > 0 ? a.sel : null;
           x.sel.style.display = sel ? "block" : "none";
           if (sel) {
             x.sel.style.transform = `translate3d(${sel.x}px, ${sel.y}px, 0)`;
             x.sel.style.width = `${sel.w}px`;
             x.sel.style.height = `${sel.h}px`;
             x.sel.style.opacity = Math.max(0, sel.alpha).toFixed(3);
+            // The size badge only once it's big enough to read.
+            const readable = sel.w >= 40 && sel.h >= 16;
+            x.badge.style.display = readable ? "block" : "none";
             const size = `${Math.round(sel.w)} × ${Math.round(sel.h)}`;
-            if (x.badge.textContent !== size) x.badge.textContent = size;
+            if (readable && x.badge.textContent !== size) x.badge.textContent = size;
           }
           // Text caret while typing.
           x.caret.style.display = a.caret ? "block" : "none";
