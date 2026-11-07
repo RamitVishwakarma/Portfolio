@@ -64,8 +64,6 @@ interface Extra {
   tags?: HTMLElement | null;
   /** Had a label last frame (keeps the capped slots from changing hands). */
   shown?: boolean;
-  /** Last applied label offset, kept while the label fades out. */
-  shift?: string;
   ripples: WeakSet<object>;
 }
 const extras = new WeakMap<Agent, Extra>();
@@ -262,8 +260,23 @@ const SwarmOverlay = () => {
           };
         }
         const copy = copyCache.boxes;
-        const firstFlight = t - swarm.handoffAt < 1200;
+        // From the splash pills into the page every cursor keeps its name
+        // (the splash just said each one is a tool); afterwards the names
+        // drop to the cap one at a time.
+        const flight = t - swarm.flightFrom;
+        const firstFlight = swarm.flightFrom > 0 && flight < 1400;
+        const cap = firstFlight
+          ? Infinity
+          : swarm.flightFrom > 0
+          ? Math.max(LABEL_MAX, swarm.agents.length - Math.floor((flight - 1400) / 80))
+          : LABEL_MAX;
+        // Over the splash, labels may sit over the (hidden) page copy.
+        const overSplash =
+          firstFlight &&
+          document.querySelector<HTMLElement>(".swarm-splash")?.dataset.state !==
+            "done";
         let labels = 0;
+        let navLabels = 0;
         // Typists get first pick of label spots, then whoever had a label
         // last frame, so the capped slots don't change hands every frame.
         const rank = (a: Agent) =>
@@ -311,14 +324,16 @@ const SwarmOverlay = () => {
           const moving = t - (x?.movedAt ?? 0) < 600;
           const ringing = a.ringAngle !== null;
           const typing = !!a.task?.typing && !!(a.caret || a.lastCaret);
+          // The nav row is short: at most two names there at once.
+          const inNav = !!a.task?.el.closest(".sticky");
           const quiet =
             a.mini ||
             (!ringing &&
-              (phone
-                ? !typing && !a.chip && !a.sel && !(firstFlight && moving)
-                : !a.task && !moving)) ||
-            (docked && a.quiet) ||
-            (!phone && !ringing && labels >= LABEL_MAX);
+              !firstFlight &&
+              (phone ? !typing && !a.chip && !a.sel : !a.task && !moving)) ||
+            (docked && a.quiet && !firstFlight) ||
+            (!phone && !ringing && labels >= cap) ||
+            (inNav && navLabels >= 2);
 
           // Status only while it's fresh and its target is on screen.
           const age = t - a.statusAt;
@@ -388,9 +403,16 @@ const SwarmOverlay = () => {
               spots.push([typingBox.x - sx + typingBox.w + 12, lineT, false, -1]);
             }
             if (a.sel) {
-              // A block builder's name sits inside the box it's drawing.
-              spots.push([vx - w - 6, vy - 26, true, -1]);
-              spots.push([vx + 16, vy + 20, true, -1]);
+              // A block builder's name sits inside the box it's drawing:
+              // up-left of the cursor when it drags forward, down-right when
+              // it drags back from the far corner.
+              const s0 = a.sel;
+              const back =
+                Math.abs(a.x - s0.x) + Math.abs(a.y - s0.y) <
+                Math.abs(a.x - s0.x - s0.w) + Math.abs(a.y - s0.y - s0.h);
+              const upLeft: [number, number, boolean, number] = [vx - w - 6, vy - 26, true, -1];
+              const downRight: [number, number, boolean, number] = [vx + 16, vy + 20, true, -1];
+              spots.push(back ? downRight : upLeft, back ? upLeft : downRight);
             }
             const flipL = vx + 4 - w;
             const defaults: [number, number][] = up
@@ -431,6 +453,7 @@ const SwarmOverlay = () => {
               // The finale ring sits over the page; everywhere else labels
               // keep off the copy (a typist may cover its own ghost text).
               (ring !== null ||
+                overSplash ||
                 !copy.some(
                   (o) =>
                     hits(o, box) &&
@@ -446,6 +469,7 @@ const SwarmOverlay = () => {
             if (chosen) {
               taken.push(chosen);
               labels++;
+              if (inNav) navLabels++;
               lx = chosen.l - baseL;
               ly = chosen.t - baseT;
               if (x) {
@@ -472,7 +496,6 @@ const SwarmOverlay = () => {
           const tags = x?.tags;
           if (tags && !hide) {
             const shift = lx || ly ? `translate(${lx}px, ${ly}px)` : "";
-            if (x) x.shift = shift;
             if (tags.style.transform !== shift) tags.style.transform = shift;
           }
 
@@ -547,7 +570,7 @@ const SwarmOverlay = () => {
           ?.getBoundingClientRect();
         const top = Math.max(0, nav?.bottom ?? 0);
         if (scrim > 0.01) {
-          ctx.fillStyle = `rgba(0, 0, 0, ${(scrim * 0.45).toFixed(3)})`;
+          ctx.fillStyle = `rgba(0, 0, 0, ${(scrim * 0.22).toFixed(3)})`;
           ctx.fillRect(0, top, vw, vh - top);
         }
         if (b) {

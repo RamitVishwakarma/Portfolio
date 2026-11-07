@@ -38,7 +38,11 @@ body {
 /* the hero's rotating rainbow glow pokes past the screen edge on phones as
    it turns, which made mobile browsers zoom the page out and let it wobble
    sideways; clip at the screen edge only (sticky navbar still works) */
-html,
+html {
+  /* Safari < 16 has no clip; hidden on html goes to the viewport */
+  overflow-x: hidden;
+  overflow-x: clip;
+}
 body {
   overflow-x: clip;
 }
@@ -246,18 +250,24 @@ html.swarm-on [data-swarm="claimed"] {
   gap: 4px;
 }
 
-/* idle cursors wait in a row along the bottom edge: arrows only, bobbing */
+/* the two cursors waiting in the gutters drift slowly: a bob and a sway */
 @keyframes swarm-bob {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(3px, -4px);
   }
   50% {
-    transform: translateY(-5px);
+    transform: translate(0, -7px);
+  }
+  75% {
+    transform: translate(-3px, -3px);
   }
 }
 .swarm-cursor[data-docked] .swarm-body {
-  animation: swarm-bob 1.6s ease-in-out infinite;
+  animation: swarm-bob 3.2s ease-in-out infinite;
 }
 .swarm-tags {
   transition: opacity 200ms ease;

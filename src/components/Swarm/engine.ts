@@ -124,6 +124,10 @@ export interface Agent {
   spectated: boolean;
   /** Just left the splash: its first trip is quick, so the hero clears. */
   fresh: boolean;
+  /** Its very first flight out of the splash: never a dart. */
+  firstLeg: boolean;
+  /** Desktop: which of the two in-view gutter spots it waits in (-1: off the edge). */
+  slot: number;
   /** When it last settled into its waiting spot. */
   dockedAt: number;
   /** Spot picked while docked, used for the next spectate move. */
@@ -173,6 +177,8 @@ const EMPTY: SwarmSnapshot = {
   revealed: false,
 };
 
+/** The hero photo and logo strip wait this long for the first typists. */
+const HERO_HOLD = 900;
 /** An element left unclaimed on screen this long is shown without a cursor. */
 const CATCH_UP_MS = 1500;
 /** The splash stays up at least this long after navigation starts. */
@@ -329,6 +335,11 @@ class SwarmEngine {
     return this.handoff || this.startedAt;
   }
   private handoff = 0;
+  /** When the cursors took over from the splash pills (0: no splash). */
+  get flightFrom() {
+    return this.pillsAt;
+  }
+  private pillsAt = 0;
 
   /** Visible text and buttons this frame (labels keep off them). */
   obstacles: Rect[] = [];
@@ -600,6 +611,8 @@ class SwarmEngine {
       parkRight: false,
       spectated: false,
       fresh: false,
+      firstLeg: false,
+      slot: -1,
       dockedAt: 0,
       nextSpot: null,
       lastCaret: null,
@@ -670,6 +683,7 @@ class SwarmEngine {
         return;
       }
       this.fromSplash();
+      this.pillsAt = now();
       // Show the cursors at the pills first, flip the splash once they have
       // painted, then set them flying a frame later, so the hand-off reads
       // as a flight rather than a cut.
@@ -688,7 +702,18 @@ class SwarmEngine {
             if (gen !== this.gen) return;
             const t0 = now();
             this.handoff = t0;
-            for (const a of this.agents) a.activateAt = t0 + rand(0, 80);
+            // Held hero work becomes claimable then; make sure the loop is up.
+            window.setTimeout(() => {
+              if (gen === this.gen) {
+                this.lastSchedule = 0;
+                this.wake();
+              }
+            }, Math.max(0, this.startedAt + HERO_HOLD - t0) + 30);
+            const phone = this.vp.vw < 640;
+            for (const a of this.agents) {
+              a.activateAt = t0 + (phone ? a.index * 40 : 0) + rand(0, phone ? 20 : 80);
+              a.firstLeg = true;
+            }
             this.lastSchedule = 0;
             this.wake();
           });
@@ -930,6 +955,7 @@ class SwarmEngine {
             last = t;
             const k = Math.min(1, (t - t0) / ms);
             at(k);
+            if (this.ring) this.ring.r = R * rScale;
             for (const a of this.agents) {
               a.ringAngle = (a.ringAngle ?? 0) + spin * dt;
               const p = ringPoint(a);
@@ -1102,7 +1128,8 @@ class SwarmEngine {
     // Idle cursors in view keep a little personal space.
     if (running) {
       const free = this.agents.filter(
-        (a) => a.active && !a.task && !a.docked && a.ringAngle === null
+        (a) =>
+          a.active && !a.task && !a.docked && !a.moving && a.ringAngle === null
       );
       for (let i = 0; i < free.length; i++) {
         for (let k = i + 1; k < free.length; k++) {
@@ -1171,6 +1198,18 @@ class SwarmEngine {
       return true;
     }
     if (this.hasEligible || this.burst) return false;
+    const resting = this.agents.every(
+      (a) =>
+        a.active &&
+        a.docked &&
+        !a.task &&
+        !a.moving &&
+        !a.sel &&
+        !a.ripples.length &&
+        // Let fades finish before resting.
+        Math.abs(a.opacity - a.targetOpacity) < 0.01
+    );
+    if (!resting) return false;
     for (const t of this.taskList()) {
       if (
         t.state === "pending" &&
@@ -1183,17 +1222,7 @@ class SwarmEngine {
         return false;
       }
     }
-    return this.agents.every(
-      (a) =>
-        a.active &&
-        a.docked &&
-        !a.task &&
-        !a.moving &&
-        !a.sel &&
-        !a.ripples.length &&
-        // Let fades finish before resting.
-        Math.abs(a.opacity - a.targetOpacity) < 0.01
-    );
+    return true;
   }
 
   /**
@@ -1216,7 +1245,7 @@ class SwarmEngine {
       !t.priority &&
       (t.kind === "image" || t.kind === "block") &&
       t.top < this.heroLine &&
-      now() < this.startedAt + 2000
+      now() < this.startedAt + HERO_HOLD
     );
   }
 
@@ -1406,12 +1435,13 @@ class SwarmEngine {
     const k = ((a.index * 61) % 13) / 13;
     const y = vh * (0.16 + 0.7 * ((row + k) / rows));
     if (gutter >= 60) {
-      // At most four wait in view, in the gutters; the rest wait just off
-      // the side edges, ready to come back.
-      if (a.index % 4 === 0) {
+      // Two wait in view, one in each gutter at different heights; the rest
+      // wait just off the side edges, ready to come back.
+      if (a.slot >= 0) {
         const span = gutter - 44;
-        const x = side ? vw - gutter + 10 + j * span : 8 + j * span;
-        return { quiet: true, right: !!side, x, y };
+        const right = a.slot === 1;
+        const x = right ? vw - gutter + 10 + j * span : 8 + j * span;
+        return { quiet: true, right, x, y: vh * (right ? 0.65 : 0.35) };
       }
       return { quiet: true, right: !!side, x: side ? vw + 40 : -40, y };
     }
@@ -1470,11 +1500,23 @@ class SwarmEngine {
     const vw = document.documentElement.clientWidth;
     const vh = window.innerHeight;
     const desktop = vw >= 800;
+    // Anyone at work on screen, including a job just claimed whose caret
+    // isn't placed yet (so the opening pours in beside the first typists).
     const working = desktop
       ? this.agents.filter(
-          (x) => x.task && x.caret && this.caretOnScreen(x.caret)
+          (x) =>
+            x.task &&
+            (x.caret ? this.caretOnScreen(x.caret) : x.task.visible)
         )
       : [];
+    // Phones: the last one or two to finish stay in view a little longer,
+    // so the screen isn't left empty between jobs.
+    const lingering = desktop
+      ? []
+      : this.agents
+          .filter((x) => x.active && !x.task && !x.docked && !x.leaving)
+          .sort((p, q) => q.idleSince - p.idleSince)
+          .slice(0, 2);
     for (const a of this.agents) {
       if (!a.active || a.task || a.leaving || a.moving) continue;
       if (a.docked) {
@@ -1488,6 +1530,7 @@ class SwarmEngine {
           }
           a.nextSpot = spot;
           a.docked = false;
+          a.slot = -1;
           a.spectated = false;
           a.targetOpacity = 1;
         } else {
@@ -1508,10 +1551,17 @@ class SwarmEngine {
           });
         continue;
       }
-      if (t < a.idleSince + (desktop ? 1300 : 300)) continue;
+      const linger = desktop ? 1300 : lingering.includes(a) ? 1800 : 300;
+      if (t < a.idleSince + linger) continue;
       a.moving = true;
+      this.watching.delete(a);
       const speed = a.fresh ? 1.1 : desktop ? 0.8 : 1.4;
       a.fresh = false;
+      // Claim a free in-view gutter spot, if there is one.
+      if (desktop && a.slot < 0) {
+        const held = this.agents.filter((x) => x !== a).map((x) => x.slot);
+        a.slot = held.includes(0) ? (held.includes(1) ? -1 : 1) : 0;
+      }
       this.moveTo(
         a,
         () => {
@@ -1597,6 +1647,8 @@ class SwarmEngine {
     task.agent = a;
     a.task = task;
     a.docked = false;
+    a.slot = -1;
+    this.watching.delete(a);
     a.quiet = false;
     a.spectated = false;
     a.targetOpacity = 1;
@@ -1688,7 +1740,11 @@ class SwarmEngine {
     const fy = a.y;
     let tp = target();
     const dist = Math.hypot(tp.x - fx, tp.y - fy);
-    const dur = clamp(180 + dist * 0.55, 240, 1000) / (this.rate() * speed);
+    const first = a.firstLeg;
+    a.firstLeg = false;
+    let dur = clamp(180 + dist * 0.55, 240, 1000) / (this.rate() * speed);
+    // Out of the splash the cursors pour into the page rather than dart.
+    if (first) dur = Math.max(dur, 420);
     const bend = (Math.random() - 0.5) * Math.min(dist * 0.35, 160);
     const start = now();
     let frames = 0;
@@ -1698,7 +1754,11 @@ class SwarmEngine {
       const p = Math.min(1, (now() - start) / dur);
       // Re-aim every few frames (targets can drift, e.g. the marquee).
       if (live || ++frames % 5 === 0 || p >= 1) tp = target();
-      const e = overshoot ? easeOutBack(p) : easeInOut(p);
+      const e = overshoot
+        ? easeOutBack(p)
+        : first
+        ? 1 - Math.pow(1 - p, 3)
+        : easeInOut(p);
       const dx = tp.x - fx;
       const dy = tp.y - fy;
       const len = Math.hypot(dx, dy) || 1;
@@ -1765,6 +1825,8 @@ class SwarmEngine {
     segs[i].agent = a;
     a.task = task;
     a.docked = false;
+    a.slot = -1;
+    this.watching.delete(a);
     a.quiet = false;
     a.spectated = false;
     a.targetOpacity = 1;
@@ -1879,18 +1941,23 @@ class SwarmEngine {
   ) {
     const el = task.el;
     this.setStatus(a, task.caption ?? `drawing <${tag}>`);
+    // Keep the cursor on screen (the navbar starts at the very top and runs
+    // edge to edge on smaller screens).
+    const onScreen = (x: number, y: number) => ({
+      x: clamp(x, window.scrollX + 6, window.scrollX + this.vp.vw - 28),
+      y: clamp(y, window.scrollY + 6, window.scrollY + this.vp.vh - 30),
+    });
+    const r0 = pageRect(el);
+    const far = onScreen(r0.x + r0.w, r0.y + r0.h);
     // Every other cursor drags from the opposite corner, so a row of boxes
-    // doesn't draw in lockstep.
-    const reverse = a.index % 2 === 1;
+    // doesn't draw in lockstep, but only when that corner is in view.
+    const reverse =
+      a.index % 2 === 1 &&
+      Math.abs(far.x - (r0.x + r0.w)) < 1 &&
+      Math.abs(far.y - (r0.y + r0.h)) < 1;
     const corner = () => {
       const r = pageRect(el);
-      const x = reverse ? r.x + r.w : r.x;
-      const y = reverse ? r.y + r.h : r.y;
-      // Keep the cursor on screen (the navbar starts at the very top).
-      return {
-        x: Math.max(window.scrollX + 6, x),
-        y: Math.max(window.scrollY + 6, y),
-      };
+      return reverse ? onScreen(r.x + r.w, r.y + r.h) : onScreen(r.x, r.y);
     };
     await this.moveTo(a, corner, gen, task, 1, overshoot);
     if (this.vp.vw < 640) await this.sleep(rand(150, 300), gen, task);
@@ -1915,13 +1982,17 @@ class SwarmEngine {
       const r = pageRect(el);
       const dur =
         clamp(300 + Math.sqrt(r.w * r.h) * 0.9, 420, 1150) / this.rate();
+      // The cursor drags from where it stands to the (clamped) far corner;
+      // the mask and selection follow the real box.
+      const from = { x: a.x, y: a.y };
+      const to = reverse ? onScreen(r.x, r.y) : onScreen(r.x + r.w, r.y + r.h);
       const t0 = now();
       for (;;) {
         await this.step(gen, task);
         const p = easeInOut(Math.min(1, (now() - t0) / dur));
+        a.x = from.x + (to.x - from.x) * p;
+        a.y = from.y + (to.y - from.y) * p;
         if (reverse) {
-          a.x = r.x + r.w * (1 - p);
-          a.y = r.y + r.h * (1 - p);
           a.sel = {
             x: r.x + r.w * (1 - p),
             y: r.y + r.h * (1 - p),
@@ -1930,8 +2001,6 @@ class SwarmEngine {
             alpha: 1,
           };
         } else {
-          a.x = r.x + r.w * p;
-          a.y = r.y + r.h * p;
           a.sel = { x: r.x, y: r.y, w: r.w * p, h: r.h * p, alpha: 1 };
         }
         draw(p);
@@ -2018,8 +2087,8 @@ class SwarmEngine {
           ]
         : [{ opacity: g }, { opacity }];
     task.anim = el.animate(frames, {
-      duration: style === "pop" ? 360 : style === "image" ? 560 : 360,
-      easing: "cubic-bezier(.2,.8,.2,1)",
+      duration: style === "pop" ? 360 : style === "image" ? 560 : 420,
+      easing: style === "fade" ? "ease-in-out" : "cubic-bezier(.2,.8,.2,1)",
     });
   }
 
