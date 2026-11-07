@@ -64,6 +64,9 @@ interface Extra {
   tags?: HTMLElement | null;
   /** Had a label last frame (keeps the capped slots from changing hands). */
   shown?: boolean;
+  /** The label's offset from its default spot, as last placed. */
+  off?: [number, number];
+  body?: HTMLElement | null;
   ripples: WeakSet<object>;
 }
 const extras = new WeakMap<Agent, Extra>();
@@ -242,7 +245,7 @@ const SwarmOverlay = () => {
       swarm.addDrawer((t) => {
         // Viewport values were read by the engine at the start of the frame,
         // before any cursor wrote to the page.
-        const { sx, sy, vw, vh } = swarm.viewport;
+        const { sx, sy, vw, vh, navBottom } = swarm.viewport;
         const phone = vw < 640;
         const taken: Box[] = [];
         let statuses = 0;
@@ -273,9 +276,15 @@ const SwarmOverlay = () => {
         // Through the first flight labels may sit over the page copy (it's
         // still a ghost), so they don't hop when the splash finishes.
         const overSplash = firstFlight;
+        // Just after the first flight, a name keeps its spot if that's clear
+        // of copy and otherwise fades out; it never hops somewhere new.
+        const settling =
+          swarm.flightFrom > 0 &&
+          !firstFlight &&
+          flight < 1400 + swarm.agents.length * 80 + 300;
         // The first frames off the pills: names appear at full strength at
         // once, matching the pill names they replace (no fade-in blink).
-        const instant = firstFlight && flight < 260;
+        const instantAll = firstFlight && flight < 260;
         let labels = 0;
         let navLabels = 0;
         // Typists get first pick of label spots, then whoever had a label
@@ -312,6 +321,23 @@ const SwarmOverlay = () => {
             docked ||
             (phone && a.active && !a.task && !a.moving && a.ringAngle === null);
           if (d.root.hasAttribute("data-docked") !== drift) {
+            if (x && x.body === undefined) {
+              x.body = d.root.querySelector<HTMLElement>(".swarm-body");
+            }
+            const body = x?.body;
+            if (!drift && body) {
+              // Leaving the drift: ease back from wherever the bob is now,
+              // rather than snapping to rest (one style read per departure).
+              body.style.transition = "none";
+              body.style.transform = getComputedStyle(body).transform;
+              requestAnimationFrame(() => {
+                body.style.transition = "transform 160ms ease-out";
+                body.style.transform = "";
+              });
+            } else if (body) {
+              body.style.transition = "";
+              body.style.transform = "";
+            }
             d.root.toggleAttribute("data-docked", drift);
           }
 
@@ -332,8 +358,11 @@ const SwarmOverlay = () => {
           const typing = !!a.task?.typing && !!(a.caret || a.lastCaret);
           // The nav row is short: at most two names there at once, counting
           // anyone at work in it or passing through it.
-          const inNav =
-            !ringing && (!!a.task?.el.closest(".sticky") || (vy > -20 && vy < 90));
+          const navTask = !!a.task?.el.closest(".sticky");
+          const inNav = !ringing && (navTask || (vy > -20 && vy < 90));
+          // An arrow that has slid under the sticky header (or off the top)
+          // takes its name with it at once; a name never floats alone.
+          const buried = !ringing && !navTask && vy < navBottom - 4;
           const quiet =
             a.mini ||
             (!ringing &&
@@ -341,7 +370,8 @@ const SwarmOverlay = () => {
               (phone ? !typing && !a.chip && !a.sel : !a.task && !moving)) ||
             (a.quiet && !a.task && !firstFlight) ||
             (!phone && !ringing && labels >= cap) ||
-            (inNav && navLabels >= 2);
+            (inNav && navLabels >= 2) ||
+            buried;
 
           // Status only while it's fresh and its target is on screen.
           const age = t - a.statusAt;
@@ -470,12 +500,22 @@ const SwarmOverlay = () => {
                     hits(o, box) &&
                     !(ownOk && ownBox && o.l >= ownBox.l - 6 && o.r <= ownBox.r + 6 && o.t >= ownBox.t - 6 && o.b <= ownBox.b + 6)
                 ));
-            for (const [l, top, ownOk, idx] of spots) {
+            if (settling && x?.shown && x.off && !a.task) {
+              const l = baseL + x.off[0];
+              const top = baseT + x.off[1];
               const box = { l, t: top, r: l + w, b: top + h };
-              if (!clear(box, ownOk)) continue;
-              chosen = box;
-              chosenIdx = idx;
-              break;
+              if (clear(box, false)) {
+                chosen = box;
+                chosenIdx = x.place ?? -1;
+              }
+            } else {
+              for (const [l, top, ownOk, idx] of spots) {
+                const box = { l, t: top, r: l + w, b: top + h };
+                if (!clear(box, ownOk)) continue;
+                chosen = box;
+                chosenIdx = idx;
+                break;
+              }
             }
             if (chosen) {
               taken.push(chosen);
@@ -483,6 +523,7 @@ const SwarmOverlay = () => {
               if (inNav) navLabels++;
               lx = chosen.l - baseL;
               ly = chosen.t - baseT;
+              if (x) x.off = [lx, ly];
               if (x) {
                 // Only default spots are remembered: caret and margin spots
                 // are relative to the line, not the cursor.
@@ -495,6 +536,7 @@ const SwarmOverlay = () => {
               if (x) x.place = undefined;
             }
           }
+          const instant = instantAll || buried;
           if (d.root.hasAttribute("data-instant") !== instant) {
             d.root.toggleAttribute("data-instant", instant);
           }

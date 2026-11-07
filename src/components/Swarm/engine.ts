@@ -323,7 +323,8 @@ class SwarmEngine {
   private lastCheck = 0;
   private hasEligible = false;
   /** Viewport, read once per frame before any cursor writes to the page. */
-  private vp = { sx: 0, sy: 0, vw: 0, vh: 0, atEnd: false };
+  private vp = { sx: 0, sy: 0, vw: 0, vh: 0, atEnd: false, navBottom: 0 };
+  private navEl: Element | null = null;
 
   /** This frame's scroll and viewport size, for drawing without re-reading. */
   get viewport() {
@@ -1071,12 +1072,17 @@ class SwarmEngine {
     // All reads for this frame happen here, before any cursor writes text.
     const vh = window.innerHeight;
     const root = document.documentElement;
+    if (!this.navEl?.isConnected) {
+      this.navEl = document.querySelector('a[href="/"]')?.closest(".sticky") ?? null;
+    }
     this.vp = {
       sx: window.scrollX,
       sy: window.scrollY,
       vw: root.clientWidth,
       vh,
       atEnd: window.scrollY + vh >= root.scrollHeight - 2,
+      // The sticky header's bottom edge on screen: arrows under it are hidden.
+      navBottom: Math.max(0, this.navEl?.getBoundingClientRect().bottom ?? 0),
     };
     for (const task of this.taskList()) {
       if (task.typing && task.state !== "done") task.typing.prime();
@@ -1561,7 +1567,12 @@ class SwarmEngine {
       if (a.docked) {
         // Rested a while and there's typing to watch: go and look, but only
         // if there's a free spot beside it (otherwise rest a while longer).
-        if (working.length && t - a.dockedAt > 1800 + ((a.index * 523) % 1200)) {
+        // Gutter holders stay put; the ones waiting off the edge go watching.
+        if (
+          working.length &&
+          a.slot < 0 &&
+          t - a.dockedAt > 1800 + ((a.index * 523) % 1200)
+        ) {
           const spot = this.spectateSpot(a, working);
           if (!spot) {
             a.dockedAt = t;
@@ -1599,7 +1610,7 @@ class SwarmEngine {
         const sy = window.scrollY;
         const left = a.x - sx < vw / 2;
         const spot = {
-          x: sx + (left ? 6 : vw - 22),
+          x: sx + (left ? 10 : vw - 32),
           y: clamp(a.y, sy + 90, sy + vh - 60),
         };
         a.moving = true;
@@ -1611,7 +1622,13 @@ class SwarmEngine {
           });
         continue;
       }
-      const linger = desktop ? 1300 : lingering.includes(a) ? 1800 : 300;
+      const linger = desktop
+        ? working.length
+          ? 1300
+          : 600
+        : lingering.includes(a)
+        ? 1800
+        : 300;
       if (t < a.idleSince + linger) continue;
       a.moving = true;
       a.quiet = true;
