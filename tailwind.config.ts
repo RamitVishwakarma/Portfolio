@@ -127,7 +127,7 @@ const config: Config = {
       },
       fontFamily: {
         Anton: ["Anton SC", "sans-serif"],
-        ProductSans: ["ProductSans", "sans"],
+        ProductSans: ["ProductSans", "sans-serif"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

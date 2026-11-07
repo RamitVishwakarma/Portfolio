@@ -1,6 +1,7 @@
 "use client";
 import { sendEmail } from "@/app/ServerActions/SendEmail";
 import React, { useState } from "react";
+import Build from "../Swarm/Build";
 
 interface ValidationErrors {
   name?: string;
@@ -141,11 +142,13 @@ const ContactForm = () => {
 
   return (
     <>
-      <form
+      <Build
+        as="form"
+        caption="drawing <form>"
         onSubmit={handleSubmit}
         className="flex flex-col gap-3 md:w-[60%] mx-auto">
         <div className="flex gap-4">
-          <div className="w-full">
+          <Build kind="pop" caption="adding name field" className="w-full">
             <input
               onChange={handleNameChange}
               value={name}
@@ -161,8 +164,8 @@ const ContactForm = () => {
             {errors.name && (
               <p className="text-red text-sm mt-1">{errors.name}</p>
             )}
-          </div>
-          <div className="w-full">
+          </Build>
+          <Build kind="pop" caption="adding email field" className="w-full">
             <input
               onChange={handleEmailChange}
               value={email}
@@ -177,9 +180,9 @@ const ContactForm = () => {
             {errors.email && (
               <p className="text-red text-sm mt-1">{errors.email}</p>
             )}
-          </div>
+          </Build>
         </div>
-        <div>
+        <Build kind="pop" caption="adding <textarea>">
           <textarea
             onChange={handleMessageChange}
             value={message}
@@ -197,13 +200,15 @@ const ContactForm = () => {
           <div className="text-right text-sm text-grey-400 mt-1">
             {message.length}/1000
           </div>
-        </div>
-        <button
+        </Build>
+        <Build
+          as="button"
+          kind="pop"
           type="submit"
           className={`px-3 py-2.5 rounded-xl text-xl font-semibold tracking-wide transition-colors bg-[#6d6d6d] text-[#f6f6f6] hover:bg-[#888888] 
           `}>
           {isSubmitting ? "Sending..." : "Send"}
-        </button>
+        </Build>
         {responseMessage && (
           <p
             className={`text-center font-medium ${
@@ -214,7 +219,7 @@ const ContactForm = () => {
             {responseMessage}
           </p>
         )}
-      </form>
+      </Build>
     </>
   );
 };

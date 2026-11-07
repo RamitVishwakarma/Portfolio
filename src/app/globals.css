@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Anton+SC&display=swap");
 
 @layer base {
   @font-face {
@@ -15,11 +14,13 @@
   @font-face {
     font-family: "ProductSans";
     font-weight: 400;
+    font-display: swap;
     src: url(./assets/fonts/ProductSans-Regular.woff2) format("woff2");
   }
   @font-face {
     font-family: "ProductSans";
     font-weight: 700;
+    font-display: swap;
     src: url(./assets/fonts/ProductSans-Bold.woff2) format("woff2");
   }
 }
@@ -32,6 +33,18 @@
 
 body {
   background-color: black;
+}
+
+/* the hero's rotating rainbow glow pokes past the screen edge on phones as
+   it turns, which made mobile browsers zoom the page out and let it wobble
+   sideways; clip at the screen edge only (sticky navbar still works) */
+html {
+  /* Safari < 16 has no clip; hidden on html goes to the viewport */
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+body {
+  overflow-x: clip;
 }
 
 /*? the rotating thing behind profile image */
@@ -106,4 +119,304 @@ body {
   display: flex;
   width: 500%;
   animation: slide 4s linear infinite;
+}
+
+/*? cursor swarm: content waits as a faint ghost until a cursor builds it.
+   It stays readable, findable and in the accessibility tree throughout. The
+   level per element comes from Build.tsx (--swarm-ghost). */
+html.swarm-on [data-swarm="pending"],
+html.swarm-on [data-swarm="claimed"] {
+  opacity: var(--swarm-ghost, 0.3);
+}
+/* unbuilt images, and light cards, wait in greyscale, so building them
+   reads as colour arriving */
+html.swarm-on [data-swarm-kind="image"]:is([data-swarm="pending"], [data-swarm="claimed"]),
+html.swarm-on [data-swarm-surface="light"][data-swarm-kind="block"]:is([data-swarm="pending"], [data-swarm="claimed"]) {
+  filter: grayscale(1);
+}
+/* the cursor layer spans the document, so moving cursors scroll natively */
+.swarm-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 90;
+}
+.swarm-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform, opacity;
+}
+/* a design-tool selection while a block is dragged out */
+.swarm-sel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 1.5px solid;
+  will-change: transform;
+}
+.swarm-sel i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border: 1px solid currentColor;
+}
+.swarm-sel i:nth-child(1) {
+  left: -4px;
+  top: -4px;
+}
+.swarm-sel i:nth-child(2) {
+  right: -4px;
+  top: -4px;
+}
+.swarm-sel i:nth-child(3) {
+  left: -4px;
+  bottom: -4px;
+}
+.swarm-sel i:nth-child(4) {
+  right: -4px;
+  bottom: -4px;
+}
+.swarm-badge {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font: 600 10px/12px ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+}
+.swarm-caret {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  will-change: transform;
+}
+@keyframes swarm-ripple {
+  from {
+    scale: 0.2;
+    opacity: 1;
+  }
+  to {
+    scale: 1;
+    opacity: 0;
+  }
+}
+.swarm-ripple {
+  position: absolute;
+  left: -28px;
+  top: -28px;
+  width: 56px;
+  height: 56px;
+  border: 2px solid;
+  border-radius: 50%;
+  animation: swarm-ripple 520ms ease-out forwards;
+}
+/* wireframe: dashed outlines on what's ready to be built next, in the
+   colour of the cursor that has claimed it; plain CSS, so it scrolls with
+   the page and costs nothing per frame */
+html.swarm-on [data-swarm="pending"]:not(:is([data-swarm="pending"], [data-swarm="claimed"], [data-swarm="building"]) *),
+html.swarm-on [data-swarm="claimed"] {
+  outline: 1px dashed rgba(255, 255, 255, 0.32);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.18);
+}
+html.swarm-on [data-swarm="claimed"] {
+  outline-color: var(--swarm-claim, rgba(255, 255, 255, 0.6));
+  outline-style: solid;
+}
+.swarm-arrow {
+  transform-origin: 3px 2px;
+  transition: transform 120ms ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+.swarm-cursor[data-pressed] .swarm-arrow {
+  transform: scale(0.8);
+}
+.swarm-tags {
+  position: absolute;
+  left: 16px;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* the two cursors waiting in the gutters drift slowly: a bob and a sway */
+@keyframes swarm-bob {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(3px, -4px);
+  }
+  50% {
+    transform: translate(0, -7px);
+  }
+  75% {
+    transform: translate(-3px, -3px);
+  }
+}
+.swarm-cursor[data-docked] .swarm-body {
+  animation: swarm-bob 3.2s ease-in-out infinite;
+}
+.swarm-tags {
+  transition: opacity 200ms ease;
+}
+.swarm-cursor[data-instant] .swarm-tags {
+  transition: none;
+}
+.swarm-cursor[data-quiet] .swarm-tags {
+  opacity: 0;
+  /* leaving is quick, so a label never lingers over copy */
+  transition-duration: 80ms;
+}
+.swarm-mini .swarm-tags {
+  display: none;
+}
+.swarm-mini .swarm-arrow {
+  transform: scale(0.7);
+}
+.swarm-mini[data-pressed] .swarm-arrow {
+  transform: scale(0.56);
+}
+
+/*? splash: only when the build is about to run */
+.swarm-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  transition: opacity 450ms ease;
+}
+html.swarm-on .swarm-splash:not([data-state="done"]) {
+  display: flex;
+}
+/* the hand-off runs in steps set by the engine: words, then out, then done */
+.swarm-splash[data-state="out"] {
+  opacity: 0;
+  pointer-events: none;
+}
+/* the words leave first so they never sit over the page's own heading */
+.swarm-splash[data-state="words"] .swarm-splash-text,
+.swarm-splash[data-state="out"] .swarm-splash-text {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+/* the pills are now the real cursors, in the same spots */
+.swarm-splash[data-state="out"] li {
+  visibility: hidden;
+}
+@keyframes swarm-splash-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* each cursor in the roll-call pops in */
+@keyframes swarm-splash-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.swarm-splash-pop {
+  animation-name: swarm-splash-pop;
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+}
+.swarm-splash-in {
+  animation-name: swarm-splash-in;
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+/*? photo carousel (More About Me) */
+@keyframes carousel-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes carousel-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+/* the leaving slide starts from wherever it was (a click mid-slide) */
+@keyframes carousel-exit {
+  from {
+    opacity: var(--from-opacity, 1);
+    transform: var(--from-transform, scale(1));
+  }
+  to {
+    opacity: 0;
+    transform: var(--from-transform, scale(1)) scale(0.8);
+  }
+}
+.carousel-in-right {
+  animation: carousel-in-right 1s ease both;
+}
+.carousel-in-left {
+  animation: carousel-in-left 1s ease both;
+}
+.carousel-exit {
+  animation: carousel-exit 0.5s ease forwards;
+}
+.carousel-arrow {
+  transition:
+    transform 200ms ease,
+    background-color 200ms ease;
+}
+.carousel-arrow:hover {
+  transform: scale(1.2);
+  background-color: #4c84358e;
+}
+.carousel-dot {
+  transition: transform 300ms cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+.carousel-dot:hover {
+  transform: scale(1.1);
+}
+.carousel-dot-active {
+  transform: translateY(-10px) scale(1.2);
+}
+.carousel-dot-active:hover {
+  transform: translateY(-10px) scale(1.1);
 }

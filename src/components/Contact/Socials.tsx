@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import React from "react";
-import Link from "next/link";
+import Build from "../Swarm/Build";
 
 interface items {
   image: string;
@@ -40,7 +40,13 @@ const Socials = () => {
       <div
         className={`flex justify-center gap-4 w-fit mx-auto p-4 rounded-3xl `}>
         {images.map((item, index) => (
-          <Link target="_blank" href={item.link} key={index}>
+          <Build
+            as="a"
+            kind="pop"
+            caption={`adding ${item.image.split("/").pop()}`}
+            target="_blank"
+            href={item.link}
+            key={index}>
             <Image
               key={index}
               src={item.image}
@@ -57,7 +63,7 @@ const Socials = () => {
               onMouseEnter={() => setHoverIndex(index)}
               onMouseLeave={() => setHoverIndex(null)}
             />
-          </Link>
+          </Build>
         ))}
       </div>
     </>
