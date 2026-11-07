@@ -312,13 +312,18 @@ const SwarmOverlay = () => {
           d.root.style.transform = pinned
             ? `translate3d(${vx}px, ${vy}px, 0)`
             : `translate3d(${a.x}px, ${a.y}px, 0)`;
-          // A cursor not working on the nav tucks under the sticky header:
-          // arrow and name go together as it slides beneath the bar.
-          const buried =
-            a.ringAngle === null &&
-            !a.task?.el.closest(".sticky") &&
-            vy < navBottom - 4;
-          d.root.style.opacity = buried ? "0" : a.opacity.toFixed(3);
+          // A cursor not working on the nav slides under the sticky header:
+          // its arrow is clipped at the bar's edge, and its name goes as soon
+          // as the tip is under.
+          const underNav = a.ringAngle === null && !a.task?.inNav;
+          const buried = underNav && vy < navBottom - 4;
+          d.root.style.opacity = a.opacity.toFixed(3);
+          // Negative insets keep labels that hang outside the root visible.
+          const clip =
+            underNav && vy - 80 < navBottom
+              ? `inset(${Math.round(navBottom - vy)}px -9999px -9999px -9999px)`
+              : "";
+          if (d.root.style.clipPath !== clip) d.root.style.clipPath = clip;
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
@@ -564,7 +569,11 @@ const SwarmOverlay = () => {
           // Selection box while dragging out a block.
           const sel = a.sel && a.sel.w > 0 && a.sel.h > 0 ? a.sel : null;
           x.sel.style.display = sel ? "block" : "none";
+          const markTop = a.task && !a.task.inNav ? navBottom : -1e5;
           if (sel) {
+            const cut = Math.max(0, markTop - (sel.y - sy));
+            const selClip = cut > 0 ? `inset(${Math.round(cut)}px -40px -40px -40px)` : "";
+            if (x.sel.style.clipPath !== selClip) x.sel.style.clipPath = selClip;
             x.sel.style.transform = `translate3d(${sel.x}px, ${sel.y}px, 0)`;
             x.sel.style.width = `${sel.w}px`;
             x.sel.style.height = `${sel.h}px`;
@@ -576,7 +585,8 @@ const SwarmOverlay = () => {
             if (readable && x.badge.textContent !== size) x.badge.textContent = size;
           }
           // Text caret while typing.
-          x.caret.style.display = a.caret ? "block" : "none";
+          x.caret.style.display =
+            a.caret && a.caret.y + a.caret.h - sy > markTop ? "block" : "none";
           if (a.caret) {
             x.caret.style.transform = `translate3d(${a.caret.x}px, ${a.caret.y}px, 0)`;
             x.caret.style.height = `${a.caret.h}px`;

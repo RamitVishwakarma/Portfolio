@@ -58,6 +58,8 @@ export interface Task {
   ghost: number;
   pack: boolean;
   heading: boolean;
+  /** Part of the sticky header (everything else slides under it). */
+  inNav: boolean;
   /** When it was first both on screen and ready to start (catch-up clock). */
   readyAt: number;
   state: TaskState;
@@ -386,6 +388,7 @@ class SwarmEngine {
       ghost: opts.ghost ?? ghostFor(opts.kind, !!opts.priority),
       pack: !!opts.pack,
       heading: el.tagName === "H2" || el.tagName === "H3",
+      inNav: !!el.closest(".sticky"),
       readyAt: 0,
       state: "pending",
       inView: false,
@@ -1267,16 +1270,22 @@ class SwarmEngine {
   }
 
   /** Whether a caret position (page coordinates) is comfortably on screen. */
-  private caretOnScreen(c: Rect | null) {
+  private caretOnScreen(c: Rect | null, task?: Task | null) {
     if (!c) return true;
     const { sy, vh, atEnd } = this.vp;
     const y = c.y - sy;
     // At the very bottom of the page nothing can scroll further up.
-    return y > -c.h && y < (atEnd ? vh : vh - 24);
+    return y > this.topEdge(task) - c.h && y < (atEnd ? vh : vh - 24);
   }
 
-  private caretAbove(c: Rect | null) {
-    return !!c && c.y - this.vp.sy <= -c.h;
+  /** A line under the sticky header counts as scrolled past. */
+  private caretAbove(c: Rect | null, task?: Task | null) {
+    return !!c && c.y - this.vp.sy <= this.topEdge(task) - c.h;
+  }
+
+  /** Where the visible page starts for a task: below the header, unless it's in it. */
+  private topEdge(task?: Task | null) {
+    return task && !task.inNav ? this.vp.navBottom : 0;
   }
 
   /**
@@ -1290,7 +1299,7 @@ class SwarmEngine {
     segs.forEach((job, k) => {
       if (job.done || job.agent) return;
       const seg = typing.segments[k];
-      if (this.caretAbove(typing.caretAt(seg.start + job.typed))) {
+      if (this.caretAbove(typing.caretAt(seg.start + job.typed), task)) {
         job.typed = seg.end - seg.start;
         typing.type(k, job.typed);
         job.done = true;
@@ -1311,7 +1320,7 @@ class SwarmEngine {
     const typed = task.segs?.[i]?.typed ?? 0;
     return (
       !!seg &&
-      this.caretOnScreen(task.typing?.caretAt(seg.start + typed) ?? null)
+      this.caretOnScreen(task.typing?.caretAt(seg.start + typed) ?? null, task)
     );
   }
 
@@ -1529,7 +1538,7 @@ class SwarmEngine {
       ? this.agents.filter(
           (x) =>
             x.task &&
-            (x.caret ? this.caretOnScreen(x.caret) : x.task.visible)
+            (x.caret ? this.caretOnScreen(x.caret, x.task) : x.task.visible)
         )
       : [];
     // A gutter spot freed up: the cursor waiting off that edge glides in.
@@ -1966,13 +1975,13 @@ class SwarmEngine {
         await this.step(gen, task);
         const t = now();
         const at = typing.caretAt(seg.start + job.typed);
-        if (this.caretAbove(at)) {
+        if (this.caretAbove(at, task)) {
           // Scrolled past mid-sentence: finish it now.
           job.typed = len;
           typing.type(current, len);
           break;
         }
-        if (!this.caretOnScreen(at)) {
+        if (!this.caretOnScreen(at, task)) {
           // Below the fold: hand it back, progress kept, and go wait.
           job.agent = null;
           a.caret = null;
@@ -2025,9 +2034,10 @@ class SwarmEngine {
     this.setStatus(a, task.caption ?? `drawing <${tag}>`);
     // Keep the cursor on screen (the navbar starts at the very top and runs
     // edge to edge on smaller screens).
+    const top = task.inNav ? 6 : this.vp.navBottom + 6;
     const onScreen = (x: number, y: number) => ({
       x: clamp(x, window.scrollX + 6, window.scrollX + this.vp.vw - 28),
-      y: clamp(y, window.scrollY + 6, window.scrollY + this.vp.vh - 30),
+      y: clamp(y, window.scrollY + top, window.scrollY + this.vp.vh - 30),
     });
     const r0 = pageRect(el);
     const far = onScreen(r0.x + r0.w, r0.y + r0.h);
