@@ -287,6 +287,7 @@ const SwarmOverlay = () => {
         const instantAll = firstFlight && flight < 260;
         let labels = 0;
         let navLabels = 0;
+        const departing: { root: HTMLElement; body: HTMLElement }[] = [];
         // Typists get first pick of label spots, then whoever had a label
         // last frame, so the capped slots don't change hands every frame.
         const rank = (a: Agent) =>
@@ -311,7 +312,13 @@ const SwarmOverlay = () => {
           d.root.style.transform = pinned
             ? `translate3d(${vx}px, ${vy}px, 0)`
             : `translate3d(${a.x}px, ${a.y}px, 0)`;
-          d.root.style.opacity = a.opacity.toFixed(3);
+          // A cursor not working on the nav tucks under the sticky header:
+          // arrow and name go together as it slides beneath the bar.
+          const buried =
+            a.ringAngle === null &&
+            !a.task?.el.closest(".sticky") &&
+            vy < navBottom - 4;
+          d.root.style.opacity = buried ? "0" : a.opacity.toFixed(3);
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
@@ -326,19 +333,16 @@ const SwarmOverlay = () => {
             }
             const body = x?.body;
             if (!drift && body) {
-              // Leaving the drift: ease back from wherever the bob is now,
-              // rather than snapping to rest (one style read per departure).
-              body.style.transition = "none";
-              body.style.transform = getComputedStyle(body).transform;
-              requestAnimationFrame(() => {
-                body.style.transition = "transform 160ms ease-out";
+              // Leaving the drift: eased back after the loop, with every
+              // departing cursor's offset read in one go.
+              departing.push({ root: d.root, body });
+            } else {
+              if (body) {
+                body.style.transition = "";
                 body.style.transform = "";
-              });
-            } else if (body) {
-              body.style.transition = "";
-              body.style.transform = "";
+              }
+              d.root.toggleAttribute("data-docked", drift);
             }
-            d.root.toggleAttribute("data-docked", drift);
           }
 
           // Labels show only while a cursor moves or works (on phones, only
@@ -360,9 +364,6 @@ const SwarmOverlay = () => {
           // anyone at work in it or passing through it.
           const navTask = !!a.task?.el.closest(".sticky");
           const inNav = !ringing && (navTask || (vy > -20 && vy < 90));
-          // An arrow that has slid under the sticky header (or off the top)
-          // takes its name with it at once; a name never floats alone.
-          const buried = !ringing && !navTask && vy < navBottom - 4;
           const quiet =
             a.mini ||
             (!ringing &&
@@ -500,13 +501,17 @@ const SwarmOverlay = () => {
                     hits(o, box) &&
                     !(ownOk && ownBox && o.l >= ownBox.l - 6 && o.r <= ownBox.r + 6 && o.t >= ownBox.t - 6 && o.b <= ownBox.b + 6)
                 ));
-            if (settling && x?.shown && x.off && !a.task) {
-              const l = baseL + x.off[0];
-              const top = baseT + x.off[1];
-              const box = { l, t: top, r: l + w, b: top + h };
-              if (clear(box, false)) {
-                chosen = box;
-                chosenIdx = x.place ?? -1;
+            if (settling && !a.task) {
+              // No new search in this window: keep a shown name where it is
+              // while that's clear, otherwise it stays hidden.
+              if (x?.shown && x.off) {
+                const l = baseL + x.off[0];
+                const top = baseT + x.off[1];
+                const box = { l, t: top, r: l + w, b: top + h };
+                if (clear(box, false)) {
+                  chosen = box;
+                  chosenIdx = x.place ?? -1;
+                }
               }
             } else {
               for (const [l, top, ownOk, idx] of spots) {
@@ -590,6 +595,23 @@ const SwarmOverlay = () => {
             el.addEventListener("animationend", () => el.remove());
             layer.appendChild(el);
           }
+        }
+
+        // Cursors leaving the drift ease back from wherever the bob is, not
+        // snap to rest: read every offset first, then write.
+        if (departing.length) {
+          const from = departing.map((p) => getComputedStyle(p.body).transform);
+          departing.forEach(({ root, body }, i) => {
+            body.style.transition = "none";
+            body.style.transform = from[i];
+            root.removeAttribute("data-docked");
+          });
+          requestAnimationFrame(() => {
+            for (const { body } of departing) {
+              body.style.transition = "transform 160ms ease-out";
+              body.style.transform = "";
+            }
+          });
         }
 
         // The finale only: dimming, rainbow rings and confetti, kept below
