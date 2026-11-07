@@ -24,12 +24,10 @@ export interface BuildOptions {
   caption?: string;
   /** Doesn't hold up "build complete" (e.g. marquee cards scrolled out of view). */
   optional?: boolean;
-  /** Built first and shown less faint while waiting (navbar, the name). */
+  /** Built first (navbar, the name). */
   priority?: boolean;
   /** Name of the cursor that should build this when it's free ("Docker"). */
   owner?: string;
-  /** How faint it waits (from ghostFor, set by Build). */
-  ghost?: number;
   /** On phones, appears together with the element it sits in. */
   pack?: boolean;
 }
@@ -54,8 +52,6 @@ export interface Task {
   owner?: string;
   /** When this first could have started (for owner hand-off). */
   readySince: number;
-  /** Opacity it waits at before it's built. */
-  ghost: number;
   pack: boolean;
   heading: boolean;
   /** Part of the sticky header (everything else slides under it). */
@@ -191,19 +187,8 @@ const SPLASH_MAX = 3000;
 /** The splash words fade this long before the cursors take over. */
 const WORDS_MS = 170;
 
-/**
- * How faint an element is before it's built. Text is kept readable, frames
- * and images sit further back, and containers are brighter because their
- * children's level multiplies with theirs. Build.tsx sets the same value as
- * `--swarm-ghost` so the first paint matches.
- */
-export function ghostFor(kind: BuildKind, priority: boolean, light = false) {
-  // On light cards the card waits as a dim grey (globals.css adds greyscale)
-  // and its text at half, so typing on it still reads as typing.
-  if (light) return kind === "block" ? 0.6 : 0.5;
-  if (priority || kind === "block") return 0.6;
-  return kind === "text" ? 0.5 : 0.3;
-}
+/** A card's drag-in starts with this soft a leading edge (px), sharpening as it fills. */
+const FEATHER = 56;
 
 const now = () => performance.now();
 const clamp = (v: number, lo: number, hi: number) =>
@@ -225,9 +210,16 @@ function isDark(hex: string) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
 }
 
+/**
+ * Mask layers that intersect (the drag-in's two feathered edges). The
+ * prefixed pair is for older Safari; the shorthand resets the composite, so
+ * each composite is set after its shorthand. Empty clears it all.
+ */
 function setMask(el: HTMLElement, value: string) {
-  el.style.setProperty("mask", value);
   el.style.setProperty("-webkit-mask", value);
+  el.style.setProperty("-webkit-mask-composite", value ? "source-in" : "");
+  el.style.setProperty("mask", value);
+  el.style.setProperty("mask-composite", value ? "intersect" : "");
 }
 
 const onHome = () => window.location.pathname === "/";
@@ -385,7 +377,6 @@ class SwarmEngine {
       priority: !!opts.priority,
       owner: opts.owner,
       readySince: 0,
-      ghost: opts.ghost ?? ghostFor(opts.kind, !!opts.priority),
       pack: !!opts.pack,
       heading: el.tagName === "H2" || el.tagName === "H3",
       inNav: !!el.closest(".sticky"),
@@ -455,8 +446,11 @@ class SwarmEngine {
       t.cleanup?.();
       t.cleanup = undefined;
       if (!t.removed && t.state !== "done") {
+        // Still blank and on screen: it comes in, rather than cutting in.
+        const blank = t.state === "pending" || t.state === "claimed";
         setMask(t.el, "");
         this.finishTask(t);
+        if (blank && t.visible) this.reveal(t, "fade");
       }
     }
     for (const a of this.agents) this.resetAgent(a);
@@ -497,7 +491,7 @@ class SwarmEngine {
           if (!t) continue;
           t.visible = e.isIntersecting;
           t.visibleSince = e.isIntersecting ? t.visibleSince || now() : 0;
-          // Scrolled past it: don't keep the visitor's content faint above.
+          // Scrolled past it: don't leave the visitor's content blank above.
           if (!e.isIntersecting && e.boundingClientRect.bottom <= 0) {
             this.pass(t);
           }
@@ -1046,7 +1040,7 @@ class SwarmEngine {
       this.scrimTarget = 0;
       this.revealed = true;
       for (const a of this.agents) a.ringAngle = null;
-      // Nothing is pending any more; drop the ghost rules entirely.
+      // Nothing is pending any more; drop the blank-state rules entirely.
       document.documentElement.classList.remove("swarm-on");
       this.emit(true);
     }, delay + 300);
@@ -1290,7 +1284,7 @@ class SwarmEngine {
 
   /**
    * Sentences the visitor has already scrolled past are finished at once,
-   * so nothing above the viewport stays faint. True if the task is now done.
+   * so nothing above the viewport stays blank. True if the task is now done.
    */
   private flushAbove(task: Task) {
     const typing = task.typing;
@@ -1302,6 +1296,7 @@ class SwarmEngine {
       if (this.caretAbove(typing.caretAt(seg.start + job.typed), task)) {
         job.typed = seg.end - seg.start;
         typing.type(k, job.typed);
+        typing.settle(k);
         job.done = true;
       }
     });
@@ -1708,7 +1703,7 @@ class SwarmEngine {
           this.finishTask(t);
           continue;
         }
-        // Every cursor is busy and this has sat faint on screen: show it.
+        // Every cursor is busy and this has sat blank on screen: show it.
         if (t.visible && !t.readyAt) t.readyAt = t0;
         const since = Math.max(t.visibleSince, t.readyAt, this.startedAt + 2500);
         const phone = this.vp.vw < 640;
@@ -1748,7 +1743,6 @@ class SwarmEngine {
     a.quiet = false;
     a.spectated = false;
     a.targetOpacity = 1;
-    task.el.style.setProperty("--swarm-claim", a.color);
     this.setAttr(task, "claimed");
     const overshoot = !a.landed;
     a.landed = true;
@@ -1887,11 +1881,7 @@ class SwarmEngine {
     tag: string,
     overshoot: boolean
   ) {
-    const typing = prepareTyping(
-      task.el,
-      task.ghost,
-      this.segTarget
-    );
+    const typing = prepareTyping(task.el, this.segTarget);
     typing.measure();
     task.typing = typing;
     task.segs = typing.segments.map(() => ({
@@ -1910,8 +1900,7 @@ class SwarmEngine {
       1,
       overshoot
     );
-    // Ghost spans and the element switch levels together: no dip.
-    typing.ghostOn();
+    // The untyped text is already hidden, so the element can show now.
     this.setState(task, "building");
     return this.typeSegments(a, task, gen, 0);
   }
@@ -1975,6 +1964,8 @@ class SwarmEngine {
       const job: SegmentJob = segs[current];
       const seg = typing.segments[current];
       const len = seg.end - seg.start;
+      // Its newest letters glow in this cursor's colour.
+      typing.tint(current, a.color);
       let dur = clamp(160 + len * 16, 350, 1200) / this.rate();
       // The name is the money shot: type it at a readable pace.
       if (task.priority) dur = Math.max(dur, len * 62);
@@ -2011,6 +2002,7 @@ class SwarmEngine {
         if (p >= 1) break;
       }
       job.done = true;
+      typing.settle(current);
       a.caret = null;
       // Keep going with the next free sentence that's on screen.
       current = null;
@@ -2025,8 +2017,10 @@ class SwarmEngine {
       }
     }
     if (segs.every((s) => s.done)) {
-      task.cleanup?.();
+      // Typed to the end: the last letters finish settling before the text
+      // nodes are put back.
       task.cleanup = undefined;
+      typing.finish(true);
       return true;
     }
     return false;
@@ -2062,21 +2056,24 @@ class SwarmEngine {
     };
     await this.moveTo(a, corner, gen, task, 1, overshoot);
     if (this.vp.vw < 640) await this.sleep(rand(150, 300), gen, task);
-    const g = task.ghost;
-    const ghost = `linear-gradient(rgba(0,0,0,${g}),rgba(0,0,0,${g}))`;
     const anchor = reverse ? "100% 100%" : "0 0";
-    const draw = (p: number) =>
+    const [across, down] = reverse ? ["to left", "to top"] : ["to right", "to bottom"];
+    // The element condenses out of nothing behind the selection: its leading
+    // edges are soft while the drag is young and sharpen as it fills.
+    const draw = (p: number) => {
+      const size = `${anchor} / ${(p * 100).toFixed(2)}% ${(p * 100).toFixed(2)}% no-repeat`;
+      const f = (FEATHER * (1 - p)).toFixed(1);
       setMask(
         el,
-        `linear-gradient(#000,#000) ${anchor} / ${(p * 100).toFixed(2)}% ${(
-          p * 100
-        ).toFixed(2)}% no-repeat, ${ghost}`
+        `linear-gradient(${across}, #000 calc(100% - ${f}px), transparent) ${size}, ` +
+          `linear-gradient(${down}, #000 calc(100% - ${f}px), transparent) ${size}`
       );
+    };
     const cleanup = once(() => setMask(el, ""));
     task.cleanup = cleanup;
     try {
       a.pressed = true;
-      // The selection paints the element in at full strength over its ghost.
+      // The selection paints the element in out of the blank page.
       draw(0);
       this.setState(task, "building");
       // One measurement drives both the selection box and the mask.
@@ -2171,26 +2168,32 @@ class SwarmEngine {
   private reveal(task: Task, style: "image" | "pop" | "fade") {
     const el = task.el;
     if (typeof el.animate !== "function") return;
-    // Called once the element has left its ghost state, so this is its
-    // real opacity.
+    // Called once the element has left its blank state, so this is its
+    // real opacity. Everything starts from nothing; only opacity, scale and
+    // translate animate (compositor-only), plus a filter on images, which is
+    // short and runs on the compositor too.
     const opacity = getComputedStyle(el).opacity || "1";
-    const g = task.ghost;
     const frames: Keyframe[] =
       style === "pop"
         ? [
-            { opacity: g, scale: "1" },
-            { opacity, scale: "1.12", offset: 0.45 },
+            { opacity: 0, scale: "0.4" },
+            { opacity, scale: "1.12", offset: 0.5 },
             { opacity, scale: "1" },
           ]
         : style === "image"
-        ? [
-            { opacity: g, scale: "0.97", filter: "blur(6px) grayscale(1)" },
-            { opacity, scale: "1", filter: "blur(0px) grayscale(0)" },
+        ? // Condenses out of a bright haze.
+          [
+            { opacity: 0, scale: "0.94", filter: "blur(14px) brightness(1.9)" },
+            { opacity, scale: "0.99", filter: "blur(3px) brightness(1.25)", offset: 0.5 },
+            { opacity, scale: "1", filter: "blur(0px) brightness(1)" },
           ]
-        : [{ opacity: g }, { opacity }];
+        : [
+            { opacity: 0, translate: "0 10px" },
+            { opacity, translate: "0 0" },
+          ];
     task.anim = el.animate(frames, {
-      duration: style === "pop" ? 360 : style === "image" ? 560 : 420,
-      easing: style === "fade" ? "ease-in-out" : "cubic-bezier(.2,.8,.2,1)",
+      duration: style === "pop" ? 380 : style === "image" ? 650 : 480,
+      easing: "cubic-bezier(.2,.8,.2,1)",
     });
   }
 

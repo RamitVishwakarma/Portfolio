@@ -21,15 +21,25 @@ export interface Typing {
   prime(): void;
   /** The element's box in page coordinates, as of the last prime. */
   box(): Rect;
-  /** Fade the untyped text to the ghost level (when typing starts). */
-  ghostOn(): void;
+  /** Glow colour for segment `i`'s newest letters (the cursor typing it). */
+  tint(i: number, color: string): void;
   /** Show the first `n` characters of segment `i`. */
   type(i: number, n: number): void;
+  /** Segment `i` is fully typed: its newest letters settle to full strength. */
+  settle(i: number): void;
   /** Caret before global character `index`, in page coordinates. */
   caretAt(index: number): Rect | null;
-  /** Put every text node back exactly as React rendered it. */
-  finish(): void;
+  /**
+   * Put every text node back exactly as React rendered it; `gentle` lets the
+   * last letters finish settling first.
+   */
+  finish(gentle?: boolean): void;
 }
+
+/** The newest letters typed glow faintly for this many characters. */
+const FRESH = 6;
+/** How long settling takes (matches `.swarm-fresh` in globals.css). */
+const SETTLE_MS = 260;
 
 let frameNo = 0;
 /** Called once per animation frame; element origins are re-read at most once per frame. */
@@ -38,9 +48,15 @@ export function nextTypingFrame() {
 }
 
 interface Unit {
-  /** Typed part of this slice; the first unit of a text node is React's own node. */
+  /**
+   * Settled typed part of this slice; the first unit of a text node is
+   * React's own node.
+   */
   node: Text;
   full: string;
+  /** The newest letters, still glowing as they come into existence. */
+  fresh: HTMLSpanElement;
+  /** The untyped rest: laid out, so nothing moves, but invisible. */
   ghost: HTMLSpanElement;
   start: number;
   created: boolean;
@@ -79,15 +95,11 @@ function split(text: string, target: number): Segment[] {
  * Lets cursors "type" an element's existing text in place, several at once.
  *
  * Text nodes keep their React identity: each is emptied, and its untyped text
- * sits in a faint sibling span. Where a segment boundary falls inside a text
+ * sits in an invisible sibling span, so the element starts blank. Where a segment boundary falls inside a text
  * node, extra text nodes are added for the later slices and removed again in
  * finish(). The full text is always laid out, so nothing moves while typing.
  */
-export function prepareTyping(
-  root: HTMLElement,
-  ghostOpacity: number,
-  target: number
-): Typing {
+export function prepareTyping(root: HTMLElement, target: number): Typing {
   const nodes: Text[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -126,10 +138,15 @@ export function prepareTyping(
       }
       const ghost = document.createElement("span");
       ghost.textContent = slice;
+      ghost.style.opacity = "0";
       unitNode.parentNode?.insertBefore(ghost, unitNode.nextSibling);
+      const fresh = document.createElement("span");
+      fresh.className = "swarm-fresh";
+      ghost.parentNode?.insertBefore(fresh, ghost);
       units.push({
         node: unitNode,
         full: slice,
+        fresh,
         ghost,
         start: offset + from,
         created: units.length > 0,
@@ -143,6 +160,18 @@ export function prepareTyping(
   });
 
   const allUnits = pieces.flatMap((p) => p.units);
+  // Units never straddle a segment boundary (they're cut there).
+  const segUnits = segments.map((seg) =>
+    allUnits.filter((u) => u.start >= seg.start && u.start < seg.end)
+  );
+  /** The text node and offset that hold character `i` of a unit right now. */
+  const locate = (u: Unit, i: number): [Node | null, number] => {
+    const solid = u.node.data.length;
+    const fresh = u.fresh.textContent?.length ?? 0;
+    if (i < solid) return [u.node, i];
+    if (i < solid + fresh) return [u.fresh.firstChild, i - solid];
+    return [u.ghost.firstChild, i - solid - fresh];
+  };
   const total = fullText.length;
   // Caret positions are kept relative to the element, so they stay right if
   // it moves (sticky navbar, layout shifts above it).
@@ -192,11 +221,8 @@ export function prepareTyping(
       const range = document.createRange();
       let prev: Rect = { x: 0, y: 0, w: 0, h: 0 };
       for (const u of allUnits) {
-        const typed = u.node.data.length;
         for (let i = 0; i < u.full.length; i++) {
-          const inTyped = i < typed;
-          const node = inTyped ? u.node : u.ghost.firstChild;
-          const at = inTyped ? i : i - typed;
+          const [node, at] = locate(u, i);
           let rect = prev;
           if (node) {
             range.setStart(node, at);
@@ -209,33 +235,38 @@ export function prepareTyping(
         }
       }
       const last = allUnits[allUnits.length - 1];
-      if (last) {
-        const typed = last.node.data.length;
-        const node = typed === last.full.length ? last.node : last.ghost.firstChild;
-        const len = node?.textContent?.length ?? 0;
-        if (node && len) {
-          range.setStart(node, len - 1);
-          range.setEnd(node, len);
+      if (last && last.full.length) {
+        const [node, at] = locate(last, last.full.length - 1);
+        if (node) {
+          range.setStart(node, at);
+          range.setEnd(node, at + 1);
           const r = range.getClientRects()[0];
           out.push(r ? toRel(r, r.right, o) : prev);
         } else out.push(prev);
       }
       positions = out;
     },
-    ghostOn() {
-      for (const u of allUnits) u.ghost.style.opacity = String(ghostOpacity);
+    tint(i, color) {
+      for (const u of segUnits[i] ?? []) {
+        u.fresh.style.setProperty("--swarm-glow", color);
+      }
     },
     type(i, n) {
       const seg = segments[i];
       if (!seg) return;
-      for (const u of allUnits) {
-        if (u.start + u.full.length <= seg.start || u.start >= seg.end) continue;
-        const k = Math.max(0, Math.min(u.full.length, seg.start + n - u.start));
-        if (u.node.data.length !== k) {
-          u.node.data = u.full.slice(0, k);
+      const caret = seg.start + n;
+      for (const u of segUnits[i]) {
+        const k = Math.max(0, Math.min(u.full.length, caret - u.start));
+        const solid = Math.max(0, Math.min(k, caret - FRESH - u.start));
+        if (u.node.data.length !== solid || u.ghost.textContent?.length !== u.full.length - k) {
+          u.node.data = u.full.slice(0, solid);
+          u.fresh.textContent = u.full.slice(solid, k);
           u.ghost.textContent = u.full.slice(k);
         }
       }
+    },
+    settle(i) {
+      for (const u of segUnits[i] ?? []) u.fresh.setAttribute("data-settled", "");
     },
     caretAt(index) {
       const rel = positions[Math.max(0, Math.min(index, positions.length - 1))];
@@ -244,19 +275,25 @@ export function prepareTyping(
       const o = origin();
       return { x: rel.x + o.x, y: rel.y + o.y, w: 0, h: rel.h };
     },
-    finish() {
+    finish(gentle) {
       if (finished) return;
       finished = true;
       ro?.disconnect();
       document.fonts?.removeEventListener("loadingdone", remeasure);
-      for (const p of pieces) {
-        for (const u of p.units) {
-          u.ghost.remove();
-          if (u.created) u.node.remove();
+      const restore = () => {
+        for (const p of pieces) {
+          for (const u of p.units) {
+            u.ghost.remove();
+            u.fresh.remove();
+            if (u.created) u.node.remove();
+          }
+          p.node.data = p.full;
+          if (p.wrap) p.wrap.replaceWith(p.node);
         }
-        p.node.data = p.full;
-        if (p.wrap) p.wrap.replaceWith(p.node);
-      }
+      };
+      // Everything is typed by now, so the text reads in full meanwhile.
+      if (gentle) window.setTimeout(restore, SETTLE_MS);
+      else restore();
     },
   };
   if (typeof ResizeObserver !== "undefined") {

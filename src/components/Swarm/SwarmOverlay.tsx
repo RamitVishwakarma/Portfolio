@@ -279,7 +279,7 @@ const SwarmOverlay = () => {
           ? Math.max(LABEL_MAX, swarm.agents.length - Math.floor((flight - 1400) / 80))
           : LABEL_MAX;
         // Through the first flight labels may sit over the page copy (it's
-        // still a ghost), so they don't hop when the splash finishes.
+        // still blank), so they don't hop when the splash finishes.
         const overSplash = firstFlight;
         // Just after the first flight, a name keeps its spot if that's clear
         // of copy and otherwise fades out; it never hops somewhere new.
@@ -455,7 +455,7 @@ const SwarmOverlay = () => {
             const typingBox = caret && a.task?.typing ? a.task.typing.box() : null;
             if (typingBox && caret) {
               // A typist's name rides just after its caret (or just before
-              // it near the line's end), over the ghost text it's about to
+              // it near the line's end), over the hidden text it's about to
               // type; the margin is the fallback.
               const lineT = caret.y - sy + caret.h / 2 - 10;
               // Phones: a nav typist's name hangs just under the bar, clear
@@ -515,7 +515,7 @@ const SwarmOverlay = () => {
               fits(box) &&
               !taken.some((o) => hits(o, box)) &&
               // The finale ring sits over the page; everywhere else labels
-              // keep off the copy (a typist may cover its own ghost text).
+              // keep off the copy (a typist may cover its own hidden text).
               (ring !== null ||
                 overSplash ||
                 !copy.some(
@@ -725,7 +725,7 @@ const SwarmOverlay = () => {
   const announcement = !onHome
     ? ""
     : snap.phase === "running"
-    ? "Parts of this page are shown faintly while an animation builds them. Press Skip the animation to show everything now."
+    ? "Parts of this page are hidden while an animation builds them. Press Skip the animation to show everything now."
     : snap.revealed
     ? "The full page is now shown."
     : "";
