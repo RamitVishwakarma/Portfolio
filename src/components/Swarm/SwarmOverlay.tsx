@@ -324,7 +324,9 @@ const SwarmOverlay = () => {
           // until it has come out below the bar.
           if (x) {
             if (a.task?.inNav) x.fromNav = true;
-            else if (x.fromNav && (vy > navBottom || a.task)) x.fromNav = false;
+            // Every next leg crosses the bar's edge (nothing under it is a
+            // target), so this clears on the way out.
+            else if (x.fromNav && vy > navBottom) x.fromNav = false;
           }
           const underNav =
             a.ringAngle === null && !a.task?.inNav && !x?.fromNav;
