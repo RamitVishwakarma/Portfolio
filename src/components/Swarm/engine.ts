@@ -702,13 +702,7 @@ class SwarmEngine {
             if (gen !== this.gen) return;
             const t0 = now();
             this.handoff = t0;
-            // Held hero work becomes claimable then; make sure the loop is up.
-            window.setTimeout(() => {
-              if (gen === this.gen) {
-                this.lastSchedule = 0;
-                this.wake();
-              }
-            }, Math.max(0, this.startedAt + HERO_HOLD - t0) + 30);
+            this.armHeroWake();
             const phone = this.vp.vw < 640;
             for (const a of this.agents) {
               a.activateAt = t0 + (phone ? a.index * 40 : 0) + rand(0, phone ? 20 : 80);
@@ -723,6 +717,20 @@ class SwarmEngine {
         })
       );
     }, WORDS_MS);
+  }
+
+  /** Held hero work becomes claimable when the hold ends; have the loop up. */
+  private heroWake = 0;
+  private armHeroWake() {
+    window.clearTimeout(this.heroWake);
+    const left = this.startedAt + HERO_HOLD - now();
+    if (left < 0 || this.startedAt > 1e8) return;
+    const gen = this.gen;
+    this.heroWake = window.setTimeout(() => {
+      if (gen !== this.gen) return;
+      this.lastSchedule = 0;
+      this.wake();
+    }, left + 30);
   }
 
   /** Start each cursor exactly where its pill's arrow sits on the splash. */
@@ -764,6 +772,9 @@ class SwarmEngine {
       hiddenAt = 0;
       if (this.phase !== "running") return;
       if (this.startedAt < 1e8) this.startedAt += away;
+      if (this.pillsAt) this.pillsAt += away;
+      if (this.handoff) this.handoff += away;
+      this.armHeroWake();
       for (const t of this.taskList()) {
         if (t.visibleSince) t.visibleSince += away;
         if (t.readySince) t.readySince += away;
@@ -1475,6 +1486,8 @@ class SwarmEngine {
           { x: r.x - 70 - j * 40, y: cy - 20 + k * 50 },
           { x: r.x + r.w + 30 + j * 40, y: cy - 20 + k * 50 },
           { x: r.x + k * r.w, y: r.y + r.h + 28 },
+          { x: r.x + ((k + 0.5) % 1) * r.w, y: r.y + r.h + 28 },
+          { x: r.x + j * r.w, y: r.y - 26 },
         ]
       : [{ x: host.x + 80, y: host.y + 60 }];
     const host2 = host.task ?? null;
@@ -1489,7 +1502,11 @@ class SwarmEngine {
         p.x - sx < vw - 120 &&
         p.y - sy > 70 &&
         p.y - sy < vh - 40 &&
-        others.every(([, w]) => Math.hypot(w.x - p.x, w.y - p.y) >= 60)
+        others.every(([, w]) => Math.hypot(w.x - p.x, w.y - p.y) >= 60) &&
+        // Never a knot: at most two other cursors within 90px.
+        this.agents.filter(
+          (x) => x !== a && x.active && Math.hypot(x.x - p.x, x.y - p.y) < 90
+        ).length < 2
     );
     const spot = fits.length ? fits[a.index % fits.length] : null;
     if (spot) this.watching.set(a, { ...spot, host: host2 });
@@ -1509,6 +1526,28 @@ class SwarmEngine {
             (x.caret ? this.caretOnScreen(x.caret) : x.task.visible)
         )
       : [];
+    // A gutter spot freed up: the cursor waiting off that edge glides in.
+    if (desktop) {
+      const held = this.agents.map((x) => x.slot);
+      for (const slot of [0, 1]) {
+        if (held.includes(slot)) continue;
+        const next = this.agents.find(
+          (x) =>
+            x.active &&
+            x.docked &&
+            !x.task &&
+            !x.moving &&
+            x.slot < 0 &&
+            x.index % 2 === slot &&
+            t - x.dockedAt > 1500
+        );
+        if (!next) continue;
+        next.slot = slot;
+        next.docked = false;
+        next.spectated = true;
+        next.idleSince = 0;
+      }
+    }
     // Phones: the last one or two to finish stay in view a little longer,
     // so the screen isn't left empty between jobs.
     const lingering = desktop
@@ -1530,6 +1569,7 @@ class SwarmEngine {
           }
           a.nextSpot = spot;
           a.docked = false;
+          a.quiet = false;
           a.slot = -1;
           a.spectated = false;
           a.targetOpacity = 1;
@@ -1551,9 +1591,30 @@ class SwarmEngine {
           });
         continue;
       }
+      // A phone lingerer first steps aside to the nearest screen edge, so it
+      // never waits on top of a photo or a card.
+      if (!desktop && !a.spectated && lingering.includes(a)) {
+        a.spectated = true;
+        const sx = window.scrollX;
+        const sy = window.scrollY;
+        const left = a.x - sx < vw / 2;
+        const spot = {
+          x: sx + (left ? 6 : vw - 22),
+          y: clamp(a.y, sy + 90, sy + vh - 60),
+        };
+        a.moving = true;
+        this.moveTo(a, () => spot, this.gen, null, 0.8)
+          .catch(() => {})
+          .finally(() => {
+            a.moving = false;
+            a.idleSince = now();
+          });
+        continue;
+      }
       const linger = desktop ? 1300 : lingering.includes(a) ? 1800 : 300;
       if (t < a.idleSince + linger) continue;
       a.moving = true;
+      a.quiet = true;
       this.watching.delete(a);
       const speed = a.fresh ? 1.1 : desktop ? 0.8 : 1.4;
       a.fresh = false;
@@ -1754,10 +1815,14 @@ class SwarmEngine {
       const p = Math.min(1, (now() - start) / dur);
       // Re-aim every few frames (targets can drift, e.g. the marquee).
       if (live || ++frames % 5 === 0 || p >= 1) tp = target();
-      const e = overshoot
+      // The first leg off a pill starts gently and eases out with no
+      // overshoot, so it arrives as typing starts rather than settling.
+      const e = first
+        ? p < 0.3
+          ? (p * p) / 0.3
+          : 1 - ((1 - p) * (1 - p)) / 0.7
+        : overshoot
         ? easeOutBack(p)
-        : first
-        ? 1 - Math.pow(1 - p, 3)
         : easeInOut(p);
       const dx = tp.x - fx;
       const dy = tp.y - fy;

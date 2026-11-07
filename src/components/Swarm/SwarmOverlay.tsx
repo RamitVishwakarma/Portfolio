@@ -270,11 +270,12 @@ const SwarmOverlay = () => {
           : swarm.flightFrom > 0
           ? Math.max(LABEL_MAX, swarm.agents.length - Math.floor((flight - 1400) / 80))
           : LABEL_MAX;
-        // Over the splash, labels may sit over the (hidden) page copy.
-        const overSplash =
-          firstFlight &&
-          document.querySelector<HTMLElement>(".swarm-splash")?.dataset.state !==
-            "done";
+        // Through the first flight labels may sit over the page copy (it's
+        // still a ghost), so they don't hop when the splash finishes.
+        const overSplash = firstFlight;
+        // The first frames off the pills: names appear at full strength at
+        // once, matching the pill names they replace (no fade-in blink).
+        const instant = firstFlight && flight < 260;
         let labels = 0;
         let navLabels = 0;
         // Typists get first pick of label spots, then whoever had a label
@@ -305,8 +306,13 @@ const SwarmOverlay = () => {
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
-          if (d.root.hasAttribute("data-docked") !== docked) {
-            d.root.toggleAttribute("data-docked", docked);
+          // Waiting cursors drift; on phones that includes one lingering at
+          // the edge between jobs, so it never reads as a frozen page.
+          const drift =
+            docked ||
+            (phone && a.active && !a.task && !a.moving && a.ringAngle === null);
+          if (d.root.hasAttribute("data-docked") !== drift) {
+            d.root.toggleAttribute("data-docked", drift);
           }
 
           // Labels show only while a cursor moves or works (on phones, only
@@ -324,14 +330,16 @@ const SwarmOverlay = () => {
           const moving = t - (x?.movedAt ?? 0) < 600;
           const ringing = a.ringAngle !== null;
           const typing = !!a.task?.typing && !!(a.caret || a.lastCaret);
-          // The nav row is short: at most two names there at once.
-          const inNav = !!a.task?.el.closest(".sticky");
+          // The nav row is short: at most two names there at once, counting
+          // anyone at work in it or passing through it.
+          const inNav =
+            !ringing && (!!a.task?.el.closest(".sticky") || (vy > -20 && vy < 90));
           const quiet =
             a.mini ||
             (!ringing &&
               !firstFlight &&
               (phone ? !typing && !a.chip && !a.sel : !a.task && !moving)) ||
-            (docked && a.quiet && !firstFlight) ||
+            (a.quiet && !a.task && !firstFlight) ||
             (!phone && !ringing && labels >= cap) ||
             (inNav && navLabels >= 2);
 
@@ -397,6 +405,9 @@ const SwarmOverlay = () => {
               // it near the line's end), over the ghost text it's about to
               // type; the margin is the fallback.
               const lineT = caret.y - sy + caret.h / 2 - 10;
+              // Phones: a nav typist's name hangs just under the bar, clear
+              // of the logo and links.
+              if (phone && inNav) spots.push([caret.x - sx - 8, caret.y - sy + caret.h + 18, true, -1]);
               spots.push([caret.x - sx + 14, lineT, true, -1]);
               spots.push([caret.x - sx - 14 - w, lineT, true, -1]);
               spots.push([typingBox.x - sx - w - 12, lineT, false, -1]);
@@ -483,6 +494,9 @@ const SwarmOverlay = () => {
               hide = true;
               if (x) x.place = undefined;
             }
+          }
+          if (d.root.hasAttribute("data-instant") !== instant) {
+            d.root.toggleAttribute("data-instant", instant);
           }
           if (d.root.hasAttribute("data-quiet") !== hide) {
             d.root.toggleAttribute("data-quiet", hide);

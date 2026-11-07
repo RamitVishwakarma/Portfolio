@@ -272,6 +272,9 @@ html.swarm-on [data-swarm="claimed"] {
 .swarm-tags {
   transition: opacity 200ms ease;
 }
+.swarm-cursor[data-instant] .swarm-tags {
+  transition: none;
+}
 .swarm-cursor[data-quiet] .swarm-tags {
   opacity: 0;
   /* leaving is quick, so a label never lingers over copy */
