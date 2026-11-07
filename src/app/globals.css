@@ -121,18 +121,28 @@ body {
   animation: slide 4s linear infinite;
 }
 
-/*? cursor swarm: content waits as a faint ghost until a cursor builds it.
-   It stays readable, findable and in the accessibility tree throughout. The
-   level per element comes from Build.tsx (--swarm-ghost). */
+/*? cursor swarm: the page starts blank and each piece comes into existence
+   as a cursor builds it. Hidden with opacity only, so it keeps its layout
+   (nothing moves as it appears) and stays in the accessibility tree. */
 html.swarm-on [data-swarm="pending"],
 html.swarm-on [data-swarm="claimed"] {
-  opacity: var(--swarm-ghost, 0.3);
+  opacity: 0;
 }
-/* unbuilt images, and light cards, wait in greyscale, so building them
-   reads as colour arriving */
-html.swarm-on [data-swarm-kind="image"]:is([data-swarm="pending"], [data-swarm="claimed"]),
-html.swarm-on [data-swarm-surface="light"][data-swarm-kind="block"]:is([data-swarm="pending"], [data-swarm="claimed"]) {
-  filter: grayscale(1);
+/* the newest letters a cursor types glow in its colour, then settle */
+.swarm-fresh {
+  opacity: 0.45;
+  text-shadow:
+    0 0 6px var(--swarm-glow, currentColor),
+    0 0 14px var(--swarm-glow, currentColor);
+  transition:
+    opacity 260ms ease,
+    text-shadow 260ms ease;
+}
+.swarm-fresh[data-settled] {
+  opacity: 1;
+  text-shadow:
+    0 0 0 transparent,
+    0 0 0 transparent;
 }
 /* the cursor layer spans the document, so moving cursors scroll natively */
 .swarm-layer {
@@ -218,19 +228,6 @@ html.swarm-on [data-swarm-surface="light"][data-swarm-kind="block"]:is([data-swa
   border: 2px solid;
   border-radius: 50%;
   animation: swarm-ripple 520ms ease-out forwards;
-}
-/* wireframe: dashed outlines on what's ready to be built next, in the
-   colour of the cursor that has claimed it; plain CSS, so it scrolls with
-   the page and costs nothing per frame */
-html.swarm-on [data-swarm="pending"]:not(:is([data-swarm="pending"], [data-swarm="claimed"], [data-swarm="building"]) *),
-html.swarm-on [data-swarm="claimed"] {
-  outline: 1px dashed rgba(255, 255, 255, 0.32);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.18);
-}
-html.swarm-on [data-swarm="claimed"] {
-  outline-color: var(--swarm-claim, rgba(255, 255, 255, 0.6));
-  outline-style: solid;
 }
 .swarm-arrow {
   transform-origin: 3px 2px;
