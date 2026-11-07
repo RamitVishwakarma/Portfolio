@@ -67,6 +67,11 @@ interface Extra {
   /** The label's offset from its default spot, as last placed. */
   off?: [number, number];
   body?: HTMLElement | null;
+  /** Still on its way out of the nav after a nav job (not tucked under yet). */
+  fromNav?: boolean;
+  /** Last clip-path strings written (the browser reads them back shortened). */
+  clip?: string;
+  selClip?: string;
   ripples: WeakSet<object>;
 }
 const extras = new WeakMap<Agent, Extra>();
@@ -315,7 +320,14 @@ const SwarmOverlay = () => {
           // A cursor not working on the nav slides under the sticky header:
           // its arrow is clipped at the bar's edge, and its name goes as soon
           // as the tip is under.
-          const underNav = a.ringAngle === null && !a.task?.inNav;
+          // A cursor that just finished a nav job counts as part of the nav
+          // until it has come out below the bar.
+          if (x) {
+            if (a.task?.inNav) x.fromNav = true;
+            else if (x.fromNav && (vy > navBottom || a.task)) x.fromNav = false;
+          }
+          const underNav =
+            a.ringAngle === null && !a.task?.inNav && !x?.fromNav;
           const buried = underNav && vy < navBottom - 4;
           d.root.style.opacity = a.opacity.toFixed(3);
           // Negative insets keep labels that hang outside the root visible.
@@ -323,7 +335,10 @@ const SwarmOverlay = () => {
             underNav && vy - 80 < navBottom
               ? `inset(${Math.round(navBottom - vy)}px -9999px -9999px -9999px)`
               : "";
-          if (d.root.style.clipPath !== clip) d.root.style.clipPath = clip;
+          if (x && x.clip !== clip) {
+            x.clip = clip;
+            d.root.style.clipPath = clip;
+          }
           if (d.root.hasAttribute("data-pressed") !== a.pressed) {
             d.root.toggleAttribute("data-pressed", a.pressed);
           }
@@ -571,9 +586,13 @@ const SwarmOverlay = () => {
           x.sel.style.display = sel ? "block" : "none";
           const markTop = a.task && !a.task.inNav ? navBottom : -1e5;
           if (sel) {
-            const cut = Math.max(0, markTop - (sel.y - sy));
+            // The box keeps its block's nav-ness while it fades after the job.
+            const cut = sel.nav ? 0 : Math.max(0, navBottom - (sel.y - sy));
             const selClip = cut > 0 ? `inset(${Math.round(cut)}px -40px -40px -40px)` : "";
-            if (x.sel.style.clipPath !== selClip) x.sel.style.clipPath = selClip;
+            if (x.selClip !== selClip) {
+              x.selClip = selClip;
+              x.sel.style.clipPath = selClip;
+            }
             x.sel.style.transform = `translate3d(${sel.x}px, ${sel.y}px, 0)`;
             x.sel.style.width = `${sel.w}px`;
             x.sel.style.height = `${sel.h}px`;

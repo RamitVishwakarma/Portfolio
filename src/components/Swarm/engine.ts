@@ -108,7 +108,7 @@ export interface Agent {
   statusAt: number;
   pressed: boolean;
   moveToken: number;
-  sel: (Rect & { alpha: number }) | null;
+  sel: (Rect & { alpha: number; nav?: boolean }) | null;
   caret: Rect | null;
   chip: { label: string; src?: string } | null;
   ripples: { x: number; y: number; t0: number }[];
@@ -1342,6 +1342,15 @@ class SwarmEngine {
         // queue at the edge for things below the fold); on phones text waits
         // until it's 40% of the way up, headings excepted.
         if (!t.visible) continue;
+        // Tucked behind the sticky header: as good as scrolled past, so it's
+        // finished rather than sending a cursor under the bar.
+        if (!t.inNav && t.top < this.vp.sy + this.vp.navBottom) {
+          const r = t.el.getBoundingClientRect();
+          if (r.height > 0 && r.bottom <= this.vp.navBottom) {
+            this.pass(t);
+            continue;
+          }
+        }
         // Phones: text starts once its first line is clear of the bottom
         // edge; the hero photo and logo strip are the hero's closing beats.
         if (this.held(t)) continue;
@@ -2086,6 +2095,7 @@ class SwarmEngine {
         a.y = from.y + (to.y - from.y) * p;
         if (reverse) {
           a.sel = {
+            nav: task.inNav,
             x: r.x + r.w * (1 - p),
             y: r.y + r.h * (1 - p),
             w: r.w * p,
@@ -2093,7 +2103,7 @@ class SwarmEngine {
             alpha: 1,
           };
         } else {
-          a.sel = { x: r.x, y: r.y, w: r.w * p, h: r.h * p, alpha: 1 };
+          a.sel = { nav: task.inNav, x: r.x, y: r.y, w: r.w * p, h: r.h * p, alpha: 1 };
         }
         draw(p);
         if (p >= 1) break;
