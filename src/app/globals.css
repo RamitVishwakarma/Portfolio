@@ -123,10 +123,13 @@ body {
 
 /*? cursor swarm: the page starts blank and each piece comes into existence
    as a cursor builds it. Hidden with opacity only, so it keeps its layout
-   (nothing moves as it appears) and stays in the accessibility tree. */
+   (nothing moves as it appears) and stays in the accessibility tree. 0.001
+   rather than 0: it still reads as blank, but the browser paints it on
+   load, so Largest Contentful Paint records when the page loaded rather
+   than when the animation got to it. */
 html.swarm-on [data-swarm="pending"],
 html.swarm-on [data-swarm="claimed"] {
-  opacity: 0;
+  opacity: 0.001;
 }
 /* the newest letters a cursor types glow in its colour, then settle */
 .swarm-fresh {

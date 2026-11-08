@@ -687,8 +687,9 @@ const SwarmOverlay = () => {
           ctx.beginPath();
           ctx.rect(0, b.top, vw, vh - b.top);
           ctx.clip();
-          const bx = b.x - sx;
-          const by = b.y - sy;
+          // Pinned to the viewport, like the ring it bursts from.
+          const bx = b.x;
+          const by = b.y;
           const reach = Math.max(vw, vh) * 0.5;
           RAINBOW.forEach((color, i) => {
             const raw = (t - b.t0 - i * 55) / 850;

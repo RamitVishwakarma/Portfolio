@@ -284,7 +284,7 @@ class Rush extends Error {}
 class SwarmEngine {
   tasks = new Map<string, Task>();
   agents: Agent[] = [];
-  /** Shared burst when the build completes, in page coordinates. */
+  /** Shared burst when the build completes, pinned to the viewport like the ring. */
   burst: Burst | null = null;
   /** Finale backdrop: 0–1 strength of the dimming scrim. */
   scrim = 0;
@@ -426,7 +426,6 @@ class SwarmEngine {
   skip = () => {
     // During the finale's gather, Skip jumps straight to the payoff.
     if (this.phase === "finishing" && !this.revealed) {
-      this.finaleLive = false;
       this.gen++;
       this.revealed = true;
       this.burst = null;
@@ -437,7 +436,6 @@ class SwarmEngine {
       return;
     }
     if (this.phase !== "running") return;
-    this.finaleLive = false;
     this.gen++;
     this.skipped = true;
     setSplashState("done");
@@ -751,9 +749,9 @@ class SwarmEngine {
     window.addEventListener(
       "scroll",
       () => {
+        // The finale isn't cut short by scrolling: it's pinned to the
+        // screen and plays out wherever the visitor scrolls.
         this.lastScroll = now();
-        // Reading back up during the finale: go straight to the end.
-        if (this.phase === "finishing" && this.finaleLive) this.endFinale();
       },
       { passive: true }
     );
@@ -805,24 +803,6 @@ class SwarmEngine {
     this.loop();
   };
 
-  private finaleLive = false;
-
-  private endFinale() {
-    this.finaleLive = false;
-    this.gen++;
-    this.revealed = true;
-    this.burst = null;
-    this.scrimTarget = 0;
-    this.ring = null;
-    for (const a of this.agents) {
-      a.targetOpacity = 0;
-      // Back to page coordinates, so the fading cursors scroll natively.
-      a.ringAngle = null;
-    }
-    this.complete(this.gen, 300);
-    this.emit(true);
-  }
-
   private finish(natural: boolean) {
     if (this.phase !== "running") return;
     this.phase = "finishing";
@@ -861,7 +841,6 @@ class SwarmEngine {
       try {
         // Let a scroll settle before the show starts.
         while (now() - this.lastScroll < 150) await this.step(gen, null);
-        this.finaleLive = true;
         // Phones: the rest of the cast flies in, small, for the finale.
         if (this.agents.length < AGENTS.length) {
           const extra = AGENTS.slice(this.agents.length).map((def, k) => {
@@ -983,8 +962,8 @@ class SwarmEngine {
         for (const a of this.agents) a.pressed = true;
         const pieces = phone ? 130 : 220;
         this.burst = {
-          x: window.scrollX + cx,
-          y: window.scrollY + cy,
+          x: cx,
+          y: cy,
           t0: now(),
           top,
           confetti: Array.from({ length: pieces }, (_, i) => {
@@ -1021,7 +1000,6 @@ class SwarmEngine {
           if (this.ring) this.ring.alpha = 1 - fade;
           this.scrim = this.scrimTarget = phone ? 0 : 1 - fade;
         });
-        this.finaleLive = false;
         this.complete(gen, 0);
       } catch {
         // Skipped mid-finale.
