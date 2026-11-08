@@ -10,7 +10,7 @@ import {
   type ForwardRefExoticComponent,
   type ReactNode,
 } from "react";
-import { ghostFor, swarm, type BuildKind } from "./engine";
+import { swarm, type BuildKind } from "./engine";
 
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -28,7 +28,7 @@ type BuildProps = Omit<AllHTMLAttributes<HTMLElement>, "as"> & {
   priority?: boolean;
   /** Name of the cursor that should build this when it's free. */
   owner?: string;
-  /** Sits on a light background: text waits less faint to keep contrast. */
+  /** Sits on a light background (cursor labels switch to suit it). */
   surface?: "light";
   /** On phones, appears together with the element it sits in. */
   pack?: boolean;
@@ -54,7 +54,6 @@ const Build = ({
 }: BuildProps) => {
   const id = useId();
   const ref = useRef<HTMLElement>(null);
-  const ghost = ghostFor(kind, !!priority, surface === "light");
 
   useIsoLayoutEffect(() => {
     if (!ref.current) return;
@@ -64,10 +63,9 @@ const Build = ({
       optional,
       priority,
       owner,
-      ghost,
       pack,
     });
-  }, [id, as, kind, caption, optional, priority, owner, ghost, pack]);
+  }, [id, as, kind, caption, optional, priority, owner, pack]);
 
   return createElement(
     as,
@@ -78,12 +76,6 @@ const Build = ({
       "data-swarm-id": id,
       "data-swarm-kind": kind,
       "data-swarm-surface": surface,
-      // How faint it waits before it's built (set here so the first paint
-      // already matches what the engine animates from).
-      style: {
-        ...(rest.style as object),
-        "--swarm-ghost": ghost,
-      },
     },
     children
   );
