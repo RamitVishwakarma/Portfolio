@@ -2147,9 +2147,9 @@ class SwarmEngine {
     const el = task.el;
     if (typeof el.animate !== "function") return;
     // Called once the element has left its blank state, so this is its
-    // real opacity. Everything starts from nothing; only opacity, scale and
-    // translate animate (compositor-only), plus a filter on images, which is
-    // short and runs on the compositor too.
+    // real opacity. Everything starts from nothing; only opacity and scale
+    // animate (compositor-only), plus a filter on images, which is short and
+    // runs on the compositor too.
     const opacity = getComputedStyle(el).opacity || "1";
     const frames: Keyframe[] =
       style === "pop"
@@ -2165,13 +2165,13 @@ class SwarmEngine {
             { opacity, scale: "0.99", filter: "blur(3px) brightness(1.25)", offset: 0.5 },
             { opacity, scale: "1", filter: "blur(0px) brightness(1)" },
           ]
-        : [
-            { opacity: 0, translate: "0 10px" },
-            { opacity, translate: "0 0" },
-          ];
+        : // An even fade in place: an ease-out would land most of it in the
+          // first ~100 ms, so it would read as a pop after the drag that
+          // brought its card in.
+          [{ opacity: 0 }, { opacity }];
     task.anim = el.animate(frames, {
-      duration: style === "pop" ? 380 : style === "image" ? 650 : 480,
-      easing: "cubic-bezier(.2,.8,.2,1)",
+      duration: style === "pop" ? 380 : style === "image" ? 650 : 420,
+      easing: style === "fade" ? "ease-in-out" : "cubic-bezier(.2,.8,.2,1)",
     });
   }
 
