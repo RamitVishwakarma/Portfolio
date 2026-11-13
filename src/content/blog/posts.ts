@@ -7,6 +7,13 @@ export type Post = {
 
 export const posts: Post[] = [
   {
+    slug: "postgres-cpu-webhook-sweep",
+    title: "Production Postgres at 100% CPU, and the sweep that grew with the square of a campaign",
+    summary:
+      "When calling hours opened, the database sat at 99.8% CPU for four hours. Sampling pg_stat_activity found one Go query on 94% of busy backends, and its cost grew with the square of campaign size.",
+    date: "2026-09-15",
+  },
+  {
     slug: "recruitment-platform-v2",
     title: "Recruitment Platform V2 and the Postgres evening before launch",
     summary:
