@@ -7,6 +7,13 @@ export type Post = {
 
 export const posts: Post[] = [
   {
+    slug: "call-recording-player",
+    title: "The call player that made you wait 16 seconds",
+    summary:
+      "Our customer success managers audit AI voice calls by listening to them, and the old player downloaded the whole file first and drew both speakers as one grey shape. How streaming, speaker lanes and a transcript that follows playback changed that.",
+    date: "2026-11-17",
+  },
+  {
     slug: "janus-macos-account-switcher",
     title: "Janus: a macOS app that reached 123 GitHub stars in two weeks",
     summary:
