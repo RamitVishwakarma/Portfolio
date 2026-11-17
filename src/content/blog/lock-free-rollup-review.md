@@ -1,10 +1,43 @@
-Our call analytics rollup held up to 55 database writers in line at once, and it did so every few minutes for most of the working day. It never threw an error. A teammate rewrote it so that it takes no row locks while it computes. I reviewed the change, worked through why it is correct and measured the old version in production before it shipped. This post covers the review, the before numbers and the first hour after the deploy. The numbers for a full three days come on 24 November.
+Our call analytics rollup held up to 55 database writers in line at once, and it did so every few minutes for most of the working day. It never threw an error. It had worked fine for months, until our call volume jumped in late October and its cost grew far faster than the load. A teammate rewrote it so that it takes no row locks while it computes. I reviewed the change, worked through why it is correct and measured the old version in production before it shipped. This post covers the review, the before numbers and the first hour after the deploy. The numbers for a full three days come on 24 November.
 
 ## How the rollup works
 
-This is the same rollup system as in [pg_cron said succeeded for four days](/blog/pg-cron-silent-failures). Our dashboards read from 5-minute summary cells, not from the raw call logs. Each row in the call logs table has a pending flag. A `BEFORE UPDATE` trigger sets it whenever a column the summaries depend on changes. pg_cron runs a function that claims pending rows, rebuilds the cells they fall into and clears the flag. Until midday on 13 November it claimed up to 5,000 rows every 5 minutes. Then, as a quick fix for the lock waits, it was cut to 1,000 rows every 3 minutes.
+This is the same rollup system as in [pg_cron said succeeded for four days](/blog/pg-cron-silent-failures). Our dashboards read from 5-minute summary cells, not from the raw call logs. A cell is one batch's dials in one 5-minute window: one row per org, batch and window, where the window comes from the call's start time.
 
-A call's row is written several times after it ends: the billing step, the recording upload, status updates and post-call analysis each update it. So a call that has just finished is exactly the kind of row the rollup wants to claim.
+### One call's row
+
+Each dial is one row in the call logs table, and several services write to that row in turn:
+
+1. The API inserts the row when the lead is uploaded. It has no start time yet.
+2. The dialler places the call, marks it in progress and stamps its start time.
+3. The telephony status handler writes each status the carrier reports, then the final status and the duration.
+4. After the final status, a billing step and a recording upload each write their own columns.
+5. The post-call analysis service writes the outcome, the analysis and the transcript. That is usually 10 to 15 seconds after hangup. When the analysis model times out and the fallbacks run their course, it can take about 6 minutes.
+
+### How a row gets flagged
+
+The rollup never looks for changes itself. Each row has a pending flag, `analytics_pending`, and a `BEFORE INSERT OR UPDATE` trigger sets it on any dialled row when a column the summaries depend on changes: status, duration, analysis, outcome, call journey or start time. A row that was never dialled is never flagged. A write that only touches other columns, such as the recording URL or the billing fields, doesn't flag the row.
+
+One writer also sets the flag in code. The post-call analysis service sets it on every write, whether or not a tracked column changed.
+
+So one call gets flagged when it is dialled, again on each status change and again when its analysis lands. Flags set between two ticks count once, because a row is either pending or not.
+
+### One tick
+
+pg_cron runs a function that does this in one transaction:
+
+1. **Claim** up to a fixed number of pending rows, oldest change first.
+2. **Find the cells to rebuild.** That is the cell each claimed dial sits in, plus the cell where that dial's lead had its first attempt. The per-lead numbers, such as leads connected and talk time per lead, live in the first-attempt cell so each lead is counted once. So a retry today changes a cell that can be weeks old.
+3. **Delete** those cells.
+4. **Rebuild** each cell from all of its dials, not just the changed ones. The only index that finds a cell's dials is keyed on the 5-minute window alone. So the rebuild reads every org's dials in that window and throws away the ones from other batches.
+5. **Rebuild the per-lead numbers.** This reads every attempt of every lead in the affected cells, wherever those attempts landed, with a second pass over the same window index.
+6. **Mark the claimed rows done** and commit.
+
+The same tick also rolled up billing, with a claim of its own.
+
+Because every cell is rebuilt from scratch, the order of writers and ticks doesn't matter. A tick that runs before the analysis write counts that call's outcome as pending. The analysis write flags the row again, and the next tick corrects the cell.
+
+Until midday on 13 November the job claimed up to 5,000 rows every 5 minutes. Then, as a quick fix for the lock waits, it was cut to 1,000 rows every 3 minutes.
 
 ## The old claim
 
@@ -19,9 +52,44 @@ LIMIT 5000
 FOR UPDATE SKIP LOCKED;
 ```
 
-`SKIP LOCKED` means two runs never claim the same row. The cost is in `FOR UPDATE`. Row locks last until the transaction ends, and the transaction was the whole tick. While the tick rebuilt its cells, every post-call writer that touched one of those rows waited for it. Cutting the limit to 1,000 on 13 November shrank the set of locked rows, but each tick still held them for minutes.
+`SKIP LOCKED` means two runs never claim the same row, and a row someone is writing right now is left for the next tick.
 
-Overnight a tick took seconds. In calling hours it took minutes.
+`FOR UPDATE` had a real job. Without it, a write that landed between the claim and step 6 would set the flag, and step 6 would then clear it. That change would never be rolled up. With the lock, the write waits, and its flag lands after the tick has cleared the old one.
+
+The cost was how long the lock lasted. Row locks last until the transaction ends, and the transaction was the whole tick. While the tick rebuilt its cells, every write to a claimed row waited for it: status updates, billing, the recording upload and the analysis write. Cutting the limit to 1,000 on 13 November shrank the set of locked rows, but each tick still held them for minutes.
+
+### One retry, step by step
+
+A small example shows both problems. One batch. Lead A was called at 10:01 and connected. Lead B was called at 10:02 and didn't answer. Both rows were rolled up long ago.
+
+- At 14:31 lead B's retry connects. At 14:32 the status handler writes `completed` and the duration, and the trigger flags the row.
+- The 14:33 tick claims the retry row and locks it.
+- It rebuilds two cells: 14:30, where the retry sits, and 10:00, where lead B's first attempt sits. To find their dials it reads every org's dials in both windows. To rebuild the lead numbers it reads every attempt of every lead in the 10:00 cell.
+- At 14:34 the retry's analysis is ready. The analysis service updates the row, which is locked, so the write waits.
+- The tick commits a few minutes later. The analysis write goes through and flags the row again, and the next tick rebuilds both cells again.
+
+One changed row cost two cells, every dial in two 5-minute windows, every attempt of every lead in an older cell, and one writer stalled for the length of the tick. At low volume a tick took seconds, so nobody noticed the wait. At high volume it took minutes.
+
+## Why it stopped keeping up
+
+<!-- load figures: daily dials vs early-Oct avg; user's 8.5-9x not confirmed by dial counts -->
+The old design was fine at the load it was built for. In early October the average calling-hour tick took 1 to 4 seconds. Then load grew quickly. Taking the average daily dials from 6 to 18 October as 1x:
+
+- In mid-to-late October daily dials ran at about 2 to 3x.
+- On the peak days, 30 October and 8, 9 and 12 November, they reached about 5x.
+- Within one week, from 2 to 9 November, they went from about 1.5x to about 5x, roughly 3.4 times in a week.
+
+The rollup's cost grew much faster than that. The average calling-hour tick went from 1 to 4 seconds in early October to 56 to 123 seconds in late October, and up to 350 seconds on 12 November. That is roughly 100 times the tick time for about 5 times the dials.
+
+The claim was never the expensive part. The rebuild was, and its cost depends on how much each changed row drags in. A read-only replay of steps 1 to 5 against the pending rows at a light hour on 16 November found 209 changed rows. Rebuilding for them meant 63 cells, 58 of them first-attempt cells, the oldest 54 days old. All told it came to about 140,000 row reads, and about 9 in 10 of the rows the window index returned belonged to other batches and were thrown away.
+
+Each part of that grows with traffic:
+
+- **Busier windows.** The window index returns every org's dials in the window, so each cell costs more as total volume grows, not just its own batch's.
+- **More retries per lead.** Each retry re-reads the lead's whole history and drags in its first-attempt cell, which can be weeks old.
+- **Hot cells are rebuilt every tick.** While a batch is dialling, new rows land in its current cell all the time, so that cell is deleted and rebuilt on every tick. This is why cutting the claim from 5,000 rows to 1,000 didn't shorten ticks. Each claim still touches about the same set of busy cells.
+
+And because the lock lasted as long as the tick, every second added to the tick was a second added to every blocked write.
 
 ## What the old design cost
 
@@ -37,13 +105,13 @@ The daily view shows how it got there:
 
 ![Daily p95 and maximum tick runtime from 9 October to 16 November. The p95 stays under 50 seconds until late October, then climbs to several minutes. The worst run took 604 seconds on 12 November. The interval line steps from 300 to 180 seconds on 13 November.](/blog/lock-free-rollup-review/tick-runtime-daily-before.svg "Daily p95 and max tick runtime, with the schedule interval")
 
-In early October the daily p95 was a few seconds. It grew with traffic through late October. From 3 to 16 November it was between 168 and 469 seconds on every day except two quiet ones, 6 and 7 November, at around 70 seconds. The worst single run took 604 seconds, on 12 November. The change on 13 November, from 5,000 rows every 5 minutes to 1,000 rows every 3, made the rollup fresher on paper and put the p95 of every calling hour past the interval.
+In early October the daily p95 was a few seconds. It grew with traffic through late October, much faster than the traffic itself, as described above. From 3 to 16 November it was between 168 and 469 seconds on every day except two quiet ones, 6 and 7 November, at around 70 seconds. The worst single run took 604 seconds, on 12 November. The change on 13 November, from 5,000 rows every 5 minutes to 1,000 rows every 3, made the rollup fresher on paper and put the p95 of every calling hour past the interval.
 
-The two periods are different enough that I keep them apart when comparing. In calling hours on 10 to 12 November, with 5,000-row ticks, the p50 was 97 seconds and the p95 437 seconds, and 24% of ticks overran the 5-minute interval. On 14 to 16 November, with 1,000-row ticks, the p50 was 121 seconds and the p95 246 seconds, and 32% overran 3 minutes. Per claimed row, that is a p95 of 87 milliseconds in the first period and 246 in the second. Smaller batches did not make the work cheaper. They made it less efficient.
+The two periods are different enough that I keep them apart when comparing. In calling hours on 10 to 12 November, with 5,000-row ticks, the p50 was 97 seconds and the p95 437 seconds, and 24% of ticks overran the 5-minute interval. On 14 to 16 November, with 1,000-row ticks, the p50 was 121 seconds and the p95 246 seconds, and 32% overran 3 minutes. Per claimed row, that is a p95 of 87 milliseconds in the first period and 246 in the second. Smaller batches did not make the work cheaper. They made it less efficient. That fits the hot cells: a 1,000-row tick rebuilds about the same busy cells as a 5,000-row tick, so it pays nearly the same cost for a fifth of the rows.
 
 ### Who was waiting
 
-Runtime alone doesn't say who paid for it. So I sampled `pg_stat_activity` every 12 seconds or so, and for every backend waiting on a lock I followed `pg_blocking_pids()` up the chain to see whether it ended at the rollup.
+Runtime alone doesn't say who paid for it. A spot check on 4 November had found about 30 analysis writes waiting per tick, for 45 to 83 seconds each. For the full picture I sampled `pg_stat_activity` every 12 seconds or so, and for every backend waiting on a lock I followed `pg_blocking_pids()` up the chain to see whether it ended at the rollup.
 
 ![Two panels over the sample window. The top panel shows the number of backends waiting on the rollup, which climbs to around 50 during each tick and falls to near zero when the tick commits. The bottom panel shows the longest current wait, a sawtooth that climbs for as long as each tick runs, up to 223 seconds, and drops to zero when it commits. Vertical lines mark new ticks, which start right after the previous one ends.](/blog/lock-free-rollup-review/blocked-writers-before.svg "Writers blocked by the rollup, sampled every ~12 s")
 
@@ -66,7 +134,7 @@ In the [earlier post](/blog/pg-cron-silent-failures) my first rule was to monito
 
 ## The new design
 
-The teammate's version keeps the same summary cells and changes how rows are claimed and released.
+The teammate's version keeps the same summary cells and the same rebuild, and changes how rows are claimed and released. The old lock's one real job was to stop a write between the claim and the done-marking from being lost. The new version does that job with a version check instead of a lock.
 
 **The claim takes no locks.** It records each row's `xmin`, the id of the transaction that wrote the current version of the row, in a temp table:
 
@@ -80,7 +148,7 @@ ORDER BY updated_at
 LIMIT 5000;
 ```
 
-**Cells are rebuilt, not incremented.** Each affected cell is deleted and recomputed from all of its source rows. Rebuilding a cell twice gives the same result as rebuilding it once, which is what makes the rest of the design safe.
+**Cells are still rebuilt, not incremented.** Each affected cell is deleted and recomputed from all of its source rows, as before. Rebuilding a cell twice gives the same result as rebuilding it once, which is what makes the rest of the design safe.
 
 **Rows are marked done only if nothing has touched them.** At the end of the tick:
 
@@ -99,7 +167,7 @@ WHERE t.id = done.id;
 
 A row is marked done only if its version hasn't changed since the claim and no writer holds it right now. Everything else stays pending for the next tick. This statement does take row locks, but it is the last step before commit, so they last milliseconds instead of minutes.
 
-**Rows must be quiet for 6 minutes.** Only rows whose `updated_at` is at least 6 minutes old are claimed, so most of a call's post-call writes land before its cells are rebuilt. The trigger that sets the pending flag now also stamps `updated_at`, so the quiet period holds even for a writer that doesn't set it. The result is usually one rebuild per call instead of one per write.
+**Rows must be quiet for 6 minutes.** Only rows whose `updated_at` is at least 6 minutes old are claimed, so most of a call's post-call writes land before its cells are rebuilt. Six minutes is about how long the analysis write takes in its slowest case, when the model times out and falls back. The trigger that sets the pending flag now also stamps `updated_at`, so the quiet period holds even for a writer that doesn't set it. The result is usually one rebuild per call instead of one per write.
 
 **An advisory lock stops overlap.** pg_cron never runs two copies of the job, but someone running the function by hand could overlap it. The function starts with `pg_try_advisory_xact_lock()` and returns straight away if another run holds it.
 
@@ -116,7 +184,7 @@ A tick does three things in order: claim (record `xmin`), rebuild (read the sour
 1. **The writer commits before the rebuild reads the row.** The rebuild sees the new data, so the cell is correct. The row's `xmin` has changed, so it is not marked done and stays pending. The next tick rebuilds the cell once more and gets the same answer. Harmless.
 2. **The writer commits after the rebuild read the row but before the done-marking.** The cell now holds the old values, so it is briefly stale. But `xmin` changed, so the row stays pending and the next tick rebuilds the cell with the new data.
 3. **The writer has not committed when rows are marked done.** It holds a lock on the row. `SKIP LOCKED` skips it, so it is not marked done and stays pending. When the writer commits, the next tick picks it up.
-4. **The writer starts after the done-marking has locked the row.** Its `UPDATE` waits for the tick to commit, which takes milliseconds. Then it applies on top of the version that has the flag cleared. The `BEFORE UPDATE` trigger sees a tracked column change and sets the row pending again.
+4. **The writer starts after the done-marking has locked the row.** Its `UPDATE` waits for the tick to commit, which takes milliseconds. Then it applies on top of the version that has the flag cleared. If it changes a tracked column, or comes from the analysis service, the row is set pending again. If it doesn't, the cell never depended on what it wrote.
 
 In none of the four is a row marked done with stale data behind it.
 
