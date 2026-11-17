@@ -1,4 +1,4 @@
-Our call analytics rollup held up to 55 database writers in line at once, and it did so every few minutes for most of the working day. It never threw an error. It had worked fine for months, until our call volume jumped in late October and its cost grew far faster than the load. A teammate rewrote it so that it takes no row locks while it computes. I reviewed the change, worked through why it is correct and measured the old version in production before it shipped. This post covers the review, the before numbers and the first hour after the deploy. The numbers for a full three days come on 24 November.
+Our call analytics rollup held up to 55 database writers in line at once, and it did so every few minutes for most of the working day. It never threw an error. It had worked fine for months, until our call volume climbed over three weeks from late October and its cost grew far faster than the load. A teammate rewrote it so that it takes no row locks while it computes. I reviewed the change, worked through why it is correct and measured the old version in production before it shipped. This post covers the review, the before numbers and the first two hours after the deploy, which covered the top of that day's load.
 
 ## How the rollup works
 
@@ -72,14 +72,16 @@ One changed row cost two cells, every dial in two 5-minute windows, every attemp
 
 ## Why it stopped keeping up
 
-<!-- load figures: daily dials vs early-Oct avg; user's 8.5-9x not confirmed by dial counts -->
-The old design was fine at the load it was built for. In early October the average calling-hour tick took 1 to 4 seconds. Then load grew quickly. Taking the average daily dials from 6 to 18 October as 1x:
+<!-- load figures: daily dials relative to the 6-18 Oct average. Quietest day from 8 Oct (18 Oct) 0.54x, 8-12 Nov 4.4-5.1x, so busy Nov day / quiet Oct day is about 8-9x. Climb about three weeks, 19 Oct to 8 Nov. Ratios only, never absolute counts. -->
+The old design was fine at the load it was built for. In early October the average calling-hour tick took 1 to 4 seconds. Then load grew quickly. Busy November days carried about 8 to 9 times the dials of a quiet October day, and the climb took about three weeks, from late October to mid-November.
 
-- In mid-to-late October daily dials ran at about 2 to 3x.
-- On the peak days, 30 October and 8, 9 and 12 November, they reached about 5x.
-- Within one week, from 2 to 9 November, they went from about 1.5x to about 5x, roughly 3.4 times in a week.
+Against the average day from 6 to 18 October:
 
-The rollup's cost grew much faster than that. The average calling-hour tick went from 1 to 4 seconds in early October to 56 to 123 seconds in late October, and up to 350 seconds on 12 November. That is roughly 100 times the tick time for about 5 times the dials.
+- The quietest October day ran at about half that average.
+- In late October daily dials mostly ran at about 2 to 3x.
+- From 8 to 12 November they ran at about 4.4 to 5.1x, and 30 October was about as high.
+
+The rollup's cost grew much faster than that. The average calling-hour tick went from 1 to 4 seconds in early October to 56 to 123 seconds in late October, and up to 350 seconds on 12 November. That is roughly 100 times the tick time for about 5 times the average day's dials.
 
 The claim was never the expensive part. The rebuild was, and its cost depends on how much each changed row drags in. A read-only replay of steps 1 to 5 against the pending rows at a light hour on 16 November found 209 changed rows. Rebuilding for them meant 63 cells, 58 of them first-attempt cells, the oldest 54 days old. All told it came to about 140,000 row reads, and about 9 in 10 of the rows the window index returned belonged to other batches and were thrown away.
 
@@ -202,17 +204,31 @@ Two things came up beyond the main question.
 
 ## After the deploy
 
-The new rollup went live in production at 12:53 IST on Tuesday 17 November. The old job was stopped at 12:52, partway through a tick, and the first new tick started at 12:54. I measured the hour from 12:53 to 13:53 IST with the same sampler and queries as the before window, which ran from 11:24 to 12:13 the same day.
+The new rollup went live in production at 12:53 IST on Tuesday 17 November. The old job was stopped at 12:52, partway through a tick, and the first new tick started at 12:54. I measured from the deploy until 15:00 IST. That was the top of the day's load: the 13:00 hour had more dials than any hour before or after it up to 16:00. From 13:00 to 15:00 there were about 1.1 times the dials of the same hours on 10 to 12 November, and about 1.8 times those of 14 to 16 November.
+
+That is about two hours on one day, at the day's peak. Read what follows as a first look, not a verdict. The lock sampler ran for the first hour, 12:53 to 13:53. For the whole window I have pg_cron's history, the write traces and two gauges the new version exports: how many rows are claimable and how old the oldest one is. Where I compare with earlier days, I use the same hours, 13:00 to 15:00 IST.
 
 ### Tick runtime
 
-The new tick is not fast. The nine ticks in the first 70 minutes all succeeded and took 375 to 635 seconds, about 7 minutes each. That is longer than the 3-minute schedule, so pg_cron starts each one as soon as the previous one ends. The difference is that a long tick now only delays the summaries. It doesn't hold up anyone else.
+The new tick is not fast. All 16 ticks in the window succeeded and took 219 to 932 seconds. The median was 442 seconds and the p95 746. Every one ran past the 3-minute schedule, so pg_cron started each one as soon as the previous one ended, and a tick was running for the whole window. That is expected now. Each tick claims up to 5,000 rows, and a long tick only delays the summaries. It doesn't hold up anyone else.
 
-Per row it is cheaper. The backlog never dropped below 5,000 claimable rows in that hour, so every tick claimed a full batch. The median tick took 436 seconds, about 87 milliseconds per row. The old 1,000-row ticks earlier that day took about 220 seconds each, or 220 milliseconds per row. So the new rollup gets through about 2.4 times as many rows per hour. Against the 5,000-row ticks of 10 to 12 November it is about even: their calling-hour p95 was 437 seconds, close to what the new ticks take, and now nothing waits on them.
+![Tick runtime by hour of day in IST for 17 November, 12:53 to 15:00. The 12:00 hour has a single tick of 471 seconds. In the 13:00 hour the median is 430 seconds and the p95 593. In the 14:00 hour the median is 465 seconds and the p95 858. Every bar is above the 180-second interval.](/blog/lock-free-rollup-review/tick-runtime-by-hour-after.svg "Tick runtime by IST hour, 17 November after the deploy")
 
-> TODO(after-data, 24 November run): pull every run of the new voice job (jobid 347, `rollup_tick_voice(5000, 360)`) from pg_cron's history for 21 to 23 November IST, a Saturday, Sunday and Monday like 14 to 16 November. Write `ticks_prod_all_after.csv` (all runs from 9 October on, old jobid 238 and new jobid 347 together, without the cancelled run 980755) and `ticks_prod_by_hour_ist_after.csv` (21 to 23 November, same columns as the before file). Then run `python3 scripts/rollup-post-charts.py <data-dir> public/blog/lock-free-rollup-review --suffix after --days "21 to 23 November" --last 2026-11-23 --deploy 2026-11-17`, which writes `tick-runtime-by-hour-after.svg` and `tick-runtime-daily-after.svg`. Embed both here.
+For the same hours before:
 
-> TODO(after-data, 24 November run): one or two sentences on calling-hour p50 and p95 for 21 to 23 November, against both before periods: 5,000 rows every 5 minutes on 10 to 12 November (p50 97 s, p95 437 s, max 604 s) and 1,000 rows every 3 minutes on 14 to 16 November (p50 121 s, p95 246 s). Give the cost per row as the fair measure. pg_cron's history doesn't record rows claimed, so count a tick as full only when the exported claimable-rows gauge (`backend_rollup_voice_claimable_rows`, service `backend-prod`) was at 5,000 or more when it started. Ticks over 180 s are expected now and are not a failure.
+- On 10 to 12 November, with 5,000 rows every 5 minutes, the ticks that started between 13:00 and 15:00 had a median of 92 seconds and a p95 of 471. 25% ran past 5 minutes.
+- On 14 to 16 November, with 1,000 rows every 3 minutes, the same hours had a median of 40 seconds and a p95 of 227. 19% ran past 3 minutes. These hours were the quiet midday dip of those days.
+- Earlier on 17 November, from 11:23 to 12:14, the old 1,000-row ticks had a median of 210 seconds, and 69% ran past 3 minutes.
+
+By the clock the new ticks are longer. But the claim size changed, so cost per claimed row is the fairer measure. pg_cron doesn't record how many rows a tick claimed, so I read the claimable-rows gauge just before each tick started. It was above 5,000 for the first 14 ticks, so each of them claimed a full batch. The last two, at 14:52 and 14:56, had less to claim.
+
+The 14 full ticks had a median of 457 seconds, about 91 milliseconds per row. The old 1,000-row ticks earlier that day took about 210 milliseconds per row at the median. So the new rollup gets through about 2.3 times as many rows per hour.
+
+Against the 5,000-row ticks of 10 to 12 November the picture is mixed. Nothing recorded how many rows those ticks claimed, so their median can't be turned into a cost per row. Their slow ticks most likely claimed a full batch. Their p95 of 471 seconds comes to about 94 milliseconds per row, close to the new median. The new p95 is 771 seconds for a full tick, or 154 milliseconds per row, so the new tail is worse. Two ticks make that tail: the one at 14:03 took 684 seconds and the one at 14:14 took 932. I don't know yet why those two were slow.
+
+![Daily p95 and maximum tick runtime from 9 October to 17 November. The p95 stays under 50 seconds until late October, then climbs to several minutes. The last point, 17 November up to 15:00, mixes the old ticks of that morning with the new ones and has the longest run of the period, 932 seconds. The deploy is marked at the right edge.](/blog/lock-free-rollup-review/tick-runtime-daily-after.svg "Daily p95 and max tick runtime up to 15:00 IST on 17 November")
+
+The daily view now runs to 17 November. Its last point covers that day up to 15:00, so it mixes the old 1,000-row ticks of the morning with the new 5,000-row ticks of the afternoon. Its maximum is the 932-second tick.
 
 ### Who is waiting now
 
@@ -226,11 +242,13 @@ From 12:53 to 13:53 IST, 233 samples:
 
 The rollup ran for almost the whole hour, just as the old one did. Nothing waited on it.
 
+The sampler stopped at 13:53, so for 13:53 to 15:00 I only have the write traces. In that stretch the slowest traced write to the call logs, across every writer, took 0.89 seconds, and none failed. A writer held behind a 7-minute tick would have shown up there. After the window, from 16:33 to 16:36, I took 75 more lock samples while a tick was running. None had a writer blocked by the rollup.
+
 I also checked that rows really get released. At 13:10 I recorded the id and `xmin` of the 5,000 oldest claimable rows. By 14:04 all 5,000 were marked done, and none was left pending.
 
 ### Post-call writes
 
-Our services already trace every database statement, so the writes have a before window as well as an after. These are the updates to the call logs in the two sampled windows.
+Our services already trace every database statement, so the writes have a before window as well as an after. These are the updates to the call logs in the two lock-sampler windows, 11:24 to 12:13 and 12:53 to 13:53.
 
 | Writer | p95 before | p95 after | Slowest before | Slowest after | Timed out before | Timed out after |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -245,37 +263,49 @@ Post-call analysis doesn't show up in the traces as a write to the call logs, so
 
 Most writers were fine in both windows, a few milliseconds either way. The recording upload was not. In the before window one write in ten ran into its 120-second timeout and failed.
 
-![Hourly p95 latency of the recording-upload write, on a log scale, and the share of those writes that timed out, from 14 to 17 November. The p95 sits at a few milliseconds most of the time and jumps to about 120 seconds in episodes lasting several hours on each day, when up to 24% of writes in an hour time out. The deploy is marked near the right edge, after which the p95 is back to about 10 milliseconds and nothing times out.](/blog/lock-free-rollup-review/recording-writes.svg "Recording-upload writes, hourly, with the deploy marked")
+![Hourly p95 latency of the recording-upload write, on a log scale, and the share of those writes that timed out, from 14 November to 15:00 IST on 17 November. The p95 sits at a few milliseconds most of the time and jumps to about 120 seconds in episodes lasting several hours, when up to 24% of writes in an hour time out. The deploy is marked near the right edge, after which the p95 is back to about 10 milliseconds and nothing times out.](/blog/lock-free-rollup-review/recording-writes.svg "Recording-upload writes, hourly, with the deploy marked")
 
-This wasn't a one-off. Over 14 to 17 November the recording write timed out in episodes of several hours on every day. The traces alone don't prove that each timeout was a lock wait on the rollup. But the lock samples found no other blocker, and the timeouts stopped within the hour of the deploy. One hour is short, so the three-day run checks whether that holds.
+This wasn't a one-off. Over 14 to 17 November the recording write timed out in episodes of several hours on every day. The traces alone don't prove that each timeout was a lock wait on the rollup. But the lock samples found no other blocker, and the timeouts stopped within minutes of the deploy.
 
-> TODO(after-data, 24 November run): from the traces, the share of recording-upload writes that timed out and their p95, hourly over 21 to 23 November. Regenerate `recording-writes.svg` with `writers_hourly.csv` running from 14 to 23 November and `--deploy-at 2026-11-17T07:23:23Z`, and add one sentence on whether the timeouts stayed at zero.
+They stayed at zero for the rest of the window. From 12:55 to 15:00 not one recording write timed out. The p95 was 12 milliseconds, and the slowest write took 0.42 seconds. That morning, from 08:30 to 12:30, 7 to 11% of recording writes timed out in every hour. The same hours on earlier days are a weaker comparison: on 14 November 9% of recording writes timed out between 13:00 and 15:00, but on 10 to 12, 15 and 16 November none did.
 
 ### How far behind the summaries run
 
 In the before window the oldest pending row was 20 to 27 minutes old, and the backlog grew by about a fifth over 50 minutes.
 
-The after hour started with a handicap. The cancelled tick's work was rolled back and the first new tick didn't finish until 13:01, so for about 10 minutes nothing was marked done. The backlog had also kept growing between the two windows. At the deploy it was already about twice the size of the before window's average, and its oldest row was 33 minutes old.
+The after window started with a handicap. The cancelled tick's work was rolled back and the first new tick didn't finish until 13:01, so for about 10 minutes nothing was marked done. The backlog had also kept growing between the two windows. At the deploy the claimable backlog was about 2.3 times the before window's average, and its oldest row was 34 minutes old.
 
-It grew by about half again until 13:32, while the new ticks caught up. Then it fell. By 14:05 it was 10% smaller than at the deploy, and the oldest pending row was 23 minutes old. Through the hour the oldest row ranged from 22 to 40 minutes.
+It kept growing until 13:32, to about 3.2 times the before average, while the first ticks worked through the switchover. Then it fell with almost every tick. It dropped below the before average at 14:46, and at 15:00 it was empty. Until 14:50 the oldest pending row was 20 to 42 minutes old. At 15:00 it was 6 minutes old, the quiet period and no more.
 
-So the summaries are not fresher yet. They are about as far behind as before, while working off twice the backlog. Part of that delay is now by design: a row waits 6 quiet minutes before it can be claimed, then for the next tick, which takes about 7 minutes to commit.
+Dials did ease in the 14:00 hour, about 30% below the 13:00 hour, and that helped. But the 15:00 hour was about as busy as the two hours before it, and the backlog didn't come back. From 15:00 to 16:30, after the window, it stayed under a third of the before average, and the oldest pending row stayed between 7 and 13 minutes old. Every tick from 15:03 to 16:08 finished inside the 3-minute interval, in 12 to 157 seconds. From 16:09 they ran at about 3 minutes, right at the interval.
 
-> TODO(after-data, 24 November run): oldest pending row over the calling hours of 21 to 23 November, from the exported gauge `backend_rollup_voice_oldest_claimable_seconds` (service `backend-prod`), against the 20 to 27 minutes before. Relative backlog size only.
+So for most of the window the summaries were no fresher than before, while the rollup worked off the switchover backlog at the busiest time of day. Once it had, the oldest pending row was 7 to 13 minutes old instead of 20 to 27. Part of that delay is by design: a row waits 6 quiet minutes before it can be claimed, then for the next tick to commit.
 
 ### Before and after
 
+The after column is 17 November from 12:53 to 15:00 IST, unless a row says otherwise. The tick rows compare the same hours, 13:00 to 15:00 IST, on the earlier days.
+
 | Measure | Before | After |
 | --- | --- | --- |
-| Calling-hour tick p95, 5,000-row ticks | 437 s | TODO(after-data, 24 November run) |
-| Calling-hour tick p95, 1,000-row ticks | 246 s | n/a |
-| Ticks over the interval, calling hours | 24% at 5 min, 32% at 3 min | TODO(after-data, 24 November run) |
-| Cost per claimed row, same day | 220 ms | 87 ms |
-| Samples with writers blocked by the rollup | 93% | 0% |
-| Writers blocked, average / max | 37 / 55 | 0 / 0 |
-| Longest lock wait | 223 s | 0.2 s, not on the rollup |
+| Tick p95, 5,000-row ticks | 471 s, 10 to 12 Nov, every 5 min | 746 s, every 3 min |
+| Tick p95, 1,000-row ticks | 227 s, 14 to 16 Nov | n/a |
+| Ticks over the interval | 25% over 5 min (10 to 12 Nov), 19% over 3 min (14 to 16 Nov) | 100% over 3 min, 16 of 16 |
+| Cost per claimed row, median | 210 ms, 11:23 to 12:14 the same day | 91 ms, full ticks |
+| Samples with writers blocked by the rollup | 93% | 0%, 12:53 to 13:53 |
+| Writers blocked, average / max | 37 / 55 | 0 / 0, 12:53 to 13:53 |
+| Longest lock wait | 223 s | 0.2 s, not on the rollup, 12:53 to 13:53 |
 | Recording-upload writes timed out | 10% | 0% |
-| Recording-upload write p95 | 119 s | 11 ms |
-| Oldest pending row | 20 to 27 min | 22 to 40 min, starting from a switchover backlog |
+| Recording-upload write p95 | 119 s | 12 ms |
+| Oldest pending row | 20 to 27 min | 20 to 42 min until 14:50, 6 min at 15:00 |
 
-> TODO(after-data, 24 November run): closing section, once the three-day numbers are in. Say whether the calling-hour ticks keep up with the inflow, whether the recording timeouts stayed at zero, and whether the oldest pending row came down. End with what I would check first next time a rollup gets slow: lock waits by blocker, then tick duration against the interval.
+## What it showed, and what I would check next time
+
+Two hours is a short look, but they were the busiest two hours of the day, and they answer the three questions I had going in.
+
+- **Do the ticks keep up with the inflow?** In this window, yes. Each full tick took about 7 minutes and up to 15, but the rollup went from three times the before backlog to none in under 90 minutes, at peak load. After that the ticks fit inside the interval.
+- **Did the recording timeouts stay at zero?** Yes. None timed out from 12:55 to 15:00, against 7 to 11% an hour that morning.
+- **Did the oldest pending row come down?** Only at the end. It stayed 20 to 42 minutes old while the switchover backlog drained, then dropped to 6 minutes at 15:00, and stayed under 13 minutes until 16:30.
+
+What this doesn't show yet is a full busy day, or why two ticks took 11 and 15 minutes. The new tail is worse per row than the 5,000-row ticks of 10 to 12 November, and the lock sampler only covered the first hour.
+
+The bigger lesson is about where to look. The old rollup never failed. It succeeded on every run while 50 writers queued behind it, so no alert built on errors could have caught it. Next time a rollup gets slow, I would check two things first. First, lock waits by blocker: sample `pg_stat_activity`, follow `pg_blocking_pids()` up the chain and count who is stuck behind the job. Then tick duration against the interval, from pg_cron's run history. Those two numbers told the whole story here, before and after.

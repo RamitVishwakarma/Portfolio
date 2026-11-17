@@ -110,29 +110,37 @@ def chart_by_hour(data, out, suffix="before", days="14 to 16 November"):
         return
     rows = list(csv.DictReader(open(path)))
     top, bottom = MT, H - MB
-    vmax, step = 360, 60
+    # The y axis grows past 6 minutes only when a bar would be clipped.
+    vmax = max(360, -(-max(float(r["p95_s"]) for r in rows) // 60) * 60)
+    step = 60 if vmax <= 360 else 120
+    vmax = -(-vmax // step) * step
     calling = [r for r in rows if 9 <= int(r["hour_ist"]) <= 20]
     lo, hi = min(float(r["p95_s"]) for r in calling), max(float(r["p95_s"]) for r in calling)
+    c0, c1 = min(int(r["hour_ist"]) for r in calling), max(int(r["hour_ist"]) for r in calling)
     s = svg_open(
-        f"Tick runtime by hour of day in IST, {days}. From 09:00 to 20:59 the p95 is "
+        f"Tick runtime by hour of day in IST, {days}. From {c0:02d}:00 to {c1:02d}:59 the p95 is "
         f"{lo:.0f} to {hi:.0f} seconds against the 180-second interval.",
         f"Tick runtime by hour of day (IST), {days}",
     )
     s += legend([("bar", P50, "p50"), ("bar", P95, "p95"), ("dash", LIMIT, "180 s interval")])
     s += y_axis(top, bottom, vmax, step)
     plot_w = W - ML - MR
-    slot = plot_w / 24
+    # A full day gets 24 slots; a shorter window only the hours it covers.
+    h0 = 0 if len(rows) >= 12 else min(int(r["hour_ist"]) for r in rows)
+    nh = 24 if len(rows) >= 12 else max(int(r["hour_ist"]) for r in rows) - h0 + 1
+    every = 3 if nh > 8 else 1
+    slot = plot_w / nh
     bw = slot * 0.36
     for r in rows:
         h = int(r["hour_ist"])
-        x0 = ML + slot * h + slot * 0.12
+        x0 = ML + slot * (h - h0) + slot * 0.12
         for i, (key, color) in enumerate((("p50_s", P50), ("p95_s", P95))):
             v = float(r[key])
             bh = (bottom - top) * min(v, vmax) / vmax
             s.append(f'<rect x="{x0 + i * bw:.1f}" y="{bottom - bh:.1f}" width="{bw - 1:.1f}" '
                      f'height="{bh:.1f}" rx="1.5" fill="{color}"/>')
-        if h % 3 == 0:
-            s.append(f'<text x="{ML + slot * h + slot / 2:.1f}" y="{bottom + 18}" text-anchor="middle" '
+        if h % every == 0:
+            s.append(f'<text x="{ML + slot * (h - h0) + slot / 2:.1f}" y="{bottom + 18}" text-anchor="middle" '
                      f'fill="{MUTED}">{h:02d}:00</text>')
     y180 = bottom - (bottom - top) * 180 / vmax
     s.append(f'<path d="M{ML} {y180:.1f}H{W - MR}" stroke="{LIMIT}" stroke-width="2" stroke-dasharray="5 4"/>')
@@ -156,7 +164,7 @@ def chart_daily(data, out, suffix="before", first=dt.date(2026, 10, 9), last=dt.
             days[t.date()].append(float(r["dur_s"]))
     keys = sorted(days)
     top, bottom = MT, H - MB
-    vmax, step = 700, 100
+    vmax, step = max(700, -(-max(max(v) for v in days.values()) // 100) * 100), 100
     plot_w = W - ML - MR
     n = (last - first).days
 

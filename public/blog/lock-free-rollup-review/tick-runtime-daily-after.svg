@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif" font-size="12" role="img" aria-label="Daily p95 and maximum tick runtime from 9 October to 17 November. The p95 climbs from a few seconds to several minutes and passes the interval on the worst days; the worst single run took 932 seconds. The deploy on 17 November is marked.">
+<rect width="760" height="400" fill="#000000"/>
+<text x="24" y="32" font-size="15" font-weight="700" fill="#FFFFFF">Daily tick runtime (IST days), 9 October to 17 November</text>
+<path d="M24 50H42" stroke="#a8fe96" stroke-width="2.5"/>
+<text x="48" y="54" fill="#b0b0b0">p95</text>
+<path d="M93.8 50H111.8" stroke="#ffc67e" stroke-width="2.5"/>
+<text x="117.8" y="54" fill="#b0b0b0">max</text>
+<path d="M163.6 50H181.6" stroke="#ff8885" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="187.6" y="54" fill="#b0b0b0">schedule interval</text>
+<path d="M331.79999999999995 43V56" stroke="#b0b0b0" stroke-width="1"/>
+<text x="343.79999999999995" y="54" fill="#b0b0b0">lock-free rollup deployed</text>
+<path d="M60 352.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="356.0" text-anchor="end" fill="#b0b0b0">0s</text>
+<path d="M60 324.2H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="328.2" text-anchor="end" fill="#b0b0b0">100s</text>
+<path d="M60 296.4H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="300.4" text-anchor="end" fill="#b0b0b0">200s</text>
+<path d="M60 268.6H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="272.6" text-anchor="end" fill="#b0b0b0">300s</text>
+<path d="M60 240.8H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="244.8" text-anchor="end" fill="#b0b0b0">400s</text>
+<path d="M60 213.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="217.0" text-anchor="end" fill="#b0b0b0">500s</text>
+<path d="M60 185.2H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="189.2" text-anchor="end" fill="#b0b0b0">600s</text>
+<path d="M60 157.4H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="161.4" text-anchor="end" fill="#b0b0b0">700s</text>
+<path d="M60 129.6H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="133.6" text-anchor="end" fill="#b0b0b0">800s</text>
+<path d="M60 101.8H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="105.8" text-anchor="end" fill="#b0b0b0">900s</text>
+<path d="M60 74.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="78.0" text-anchor="end" fill="#b0b0b0">1000s</text>
+<polyline fill="none" stroke="#ffc67e" stroke-width="1.5" stroke-opacity="0.85" points="60.0,342.6 77.3,349.9 94.7,349.3 112.0,346.7 129.3,338.3 146.7,347.4 164.0,349.0 181.3,349.7 198.7,348.3 216.0,350.8 233.3,342.2 250.7,348.5 268.0,342.4 285.3,343.2 302.7,336.6 320.0,333.1 337.3,338.2 354.7,309.9 372.0,300.0 389.3,231.3 406.7,194.7 424.0,219.3 441.3,280.9 458.7,269.5 476.0,312.6 493.3,243.3 510.7,214.4 528.0,242.8 545.3,324.4 562.7,315.0 580.0,276.4 597.3,252.4 614.7,274.3 632.0,223.3 649.3,184.1 666.7,245.3 684.0,276.2 701.3,278.2 718.7,211.9 736.0,92.8"/>
+<polyline fill="none" stroke="#a8fe96" stroke-width="2.5" points="60.0,350.8 77.3,350.8 94.7,350.9 112.0,350.7 129.3,350.5 146.7,350.7 164.0,350.8 181.3,351.1 198.7,349.3 216.0,351.3 233.3,347.8 250.7,349.5 268.0,345.1 285.3,345.2 302.7,343.5 320.0,340.0 337.3,343.2 354.7,326.2 372.0,320.0 389.3,311.7 406.7,290.0 424.0,306.9 441.3,315.2 458.7,318.3 476.0,330.4 493.3,287.7 510.7,272.1 528.0,292.9 545.3,330.9 562.7,332.3 580.0,285.7 597.3,271.1 614.7,297.8 632.0,255.8 649.3,221.8 666.7,287.6 684.0,289.5 701.3,305.3 718.7,278.3 736.0,259.2"/>
+<path d="M60 268.6H666.7V302.0H736" fill="none" stroke="#ff8885" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="66" y="262.6" fill="#ff8885">every 5 min</text>
+<text x="736" y="318.0" text-anchor="end" fill="#ff8885">every 3 min</text>
+<path d="M736.0 74V352" stroke="#b0b0b0" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="60.0" y="370" text-anchor="middle" fill="#b0b0b0">Oct 9</text>
+<text x="181.3" y="370" text-anchor="middle" fill="#b0b0b0">Oct 16</text>
+<text x="302.7" y="370" text-anchor="middle" fill="#b0b0b0">Oct 23</text>
+<text x="424.0" y="370" text-anchor="middle" fill="#b0b0b0">Oct 30</text>
+<text x="545.3" y="370" text-anchor="middle" fill="#b0b0b0">Nov 6</text>
+<text x="666.7" y="370" text-anchor="middle" fill="#b0b0b0">Nov 13</text>
+</svg>
