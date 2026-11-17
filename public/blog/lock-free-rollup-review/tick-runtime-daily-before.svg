@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif" font-size="12" role="img" aria-label="Daily p95 and maximum tick runtime from 9 October to 16 November. The p95 climbs from a few seconds to several minutes and passes the interval on the worst days; the worst single run took 604 seconds.">
+<rect width="760" height="400" fill="#000000"/>
+<text x="24" y="32" font-size="15" font-weight="700" fill="#FFFFFF">Daily tick runtime (IST days), 9 October to 16 November</text>
+<path d="M24 50H42" stroke="#a8fe96" stroke-width="2.5"/>
+<text x="48" y="54" fill="#b0b0b0">p95</text>
+<path d="M93.8 50H111.8" stroke="#ffc67e" stroke-width="2.5"/>
+<text x="117.8" y="54" fill="#b0b0b0">max</text>
+<path d="M163.6 50H181.6" stroke="#ff8885" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="187.6" y="54" fill="#b0b0b0">schedule interval</text>
+<path d="M60 352.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="356.0" text-anchor="end" fill="#b0b0b0">0s</text>
+<path d="M60 312.3H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="316.3" text-anchor="end" fill="#b0b0b0">100s</text>
+<path d="M60 272.6H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="276.6" text-anchor="end" fill="#b0b0b0">200s</text>
+<path d="M60 232.9H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="236.9" text-anchor="end" fill="#b0b0b0">300s</text>
+<path d="M60 193.1H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="197.1" text-anchor="end" fill="#b0b0b0">400s</text>
+<path d="M60 153.4H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="157.4" text-anchor="end" fill="#b0b0b0">500s</text>
+<path d="M60 113.7H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="117.7" text-anchor="end" fill="#b0b0b0">600s</text>
+<path d="M60 74.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="78.0" text-anchor="end" fill="#b0b0b0">700s</text>
+<polyline fill="none" stroke="#ffc67e" stroke-width="1.5" stroke-opacity="0.85" points="60.0,338.6 77.8,349.0 95.6,348.1 113.4,344.5 131.2,332.4 148.9,345.5 166.7,347.7 184.5,348.7 202.3,346.7 220.1,350.2 237.9,338.1 255.7,347.0 273.5,338.3 291.3,339.4 309.1,329.9 326.8,325.0 344.6,332.3 362.4,291.9 380.2,277.7 398.0,179.6 415.8,127.3 433.6,162.5 451.4,250.4 469.2,234.1 486.9,295.8 504.7,196.7 522.5,155.4 540.3,196.0 558.1,312.6 575.9,299.1 593.7,244.1 611.5,209.7 629.3,241.0 647.1,168.1 664.8,112.1 682.6,199.6 700.4,243.7 718.2,246.6 736.0,151.9"/>
+<polyline fill="none" stroke="#a8fe96" stroke-width="2.5" points="60.0,350.4 77.8,350.3 95.6,350.4 113.4,350.1 131.2,349.8 148.9,350.1 166.7,350.3 184.5,350.8 202.3,348.1 220.1,350.9 237.9,346.0 255.7,348.4 273.5,342.1 291.3,342.2 309.1,339.9 326.8,334.8 344.6,339.4 362.4,315.1 380.2,306.3 398.0,294.5 415.8,263.4 433.6,287.6 451.4,299.4 469.2,303.9 486.9,321.2 504.7,260.1 522.5,237.8 540.3,267.5 558.1,321.8 575.9,323.9 593.7,257.3 611.5,236.5 629.3,274.6 647.1,214.6 664.8,166.0 682.6,260.0 700.4,262.8 718.2,285.3 736.0,246.7"/>
+<path d="M60 232.9H682.6V280.5H736" fill="none" stroke="#ff8885" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="66" y="226.9" fill="#ff8885">every 5 min</text>
+<text x="736" y="296.5" text-anchor="end" fill="#ff8885">every 3 min</text>
+<text x="60.0" y="370" text-anchor="middle" fill="#b0b0b0">Oct 9</text>
+<text x="184.5" y="370" text-anchor="middle" fill="#b0b0b0">Oct 16</text>
+<text x="309.1" y="370" text-anchor="middle" fill="#b0b0b0">Oct 23</text>
+<text x="433.6" y="370" text-anchor="middle" fill="#b0b0b0">Oct 30</text>
+<text x="558.1" y="370" text-anchor="middle" fill="#b0b0b0">Nov 6</text>
+<text x="682.6" y="370" text-anchor="middle" fill="#b0b0b0">Nov 13</text>
+</svg>

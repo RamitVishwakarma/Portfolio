@@ -99,7 +99,7 @@ const components: Components = {
 
 const Markdown = ({ content }: { content: string }) => {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} skipHtml>
       {content}
     </ReactMarkdown>
   );

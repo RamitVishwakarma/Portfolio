@@ -7,6 +7,13 @@ export type Post = {
 
 export const posts: Post[] = [
   {
+    slug: "lock-free-rollup-review",
+    title: "The rollup that kept 55 writers waiting",
+    summary:
+      "Our analytics rollup held row locks for minutes at a time in calling hours. Reviewing a teammate's lock-free rewrite, why it is correct, and what the old one cost in production.",
+    date: "2026-11-17",
+  },
+  {
     slug: "janus-macos-account-switcher",
     title: "Janus: a macOS app that reached 123 GitHub stars in two weeks",
     summary:
