@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif" font-size="12" role="img" aria-label="Tick runtime by hour of day in IST. Overnight ticks take seconds; from 09:00 to 20:59 the p95 is 210 to 320 seconds, above the 180-second interval.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif" font-size="12" role="img" aria-label="Tick runtime by hour of day in IST, 14 to 16 November. From 09:00 to 20:59 the p95 is 210 to 319 seconds against the 180-second interval.">
 <rect width="760" height="400" fill="#000000"/>
 <text x="24" y="32" font-size="15" font-weight="700" fill="#FFFFFF">Tick runtime by hour of day (IST), 14 to 16 November</text>
 <rect x="24" y="45" width="12" height="10" rx="2" fill="#77effd"/>

@@ -4,13 +4,25 @@
 Reads the sampler CSVs from a data directory and writes SVGs that match the
 site's dark palette. Standard library only.
 
-    python3 scripts/rollup-post-charts.py DATA_DIR public/blog/lock-free-rollup-review [--suffix before]
+    python3 scripts/rollup-post-charts.py DATA_DIR public/blog/lock-free-rollup-review \
+        [--suffix before] [--days "14 to 16 November"] [--last 2026-11-16] [--deploy 2026-11-17]
 
-Inputs (in DATA_DIR):
+Inputs (in DATA_DIR). With --suffix S other than "before", each file is read
+as <name>_S.csv (locks_prod_after.csv, ticks_prod_all_after.csv, ...) and a chart
+whose input is missing is skipped:
   ticks_prod_by_hour_ist.csv  hour_ist,runs,p50_s,p95_s,max_s,pct_over_180s
   ticks_prod_all.csv          start_time (UTC),dur_s,status
   locks_prod.csv              ts,waiters,blocked_by_rollup,max_wait_s,max_wait_by_rollup_s,
                               rollup_running,rollup_running_s
+  ticks_window.csv (optional) start_time (UTC),dur_s,status for the locks window; when
+                              present its start times draw the "new tick starts" lines
+  writers_hourly.csv          writer,ts_utc_epoch,count,p50_s,p95_s,p99_s,max_s,errors per
+                              hour (from SigNoz traces); draws the recording-write timeline
+                              and is never suffixed: one file spans before and after
+--days is the day range named in the by-hour chart title, --last the last day of the
+daily chart, --deploy a day to mark on the daily chart with a vertical line, and
+--deploy-at the UTC instant (2026-11-17T07:30:00Z) marked on the recording-writes chart,
+which is drawn only when --deploy-at is given.
 """
 import csv
 import datetime as dt
@@ -84,14 +96,27 @@ def poly(points):
 
 
 # 1. Tick runtime p50/p95 by IST hour, with the 3-minute interval.
-def chart_by_hour(data, out):
-    rows = list(csv.DictReader(open(os.path.join(data, "ticks_prod_by_hour_ist.csv"))))
+def src(data, name, suffix):
+    """Path of a data file for this suffix, or None if it does not exist."""
+    base, ext = os.path.splitext(name)
+    p = os.path.join(data, name if suffix == "before" else f"{base}_{suffix}{ext}")
+    return p if os.path.exists(p) else None
+
+
+def chart_by_hour(data, out, suffix="before", days="14 to 16 November"):
+    path = src(data, "ticks_prod_by_hour_ist.csv", suffix)
+    if not path:
+        print(f"skip {out}: no ticks_prod_by_hour_ist file for --suffix {suffix}")
+        return
+    rows = list(csv.DictReader(open(path)))
     top, bottom = MT, H - MB
     vmax, step = 360, 60
+    calling = [r for r in rows if 9 <= int(r["hour_ist"]) <= 20]
+    lo, hi = min(float(r["p95_s"]) for r in calling), max(float(r["p95_s"]) for r in calling)
     s = svg_open(
-        "Tick runtime by hour of day in IST. Overnight ticks take seconds; from 09:00 to 20:59 "
-        "the p95 is 210 to 320 seconds, above the 180-second interval.",
-        "Tick runtime by hour of day (IST), 14 to 16 November",
+        f"Tick runtime by hour of day in IST, {days}. From 09:00 to 20:59 the p95 is "
+        f"{lo:.0f} to {hi:.0f} seconds against the 180-second interval.",
+        f"Tick runtime by hour of day (IST), {days}",
     )
     s += legend([("bar", P50, "p50"), ("bar", P95, "p95"), ("dash", LIMIT, "180 s interval")])
     s += y_axis(top, bottom, vmax, step)
@@ -116,10 +141,14 @@ def chart_by_hour(data, out):
 
 
 # 2. Daily p95 and max tick runtime, with the schedule interval as a step.
-def chart_daily(data, out, first=dt.date(2026, 10, 9), last=dt.date(2026, 11, 16),
-                switch=dt.date(2026, 11, 13)):
+def chart_daily(data, out, suffix="before", first=dt.date(2026, 10, 9), last=dt.date(2026, 11, 16),
+                switch=dt.date(2026, 11, 13), deploy=None):
+    path = src(data, "ticks_prod_all.csv", suffix)
+    if not path:
+        print(f"skip {out}: no ticks_prod_all file for --suffix {suffix}")
+        return
     days = defaultdict(list)
-    for r in csv.DictReader(open(os.path.join(data, "ticks_prod_all.csv"))):
+    for r in csv.DictReader(open(path)):
         if not r["dur_s"]:
             continue
         t = dt.datetime.fromisoformat(r["start_time"].replace("+00", "+00:00")) + IST
@@ -137,13 +166,18 @@ def chart_daily(data, out, first=dt.date(2026, 10, 9), last=dt.date(2026, 11, 16
     def y(v):
         return bottom - (bottom - top) * v / vmax
 
+    span = f'{first.day} {first.strftime("%B")} to {last.day} {last.strftime("%B")}'
+    worst = max(max(days[d]) for d in keys)
     s = svg_open(
-        "Daily p95 and maximum tick runtime from 9 October to 16 November. The p95 climbs from "
-        "a few seconds to several minutes and passes the interval on the worst days; the worst "
-        "single run took 604 seconds.",
-        "Daily tick runtime (IST days), 9 October to 16 November",
+        f"Daily p95 and maximum tick runtime from {span}. The p95 climbs from a few seconds "
+        f"to several minutes and passes the interval on the worst days; the worst single run "
+        f"took {worst:.0f} seconds." + (f" The deploy on {deploy.day} {deploy.strftime('%B')} is marked." if deploy else ""),
+        f"Daily tick runtime (IST days), {span}",
     )
-    s += legend([("line", P95, "p95"), ("line", MAX, "max"), ("dash", LIMIT, "schedule interval")])
+    items = [("line", P95, "p95"), ("line", MAX, "max"), ("dash", LIMIT, "schedule interval")]
+    if deploy:
+        items.append(("vline", MUTED, "lock-free rollup deployed"))
+    s += legend(items)
     s += y_axis(top, bottom, vmax, step)
     s.append(f'<polyline fill="none" stroke="{MAX}" stroke-width="1.5" stroke-opacity="0.85" '
              f'points="{poly([(x(d), y(max(days[d]))) for d in keys])}"/>')
@@ -154,6 +188,9 @@ def chart_daily(data, out, first=dt.date(2026, 10, 9), last=dt.date(2026, 11, 16
              f'stroke="{LIMIT}" stroke-width="2" stroke-dasharray="5 4"/>')
     s.append(f'<text x="{ML + 6}" y="{y(300) - 6:.1f}" fill="{LIMIT}">every 5 min</text>')
     s.append(f'<text x="{W - MR}" y="{y(180) + 16:.1f}" text-anchor="end" fill="{LIMIT}">every 3 min</text>')
+    if deploy:
+        xd = x(deploy)
+        s.append(f'<path d="M{xd:.1f} {top}V{bottom}" stroke="{MUTED}" stroke-width="1" stroke-dasharray="2 3"/>')
     d = first
     while d <= last:
         s.append(f'<text x="{x(d):.1f}" y="{bottom + 18}" text-anchor="middle" fill="{MUTED}">'
@@ -164,8 +201,12 @@ def chart_daily(data, out, first=dt.date(2026, 10, 9), last=dt.date(2026, 11, 16
 
 
 # 3. Backends blocked by the rollup, and the longest wait, over the live sample window.
-def chart_locks(data, out):
-    rows = list(csv.DictReader(open(os.path.join(data, "locks_prod.csv"))))
+def chart_locks(data, out, suffix="before"):
+    path = src(data, "locks_prod.csv", suffix)
+    if not path:
+        print(f"skip {out}: no locks_prod file for --suffix {suffix}")
+        return
+    rows = list(csv.DictReader(open(path)))
     ts = [dt.datetime.strptime(r["ts"], "%Y-%m-%dT%H:%M:%SZ") + IST for r in rows]
     blocked = [int(r["blocked_by_rollup"]) for r in rows]
     wait = [float(r["max_wait_by_rollup_s"]) for r in rows]
@@ -209,14 +250,23 @@ def chart_locks(data, out):
     s.append(f'<text x="{ML}" y="{a_top - 12}" fill="{TEXT}" font-size="12" font-weight="700">Backends waiting on the rollup</text>')
     s.append(f'<text x="{ML}" y="{b_top - 12}" fill="{TEXT}" font-size="12" font-weight="700">Longest current wait</text>')
 
-    for i in range(1, len(rows)):
-        if running[i] < running[i - 1]:
-            # The tick started roughly running[i] seconds before this sample.
-            ts_start = ts[i] - dt.timedelta(seconds=running[i])
-            if ts_start >= t0:
-                xx = x(ts_start)
-                s.append(f'<path d="M{xx:.1f} {a_top}V{b_bot}" stroke="{MUTED}" stroke-width="1" '
-                         f'stroke-opacity="0.6"/>')
+    starts = []
+    ticks_path = src(data, "ticks_window.csv", suffix)
+    if ticks_path:
+        # Exact tick starts from pg_cron's history.
+        for r in csv.DictReader(open(ticks_path)):
+            starts.append(dt.datetime.fromisoformat(r["start_time"].replace("+00", "+00:00"))
+                          .replace(tzinfo=None) + IST)
+    else:
+        # Infer: when the running counter drops, a tick started running[i] seconds ago.
+        for i in range(1, len(rows)):
+            if running[i] < running[i - 1]:
+                starts.append(ts[i] - dt.timedelta(seconds=running[i]))
+    for ts_start in starts:
+        if t0 <= ts_start <= t1:
+            xx = x(ts_start)
+            s.append(f'<path d="M{xx:.1f} {a_top}V{b_bot}" stroke="{MUTED}" stroke-width="1" '
+                     f'stroke-opacity="0.6"/>')
 
     def yb(v):
         return a_bot - (a_bot - a_top) * v / bmax
@@ -241,15 +291,106 @@ def chart_locks(data, out):
     open(out, "w").write("\n".join(s) + "\n")
 
 
+# 4. The recording-upload write over time: hourly p95 (log scale) and the share that timed out.
+def chart_writer(data, out, deploy_at=None, writer="recording_upload"):
+    path = os.path.join(data, "writers_hourly.csv")
+    if not os.path.exists(path):
+        print(f"skip {out}: no writers_hourly.csv")
+        return
+    rows = [r for r in csv.DictReader(open(path)) if r["writer"] == writer and int(r["count"]) > 0]
+    rows.sort(key=lambda r: int(r["ts_utc_epoch"]))
+    ts = [dt.datetime.fromtimestamp(int(r["ts_utc_epoch"]), dt.timezone.utc).replace(tzinfo=None) + IST
+          for r in rows]
+    p95 = [max(float(r["p95_s"]), 0.001) for r in rows]
+    fail = [100.0 * int(r["errors"]) / int(r["count"]) for r in rows]
+    h = 490
+    t0 = ts[0].replace(hour=0, minute=0, second=0)
+    t1 = ts[-1] + dt.timedelta(hours=1)
+    span = (t1 - t0).total_seconds()
+    plot_w = W - ML - MR
+
+    def x(t):
+        return ML + plot_w * (t - t0).total_seconds() / span
+
+    a_top, a_bot = MT + 22, MT + 182
+    b_top, b_bot = a_bot + 56, h - MB
+    import math
+    lo, hi = -3, 3  # 1 ms to 1000 s
+
+    def ya(v):
+        return a_bot - (a_bot - a_top) * (math.log10(v) - lo) / (hi - lo)
+
+    fmax = max(10, (int(max(fail)) // 10 + 1) * 10)
+
+    def yb(v):
+        return b_bot - (b_bot - b_top) * v / fmax
+
+    first, last = ts[0], ts[-1]
+    period = f'{first.day} {first.strftime("%B")} to {last.day} {last.strftime("%B")}'
+    s = svg_open(
+        f"The recording-upload write to the call logs, hourly from {period}. The top panel is the "
+        f"p95 latency on a log scale from 1 millisecond to 1000 seconds; the bottom panel is the "
+        f"share of writes that hit the 120-second timeout."
+        + (" The deploy of the lock-free rollup is marked." if deploy_at else ""),
+        f"Recording-upload writes, hourly, {period}",
+        h,
+    )
+    items = [("line", P95, "p95 latency"), ("line", LIMIT, "writes timed out")]
+    if deploy_at:
+        items.append(("vline", MUTED, "lock-free rollup deployed"))
+    s += legend(items)
+    for e in range(lo, hi + 1):
+        yy = ya(10 ** e)
+        label = {-3: "1 ms", -2: "10 ms", -1: "100 ms", 0: "1 s", 1: "10 s", 2: "100 s", 3: "1000 s"}[e]
+        s.append(f'<path d="M{ML} {yy:.1f}H{W - MR}" stroke="{GRID}" stroke-width="1"/>')
+        s.append(f'<text x="{ML - 8}" y="{yy + 4:.1f}" text-anchor="end" fill="{MUTED}">{label}</text>')
+    v = 0
+    while v <= fmax + 1e-9:
+        yy = yb(v)
+        s.append(f'<path d="M{ML} {yy:.1f}H{W - MR}" stroke="{GRID}" stroke-width="1"/>')
+        s.append(f'<text x="{ML - 8}" y="{yy + 4:.1f}" text-anchor="end" fill="{MUTED}">{v:g}%</text>')
+        v += fmax // 2 if fmax <= 20 else 10
+    s.append(f'<text x="{ML}" y="{a_top - 12}" fill="{TEXT}" font-size="12" font-weight="700">p95 write latency (log scale)</text>')
+    s.append(f'<text x="{ML}" y="{b_top - 12}" fill="{TEXT}" font-size="12" font-weight="700">Writes that timed out</text>')
+    if deploy_at:
+        xd = x(deploy_at + IST)
+        s.append(f'<path d="M{xd:.1f} {a_top}V{b_bot}" stroke="{MUTED}" stroke-width="1" stroke-dasharray="2 3"/>')
+    s.append(f'<polyline fill="none" stroke="{P95}" stroke-width="2" '
+             f'points="{poly([(x(t), ya(v)) for t, v in zip(ts, p95)])}"/>')
+    pts = [(x(t), yb(v)) for t, v in zip(ts, fail)]
+    area = [(pts[0][0], b_bot)] + pts + [(pts[-1][0], b_bot)]
+    s.append(f'<polygon fill="{LIMIT}" fill-opacity="0.18" points="{poly(area)}"/>')
+    s.append(f'<polyline fill="none" stroke="{LIMIT}" stroke-width="2" points="{poly(pts)}"/>')
+    d = t0
+    while d <= t1:
+        s.append(f'<text x="{x(d):.1f}" y="{b_bot + 18}" text-anchor="middle" fill="{MUTED}">'
+                 f'{d.strftime("%b")} {d.day}</text>')
+        d += dt.timedelta(days=1)
+    s.append("</svg>")
+    open(out, "w").write("\n".join(s) + "\n")
+
+
 def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
     data, out = sys.argv[1], sys.argv[2]
-    suffix = sys.argv[sys.argv.index("--suffix") + 1] if "--suffix" in sys.argv else "before"
+
+    def opt(name, default):
+        return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+
+    suffix = opt("--suffix", "before")
+    days = opt("--days", "14 to 16 November")
+    last = dt.date.fromisoformat(opt("--last", "2026-11-16"))
+    deploy = opt("--deploy", None)
+    deploy_at = opt("--deploy-at", None)  # UTC, e.g. 2026-11-17T07:30:00Z
+    deploy_at = dt.datetime.fromisoformat(deploy_at.replace("Z", "")) if deploy_at else None
+    deploy = dt.date.fromisoformat(deploy) if deploy else (deploy_at.date() if deploy_at else None)
     os.makedirs(out, exist_ok=True)
-    chart_by_hour(data, os.path.join(out, f"tick-runtime-by-hour-{suffix}.svg"))
-    chart_daily(data, os.path.join(out, f"tick-runtime-daily-{suffix}.svg"))
-    chart_locks(data, os.path.join(out, f"blocked-writers-{suffix}.svg"))
+    chart_by_hour(data, os.path.join(out, f"tick-runtime-by-hour-{suffix}.svg"), suffix, days)
+    chart_daily(data, os.path.join(out, f"tick-runtime-daily-{suffix}.svg"), suffix, last=last, deploy=deploy)
+    chart_locks(data, os.path.join(out, f"blocked-writers-{suffix}.svg"), suffix)
+    if deploy_at:
+        chart_writer(data, os.path.join(out, "recording-writes.svg"), deploy_at)
 
 
 if __name__ == "__main__":
