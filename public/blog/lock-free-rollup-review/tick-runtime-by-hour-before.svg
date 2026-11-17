@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif" font-size="12" role="img" aria-label="Tick runtime by hour of day in IST. Overnight ticks take seconds; from 09:00 to 20:59 the p95 is 210 to 320 seconds, above the 180-second interval.">
+<rect width="760" height="400" fill="#000000"/>
+<text x="24" y="32" font-size="15" font-weight="700" fill="#FFFFFF">Tick runtime by hour of day (IST), 14 to 16 November</text>
+<rect x="24" y="45" width="12" height="10" rx="2" fill="#77effd"/>
+<text x="42" y="54" fill="#b0b0b0">p50</text>
+<rect x="87.8" y="45" width="12" height="10" rx="2" fill="#a8fe96"/>
+<text x="105.8" y="54" fill="#b0b0b0">p95</text>
+<path d="M151.6 50H169.6" stroke="#ff8885" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="175.6" y="54" fill="#b0b0b0">180 s interval</text>
+<path d="M60 352.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="356.0" text-anchor="end" fill="#b0b0b0">0s</text>
+<path d="M60 305.7H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="309.7" text-anchor="end" fill="#b0b0b0">60s</text>
+<path d="M60 259.3H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="263.3" text-anchor="end" fill="#b0b0b0">120s</text>
+<path d="M60 213.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="217.0" text-anchor="end" fill="#b0b0b0">180s</text>
+<path d="M60 166.7H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="170.7" text-anchor="end" fill="#b0b0b0">240s</text>
+<path d="M60 120.3H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="124.3" text-anchor="end" fill="#b0b0b0">300s</text>
+<path d="M60 74.0H736" stroke="#3d3d3d" stroke-width="1"/>
+<text x="52" y="78.0" text-anchor="end" fill="#b0b0b0">360s</text>
+<rect x="63.4" y="337.6" width="9.1" height="14.4" rx="1.5" fill="#77effd"/>
+<rect x="73.5" y="330.2" width="9.1" height="21.8" rx="1.5" fill="#a8fe96"/>
+<text x="74.1" y="370" text-anchor="middle" fill="#b0b0b0">00:00</text>
+<rect x="91.5" y="341.9" width="9.1" height="10.1" rx="1.5" fill="#77effd"/>
+<rect x="101.7" y="339.0" width="9.1" height="13.0" rx="1.5" fill="#a8fe96"/>
+<rect x="119.7" y="344.0" width="9.1" height="8.0" rx="1.5" fill="#77effd"/>
+<rect x="129.9" y="343.0" width="9.1" height="9.0" rx="1.5" fill="#a8fe96"/>
+<rect x="147.9" y="345.2" width="9.1" height="6.8" rx="1.5" fill="#77effd"/>
+<rect x="158.0" y="344.4" width="9.1" height="7.6" rx="1.5" fill="#a8fe96"/>
+<text x="158.6" y="370" text-anchor="middle" fill="#b0b0b0">03:00</text>
+<rect x="176.0" y="345.7" width="9.1" height="6.3" rx="1.5" fill="#77effd"/>
+<rect x="186.2" y="345.0" width="9.1" height="7.0" rx="1.5" fill="#a8fe96"/>
+<rect x="204.2" y="345.9" width="9.1" height="6.1" rx="1.5" fill="#77effd"/>
+<rect x="214.4" y="345.3" width="9.1" height="6.7" rx="1.5" fill="#a8fe96"/>
+<rect x="232.4" y="346.1" width="9.1" height="5.9" rx="1.5" fill="#77effd"/>
+<rect x="242.5" y="344.6" width="9.1" height="7.4" rx="1.5" fill="#a8fe96"/>
+<text x="243.1" y="370" text-anchor="middle" fill="#b0b0b0">06:00</text>
+<rect x="260.5" y="345.8" width="9.1" height="6.2" rx="1.5" fill="#77effd"/>
+<rect x="270.7" y="344.7" width="9.1" height="7.3" rx="1.5" fill="#a8fe96"/>
+<rect x="288.7" y="344.8" width="9.1" height="7.2" rx="1.5" fill="#77effd"/>
+<rect x="298.9" y="342.7" width="9.1" height="9.3" rx="1.5" fill="#a8fe96"/>
+<rect x="316.9" y="244.2" width="9.1" height="107.8" rx="1.5" fill="#77effd"/>
+<rect x="327.0" y="181.3" width="9.1" height="170.7" rx="1.5" fill="#a8fe96"/>
+<text x="327.6" y="370" text-anchor="middle" fill="#b0b0b0">09:00</text>
+<rect x="345.0" y="246.7" width="9.1" height="105.3" rx="1.5" fill="#77effd"/>
+<rect x="355.2" y="189.8" width="9.1" height="162.2" rx="1.5" fill="#a8fe96"/>
+<rect x="373.2" y="229.2" width="9.1" height="122.8" rx="1.5" fill="#77effd"/>
+<rect x="383.4" y="176.6" width="9.1" height="175.4" rx="1.5" fill="#a8fe96"/>
+<rect x="401.4" y="285.0" width="9.1" height="67.0" rx="1.5" fill="#77effd"/>
+<rect x="411.5" y="178.4" width="9.1" height="173.6" rx="1.5" fill="#a8fe96"/>
+<text x="412.1" y="370" text-anchor="middle" fill="#b0b0b0">12:00</text>
+<rect x="429.5" y="322.1" width="9.1" height="29.9" rx="1.5" fill="#77effd"/>
+<rect x="439.7" y="181.3" width="9.1" height="170.7" rx="1.5" fill="#a8fe96"/>
+<rect x="457.7" y="316.5" width="9.1" height="35.5" rx="1.5" fill="#77effd"/>
+<rect x="467.9" y="173.3" width="9.1" height="178.7" rx="1.5" fill="#a8fe96"/>
+<rect x="485.9" y="290.2" width="9.1" height="61.8" rx="1.5" fill="#77effd"/>
+<rect x="496.0" y="146.3" width="9.1" height="205.7" rx="1.5" fill="#a8fe96"/>
+<text x="496.6" y="370" text-anchor="middle" fill="#b0b0b0">15:00</text>
+<rect x="514.0" y="226.2" width="9.1" height="125.8" rx="1.5" fill="#77effd"/>
+<rect x="524.2" y="138.4" width="9.1" height="213.6" rx="1.5" fill="#a8fe96"/>
+<rect x="542.2" y="224.4" width="9.1" height="127.6" rx="1.5" fill="#77effd"/>
+<rect x="552.4" y="136.7" width="9.1" height="215.3" rx="1.5" fill="#a8fe96"/>
+<rect x="570.4" y="248.1" width="9.1" height="103.9" rx="1.5" fill="#77effd"/>
+<rect x="580.5" y="105.7" width="9.1" height="246.3" rx="1.5" fill="#a8fe96"/>
+<text x="581.1" y="370" text-anchor="middle" fill="#b0b0b0">18:00</text>
+<rect x="598.5" y="206.1" width="9.1" height="145.9" rx="1.5" fill="#77effd"/>
+<rect x="608.7" y="131.5" width="9.1" height="220.5" rx="1.5" fill="#a8fe96"/>
+<rect x="626.7" y="338.9" width="9.1" height="13.1" rx="1.5" fill="#77effd"/>
+<rect x="636.9" y="167.7" width="9.1" height="184.3" rx="1.5" fill="#a8fe96"/>
+<rect x="654.9" y="341.0" width="9.1" height="11.0" rx="1.5" fill="#77effd"/>
+<rect x="665.0" y="205.5" width="9.1" height="146.5" rx="1.5" fill="#a8fe96"/>
+<text x="665.6" y="370" text-anchor="middle" fill="#b0b0b0">21:00</text>
+<rect x="683.0" y="336.7" width="9.1" height="15.3" rx="1.5" fill="#77effd"/>
+<rect x="693.2" y="334.5" width="9.1" height="17.5" rx="1.5" fill="#a8fe96"/>
+<rect x="711.2" y="336.8" width="9.1" height="15.2" rx="1.5" fill="#77effd"/>
+<rect x="721.4" y="333.8" width="9.1" height="18.2" rx="1.5" fill="#a8fe96"/>
+<path d="M60 213.0H736" stroke="#ff8885" stroke-width="2" stroke-dasharray="5 4"/>
+</svg>
